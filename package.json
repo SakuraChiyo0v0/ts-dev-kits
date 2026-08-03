@@ -1,0 +1,27 @@
+{
+  "name": "ts-dev-kits",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@11.15.1",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "pnpm --filter @amechan/email build",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test",
+    "check": "pnpm typecheck && pnpm test && pnpm build",
+    "email:demo": "pnpm --filter @amechan/email-demo dev",
+    "verify:email-package": "node scripts/verify-email-package.mjs",
+    "verify:email-git-package": "node scripts/verify-email-git-package.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.2",
+    "@types/nodemailer": "^8.0.1",
+    "@types/smtp-server": "^3.5.13",
+    "smtp-server": "^3.19.2",
+    "tsx": "^4.23.5",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  }
+}

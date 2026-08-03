@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <title>@amechan/email Demo</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">@amechan/email</p>
+          <h1>邮件发送实验台</h1>
+          <p class="intro">在本机预览 HTML，并通过你配置的 SMTP 账户真实发送邮件。</p>
+        </div>
+        <div class="connection-card">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span data-status>正在读取本地配置…</span>
+          <button type="button" class="button button-secondary" data-verify>验证 SMTP 连接</button>
+        </div>
+      </header>
+
+      <div class="workspace">
+        <section class="panel composer" aria-labelledby="composer-title">
+          <div class="panel-heading">
+            <div>
+              <p class="step">01 / COMPOSE</p>
+              <h2 id="composer-title">编写邮件</h2>
+            </div>
+            <span class="local-badge">仅本机</span>
+          </div>
+
+          <form data-email-form>
+            <div class="field-grid">
+              <label class="field field-wide">
+                <span>发件人 <b aria-hidden="true">*</b></span>
+                <input name="from" type="text" autocomplete="email" placeholder="Ame &lt;mailer@example.com&gt;" required>
+              </label>
+
+              <label class="field field-wide">
+                <span>收件人 <b aria-hidden="true">*</b></span>
+                <textarea name="to" rows="2" placeholder="alice@example.com, bob@example.com" required></textarea>
+                <small>使用逗号、分号或换行分隔多个地址</small>
+              </label>
+
+              <details class="advanced field-wide">
+                <summary>抄送、密送与回复地址</summary>
+                <div class="field-grid advanced-grid">
+                  <label class="field">
+                    <span>抄送 CC</span>
+                    <input name="cc" type="text" placeholder="cc@example.com">
+                  </label>
+                  <label class="field">
+                    <span>密送 BCC</span>
+                    <input name="bcc" type="text" placeholder="bcc@example.com">
+                  </label>
+                  <label class="field field-wide">
+                    <span>回复到 Reply-To</span>
+                    <input name="replyTo" type="text" placeholder="support@example.com">
+                  </label>
+                </div>
+              </details>
+
+              <label class="field field-wide">
+                <span>主题 <b aria-hidden="true">*</b></span>
+                <input name="subject" type="text" placeholder="这是一封测试邮件" required>
+              </label>
+
+              <label class="field">
+                <span>纯文本正文</span>
+                <textarea name="text" rows="9" placeholder="不支持 HTML 的客户端会显示这里的内容。"></textarea>
+              </label>
+
+              <label class="field">
+                <span>HTML 正文</span>
+                <textarea name="html" rows="9" spellcheck="false" placeholder="&lt;h1&gt;你好！&lt;/h1&gt;"></textarea>
+              </label>
+
+              <label class="field field-wide upload">
+                <span>附件</span>
+                <input name="attachments" type="file" multiple data-attachments>
+                <small data-attachment-summary>单个不超过 5 MiB，总计不超过 10 MiB</small>
+              </label>
+            </div>
+
+            <div class="actions">
+              <button type="button" class="button button-secondary" data-preview-button>预览 HTML</button>
+              <button type="submit" class="button button-primary" data-send>真实发送</button>
+            </div>
+          </form>
+        </section>
+
+        <aside class="side-column">
+          <section class="panel preview-panel" aria-labelledby="preview-title">
+            <div class="panel-heading compact">
+              <div>
+                <p class="step">02 / PREVIEW</p>
+                <h2 id="preview-title">邮件预览</h2>
+              </div>
+              <span class="preview-note">脚本已禁用</span>
+            </div>
+            <iframe title="HTML 邮件预览" sandbox="" data-preview></iframe>
+          </section>
+
+          <section class="panel result-panel" aria-labelledby="result-title">
+            <div class="panel-heading compact">
+              <div>
+                <p class="step">03 / RESULT</p>
+                <h2 id="result-title">运行结果</h2>
+              </div>
+            </div>
+            <pre aria-live="polite" data-result>等待操作…</pre>
+          </section>
+        </aside>
+      </div>
+
+      <footer>
+        SMTP 凭据仅由本地 Node.js 进程读取，不会发送到此页面。
+      </footer>
+    </main>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
