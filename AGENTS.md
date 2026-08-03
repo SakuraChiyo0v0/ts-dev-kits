@@ -53,6 +53,7 @@ pnpm email:demo           # 启动本机演示(仅监听 127.0.0.1)
 ### Git 流程
 
 - 提交信息用 conventional 风格(`feat:`、`fix:`、`docs:`、`refactor:` 等),英文。
+- **提交身份必须使用 GitHub 账号的 `user.name` / `user.email`(即与 `SakuraChiyo0v0` 关联的身份),不要使用本地的公司账户。** 若环境未配置或存在多个身份,提交时用 `-c user.name=<GitHub 用户名> -c user.email=<GitHub 邮箱>` 显式指定。
 - 提交、推送、tag、发布是彼此独立的授权操作,不由构建/测试命令自动执行。未经用户确认不要 push。
 - 修改后至少跑 `pnpm --filter <受影响包> typecheck && test`;改动涉及全仓时跑 `pnpm check`。
 
