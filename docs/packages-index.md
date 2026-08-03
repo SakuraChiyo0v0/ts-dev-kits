@@ -152,3 +152,14 @@ pnpm --filter @amechan/ffmpeg build  # 构建 ESM + CJS + d.ts
 ```
 
 **更多细节：** [`packages/ffmpeg/README.md`](../packages/ffmpeg/README.md)
+
+## 对应能力手册(skills)
+
+每个可复用包附带一份给 AI 使用的能力手册,教 AI 直接调用包的功能:
+
+| skill | 用途 |
+| --- | --- |
+| [`skills/ffmpeg`](../skills/ffmpeg/SKILL.md) | AI 处理音视频/图片时调用 `@amechan/ffmpeg` 的高层函数 |
+| [`skills/email`](../skills/email/SKILL.md) | AI 发送邮件时调用 `@amechan/email` 的统一 API |
+
+使用方项目可将 `skills/` 目录复制到自己的 skills 目录,或直接参考对应 SKILL.md 的正确调用方式。新增包时按 AGENTS.md 约定补充对应 skill。
