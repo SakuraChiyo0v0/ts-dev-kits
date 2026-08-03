@@ -1,201 +1,219 @@
-# FFmpeg 媒体处理
+# FFmpeg 音视频/图片处理命令手册
 
-让 AI 直接调用 `@amechan/ffmpeg` 包的功能处理音视频与图片:读取信息、转码、剪切、拼接、水印、GIF、音频转换、图片处理。AI 优先使用本包的高层函数,而不是自己拼 ffmpeg CLI 参数。
+让 AI 直接使用系统 `ffmpeg` / `ffprobe` 命令完成音视频与图片处理。本 skill 不需要安装任何 npm 包,所有配方都是可直接执行的命令。
 
 ## 环境检查
 
-- Node.js >= 20。
-- 系统需已安装 `ffmpeg` 与 `ffprobe`(PATH 中),或调用时显式传入二进制路径。
-
-## 是否已安装本包?
-
-在项目 `package.json` 中查找 `@amechan/ffmpeg`:
-
-- **已安装**:直接 `import { createFfmpegClient } from "@amechan/ffmpeg"`,跳过安装。
-- **未安装但项目在 ts-dev-kits monorepo 内**:`pnpm add @amechan/ffmpeg@workspace:*`。
-- **未安装且在外部项目**:
-  1. 在消费项目 `pnpm-workspace.yaml` 添加授权:
-     ```yaml
-     allowBuilds:
-       '@amechan/ffmpeg@git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git': true
-     ```
-  2. `pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/ffmpeg"`
-- **无法安装包时**:降级直接用系统 `ffmpeg` CLI(见「无包降级」)。
-
-## API 速查
-
-```ts
-import { createFfmpegClient } from "@amechan/ffmpeg";
-const ffmpeg = createFfmpegClient();   // 可传 { ffmpegPath?, ffprobePath? }
+```bash
+ffmpeg -version    # 确认已安装
+ffprobe -version
 ```
 
-所有高层函数接受统一控制参数: `overwrite?`(传 `-y`,必须显式给出否则输出已存在会挂起)、`timeoutMs?`、`onProgress?(p)`、`progressTotalMs?`(提供后进度对象带 `percent`)。
+未安装时提示用户先安装(如 Ubuntu: `sudo apt install ffmpeg`;macOS: `brew install ffmpeg`;Windows: 下载静态构建加入 PATH)。
 
-### 媒体信息
+## 基本使用
 
-| 函数 | 返回 |
+```bash
+ffmpeg -i input.mp4 output.mp4          # 基础转码(自动选编码器)
+ffprobe -v error -show_format -show_streams input.mp4   # 读取信息
+```
+
+**铁律:输出文件已存在时必须加 `-y` 覆盖**,否则 ffmpeg 会交互询问导致命令挂起。所有配方默认带 `-y`。
+
+**常用全局参数:**
+
+| 参数 | 作用 |
 | --- | --- |
-| `await ffmpeg.probe(input)` | `{ formatName, duration, size, streams[], videoStream?, audioStream? }` |
+| `-y` | 覆盖输出文件(必须) |
+| `-c:v` | 视频编码器 |
+| `-c:a` | 音频编码器 |
+| `-c copy` | 流复制(不重编码,快) |
+| `-ss` | 起始时间(`00:00:10` 或 `10`) |
+| `-t` | 时长(`00:00:05` 或 `5`) |
+| `-to` | 结束时间 |
+| `-vf` | 视频滤镜 |
+| `-af` | 音频滤镜 |
+| `-b:v` / `-b:a` | 视频/音频码率(`1M`、`192k`) |
+| `-f` | 强制输出格式 |
+| `-filter_complex` | 复杂滤镜图 |
 
-### 视频
+## 编码器搭配速查
 
-| 函数 | 关键参数 |
-| --- | --- |
-| `ffmpeg.transcode({ input, output, videoCodec?, audioCodec?, videoBitrate?, audioBitrate?, scale? })` | 转码/重封装 |
-| `ffmpeg.cut({ input, output, start?, end?, duration?, copy?, videoCodec?, audioCodec? })` | 剪切。`copy: true` 快剪但不精确 |
-| `ffmpeg.concat({ inputs[], output, copy?, videoCodec?, audioCodec? })` | 拼接 |
-| `ffmpeg.watermark({ input, watermark, output, position?, opacity? })` | 水印。position: top-left/top-right/bottom-left/bottom-right/center |
-| `ffmpeg.loopVideo({ input, output, loopCount?, outputDuration? })` | 循环。loopCount: -1 无限 |
-| `ffmpeg.toGif({ input, output, fps?, width?, start?, duration? })` | GIF。默认 fps 10、宽 320 |
-| `ffmpeg.extractFrame({ input, output, time?, scale? })` | 截图 |
-| `ffmpeg.thumbnail({ input, output, width?, time? })` | 缩略图,默认宽 320 |
-
-### 音频
-
-| 函数 | 说明 |
-| --- | --- |
-| `ffmpeg.extractAudio({ input, output, audioCodec?, audioBitrate? })` | 抽音轨(默认 MP3 192k) |
-| `ffmpeg.toMp3({...})` / `toFlac` / `toWav` / `toOgg` / `toM4a` | 便捷转换,自动选编码器 |
-| `ffmpeg.convertAudio({ input, output, audioCodec?, audioBitrate?, channels?, sampleRate? })` | 通用转换 |
-| `ffmpeg.setVolume({ input, output, volume })` | 音量,倍率(`1.5`)或 dB(`"3dB"`) |
-| `ffmpeg.normalizeAudio({ input, output, loudnessTarget?, truePeak? })` | 响度归一,默认 -16 LUFS |
-| `ffmpeg.joinAudio({ inputs[], output, audioCodec?, audioBitrate? })` | 合并音频 |
-
-### 图片
-
-| 函数 | 说明 |
-| --- | --- |
-| `ffmpeg.resizeImage({ input, output, width?, height? })` | 缩放,只给一维自动按比例 |
-| `ffmpeg.cropImage({ input, output, width, height, x?, y? })` | 裁剪,x/y 默认居中 |
-| `ffmpeg.convertImage({ input, output, quality? })` | 格式转换,JPEG/WebP 质量 1-100 |
-| `ffmpeg.compositeImage({ input, overlay, output, x?, y? })` | 叠加图片 |
-| `ffmpeg.compressImage({ input, output, width?, quality? })` | 压缩,默认质量 70 |
-
-### 兜底
-
-| 函数 | 说明 |
-| --- | --- |
-| `ffmpeg.run(args[], options?)` | 任意参数运行 ffmpeg |
-| `ffmpeg.runCommand("ffmpeg -i in.mp4 out.mp4")` | 原生命令字符串,任何 ffmpeg 能力都能用 |
-
-非零退出码不抛错,由调用方判断:`result.exitCode !== 0` 时读 `result.stderr`。
+| 容器 | 视频编码 | 音频编码 | 适用 |
+| --- | --- | --- | --- |
+| `.mp4` | `libx264` | `aac` | 通用、兼容性最好 |
+| `.webm` | `libvpx`(或 `libvpx-vp9`) | `libopus` | 网页 |
+| `.mkv` | `libx264` | `flac`/`aac` | 高保真 |
+| `.gif` | 专用调色板流程 | 无 | 动图 |
 
 ## 任务配方
 
-以下任务优先用高层函数,特殊需求走 `run`/`runCommand`。
-
 ### 读取媒体信息
 
-```ts
-const info = await ffmpeg.probe("input.mp4");
-console.log(info.duration, info.videoStream?.width, info.audioStream?.codecName);
+```bash
+# 基本信息
+ffprobe -v error -show_entries format=duration,size,bit_rate -of default=noprint_wrappers=1 input.mp4
+
+# 流信息(编码器/分辨率/采样率)
+ffprobe -v error -print_format json -show_format -show_streams input.mp4
+
+# 只要时长(便于脚本)
+ffprobe -v error -show_entries format=duration -of csv=p=0 input.mp4
 ```
 
-### 转码为常见格式
+### 转码 / 格式转换
 
-```ts
-// MP4 → WebM
-await ffmpeg.transcode({ input: "in.mp4", output: "out.webm", videoCodec: "libvpx", audioCodec: "libopus", overwrite: true });
-// 转为 H.264 + AAC(兼容性最好)
-await ffmpeg.transcode({ input: "in.mov", output: "out.mp4", videoCodec: "libx264", audioCodec: "aac", overwrite: true });
+```bash
+# 任何格式 → H.264 MP4(通用)
+ffmpeg -i input.mov -c:v libx264 -c:a aac -pix_fmt yuv420p -y output.mp4
+
+# → WebM(网页)
+ffmpeg -i input.mp4 -c:v libvpx -c:a libopus -y output.webm
+
+# → MKV 无损音轨
+ffmpeg -i input.mp4 -c:v libx264 -c:a flac -y output.mkv
+
+# 快速重封装(不重编码,只换容器,秒完成)
+ffmpeg -i input.mkv -c copy -y output.mp4
 ```
 
 ### 剪切片段
 
-```ts
-// 从 10 秒开始剪 5 秒,重编码(精确)
-await ffmpeg.cut({ input: "in.mp4", output: "clip.mp4", start: "00:00:10", duration: "00:00:05", overwrite: true });
-// 快剪(不重编码,速度快但关键帧处可能不准)
-await ffmpeg.cut({ input: "in.mp4", output: "clip.mp4", start: "00:00:10", end: "00:00:20", copy: true, overwrite: true });
+```bash
+# 从 00:00:10 开始剪 5 秒,重编码(精确)
+ffmpeg -ss 00:00:10 -i input.mp4 -t 00:00:05 -c:v libx264 -c:a aac -y clip.mp4
+
+# 快剪(不重编码,快但可能不够精确)
+ffmpeg -ss 00:00:10 -to 00:00:20 -i input.mp4 -c copy -y clip.mp4
+
+# 从 30 秒剪到结尾
+ffmpeg -ss 30 -i input.mp4 -c copy -y tail.mp4
 ```
 
 ### 拼接视频
 
-```ts
-await ffmpeg.concat({ inputs: ["a.mp4", "b.mp4"], output: "merged.mp4", overwrite: true });
-// 各片段编码一致时可快拼
-await ffmpeg.concat({ inputs: ["a.mp4", "b.mp4"], output: "merged.mp4", copy: true, overwrite: true });
+```bash
+# 方式一:重编码拼接(最稳,各片段参数可不同)
+ffmpeg -i a.mp4 -i b.mp4 -filter_complex "[0:v][0:a][1:v][1:a]concat=n=2:v=1:a=1[outv][outa]" -map "[outv]" -map "[outa]" -y merged.mp4
+
+# 方式二:快拼(要求各片段编码/分辨率一致,否则花屏)
+printf "file 'a.mp4'\nfile 'b.mp4'\n" > list.txt
+ffmpeg -f concat -safe 0 -i list.txt -c copy -y merged.mp4
 ```
 
 ### 加水印
 
-```ts
-await ffmpeg.watermark({ input: "in.mp4", watermark: "logo.png", output: "out.mp4", position: "bottom-right", opacity: 0.8, overwrite: true });
+```bash
+# 右下角不透明水印
+ffmpeg -i input.mp4 -i logo.png -filter_complex "[1]format=rgba,colorchannelmixer=aa=0.8[wm];[0][wm]overlay=W-w-10:H-h-10" -y output.mp4
+
+# 位置:左上 10:10 / 右上 W-w-10:10 / 左下 10:H-h-10 / 右下 W-w-10:H-h-10 / 居中 (W-w)/2:(H-h)/2
+# 不透明度 aa=0.8(0-1),w/h 是水印宽高,W/H 是视频宽高
 ```
 
 ### 转 GIF
 
-```ts
-await ffmpeg.toGif({ input: "in.mp4", output: "out.gif", width: 240, fps: 12 });
-// 截取片段转 GIF
-await ffmpeg.toGif({ input: "in.mp4", output: "out.gif", start: "00:00:01", duration: "00:00:03", width: 240 });
+```bash
+# 标准流程:抽帧 → 生成调色板 → 应用(避免画质劣化)
+ffmpeg -i input.mp4 -vf "fps=10,scale=320:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" -y output.gif
+
+# 从片段转 GIF
+ffmpeg -ss 00:00:01 -t 00:00:03 -i input.mp4 -vf "fps=10,scale=320:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" -y output.gif
+# fps=帧率 scale=宽度(高度按比例)
+```
+
+### 截图 / 缩略图
+
+```bash
+# 指定时间点截图
+ffmpeg -ss 00:00:05 -i input.mp4 -frames:v 1 -y frame.jpg
+
+# 缩略图(320 宽)
+ffmpeg -ss 00:00:01 -i input.mp4 -vf "scale=320:-1" -frames:v 1 -y thumb.jpg
 ```
 
 ### 音频处理
 
-```ts
-await ffmpeg.toMp3({ input: "in.flac", output: "out.mp3" });              // 无损转 mp3
-await ffmpeg.toFlac({ input: "in.mp3", output: "out.flac" });             // 转无损
-await ffmpeg.setVolume({ input: "in.mp3", output: "loud.mp3", volume: 1.5 });
-await ffmpeg.normalizeAudio({ input: "in.mp3", output: "norm.mp3" });     // 响度归一
-await ffmpeg.joinAudio({ inputs: ["a.mp3", "b.mp3"], output: "merged.mp3" });
+```bash
+# 抽音轨 → MP3
+ffmpeg -i input.mp4 -vn -c:a libmp3lame -b:a 192k -y audio.mp3
+
+# 格式转换
+ffmpeg -i input.flac -c:a libmp3lame -b:a 320k -y audio.mp3    # 无损→高音质 MP3
+ffmpeg -i input.mp3 -c:a flac -y audio.flac                    # → FLAC 无损
+ffmpeg -i input.mp3 -c:a pcm_s16le -y audio.wav                # → WAV
+ffmpeg -i input.mp3 -c:a libvorbis -b:a 192k -y audio.ogg      # → OGG
+ffmpeg -i input.mp3 -c:a aac -b:a 192k -y audio.m4a            # → M4A/AAC
+
+# 音量调整
+ffmpeg -i input.mp3 -af "volume=1.5" -y louder.mp3             # 倍率
+ffmpeg -i input.mp3 -af "volume=3dB" -y louder.mp3             # 或 dB
+
+# 响度归一化(流媒体标准,目标 -16 LUFS)
+ffmpeg -i input.mp3 -af "loudnorm=I=-16:TP=-1.5:LRA=11" -y normalized.mp3
+
+# 合并音频(按顺序)
+ffmpeg -i a.mp3 -i b.mp3 -filter_complex "[0:a][1:a]concat=n=2:v=0:a=1[outa]" -map "[outa]" -c:a libmp3lame -y merged.mp3
 ```
 
 ### 图片处理
 
-```ts
-await ffmpeg.resizeImage({ input: "big.png", output: "small.png", width: 800 });
-await ffmpeg.cropImage({ input: "in.jpg", output: "out.jpg", width: 600, height: 400 });
-await ffmpeg.convertImage({ input: "in.png", output: "out.webp", quality: 85 });
-await ffmpeg.compressImage({ input: "in.jpg", output: "compressed.jpg", width: 1200, quality: 60 });
+```bash
+# 缩放(只给宽,高度按比例)
+ffmpeg -i big.png -vf "scale=800:-2" -y small.png
+
+# 指定宽高(拉伸)
+ffmpeg -i big.png -vf "scale=800:600" -y fixed.png
+
+# 裁剪 600x400 居中
+ffmpeg -i input.jpg -vf "crop=600:400" -y cropped.jpg
+# 指定偏移 crop=宽:高:x:y,如 crop=600:400:50:100
+
+# 格式转换(PNG→JPG,质量 -q:v 2-31,越小越好,常用 2-5)
+ffmpeg -i input.png -q:v 3 -y output.jpg
+
+# → WebP(质量 -quality 0-100)
+ffmpeg -i input.png -quality 85 -y output.webp
+
+# 两张图叠加
+ffmpeg -i base.png -i overlay.png -filter_complex "overlay=10:10" -y composite.png
+
+# 压缩(缩放 + 降质)
+ffmpeg -i input.jpg -vf "scale=1200:-2" -q:v 5 -y compressed.jpg
 ```
 
-### 进度反馈
+### 视频高级
 
-```ts
-const info = await ffmpeg.probe("in.mp4");
-await ffmpeg.transcode({
-  input: "in.mp4", output: "out.mp4", videoCodec: "libx264",
-  progressTotalMs: info.duration * 1000,
-  onProgress: (p) => { if (p.percent !== undefined) console.log(`${p.percent.toFixed(1)}%`); },
-  overwrite: true,
-});
+```bash
+# 循环(源 2 秒 → 循环 3 次 → 6 秒)
+ffmpeg -stream_loop 3 -i input.mp4 -c copy -y looped.mp4
+
+# 去音轨(保留视频)
+ffmpeg -i input.mp4 -an -c:v copy -y silent.mp4
+
+# 静音(保留音轨但消音)
+ffmpeg -i input.mp4 -af "volume=0" -c:v copy -y muted.mp4
 ```
 
-### 特殊需求用兜底
+## 时间格式
 
-```ts
-// 例:裁掉前 10 秒并加文字水印(无高层函数)
-await ffmpeg.runCommand(`ffmpeg -ss 10 -i "${input}" -vf "drawtext=text='hello':x=10:y=10" -c:a copy "${output}"`);
-```
+- `00:00:10` = 10 秒,`00:01:30` = 1 分 30 秒
+- 也可用纯数字秒:`-ss 10`、`-t 5.5`
+- 微秒:`-ss 00:00:00.500` = 半秒
 
 ## 陷阱清单
 
-- **必须传 `overwrite: true`**(或 `-y`),否则输出文件已存在时 ffmpeg 交互询问会挂起。
-- **端口/编码器常识**:WebM 配 `libvpx`+`libopus`,H.264 配 `libx264`+`aac`。别混搭。
-- **`cut` 的 `copy: true` 不精确**:关键帧对齐问题,需求精确用默认重编码。
-- **`concat` 的 `copy: true` 要求所有片段编码/分辨率一致**,否则花屏;不一致走默认重编码。
-- **`run`/`runCommand` 不自动带 `-y`**;非零退出码不抛错,记得检查 `exitCode`。
-- **`onProgress` 需要高层函数内部已带 `-progress pipe:1`**(已内置);底层 `run` 需自己加。
-- **`timeoutMs` 超时会 SIGKILL 强杀**,任务不可恢复,别给太小的值。
-
-## 无包降级
-
-包不可用时,直接用系统 CLI。对应关系:
-
-| 高层函数 | CLI 等价 |
-| --- | --- |
-| `probe` | `ffprobe -v error -print_format json -show_format -show_streams <input>` |
-| `transcode` | `ffmpeg -i <in> -c:v <vc> -c:a <ac> -y <out>` |
-| `cut` | `ffmpeg -ss <start> -i <in> -t <dur> -y <out>` |
-| `concat` | `ffmpeg -i a -i b -filter_complex "concat=n=2:v=1:a=1" -map "[outv]" -map "[outa]" -y out` |
-| `watermark` | `ffmpeg -i in -i logo -filter_complex "[1]format=rgba,colorchannelmixer=aa=0.8[wm];[0][wm]overlay=W-w-10:H-h-10" -y out` |
-| `toGif` | `ffmpeg -i in -vf "fps=10,scale=240:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" -y out.gif` |
-| `toMp3` | `ffmpeg -i in -vn -c:a libmp3lame -b:a 192k -y out.mp3` |
-| `resizeImage` | `ffmpeg -i in -vf "scale=800:-2" -y out.png` |
+- **忘加 `-y` 且输出已存在 → 命令挂起**。所有配方默认带 `-y`。
+- **编码器与容器不匹配会失败**:`.mp4` 用 `libx264`+`aac`,`.webm` 用 `libvpx`+`libopus`,别混搭。
+- **MP4 用 libx264 要加 `-pix_fmt yuv420p`**,否则部分播放器无法播放。
+- **`-c copy` 快拼要求各片段参数一致**,否则花屏/音画不同步。
+- **`-ss` 放在 `-i` 前 = 快速seek(不精确但快),放 `-i` 后 = 精确seek(慢)**,精确剪辑用后者。
+- **GIF 必须走调色板流程**(palettegen+paletteuse),直接 `-vf scale` 转 GIF 会严重劣化。
+- **转码失败看 stderr**:ffmpeg 的报错在标准错误,常见 `Unknown encoder`(编码器没编译进)、`No such file`(路径错)。
+- **非零退出码 = 失败**,脚本里检查 `$?`。
 
 ## 验证
 
-- 每个函数返回 `{ exitCode, stderr, stdout, durationMs }`,处理成功 `exitCode === 0`。
-- 用 `probe` 复核输出:`await ffmpeg.probe(output)` 检查 `duration`、`videoStream.width`、`codecName` 是否符合预期。
-- 文件确实生成且大小 > 0。
+- 输出文件存在且大小合理:`ls -lh output.mp4`
+- 用 ffprobe 复核:`ffprobe -v error -show_entries stream=codec_name,width,height,duration -of json output.mp4`
+- 截图/图片用 `ls -lh` 或图片查看器确认。

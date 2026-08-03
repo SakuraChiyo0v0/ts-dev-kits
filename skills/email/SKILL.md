@@ -1,60 +1,47 @@
-# 邮件发送
+# 邮件发送代码配方
 
-让 AI 直接调用 `@amechan/email` 包的功能发送邮件:连接验证、发送文本/HTML 邮件、附件、自定义头。AI 使用统一 API,不直接拼 nodemailer 参数。
+让 AI 直接使用 `nodemailer` 库发送邮件。本 skill 不依赖本仓库的 `@amechan/email` 包,给出的是任何 Node.js 项目都能直接运行的通用代码。若项目已安装 `@amechan/email`,可直接跳到文末「使用 @amechan/email」小节。
 
 ## 环境检查
 
-- Node.js >= 20。
-- 需要可用的 SMTP 服务商账号(主机、端口、用户名、密码或应用专用密码)。
+```bash
+node -v   # 需 Node.js 18+
+```
 
-## 是否已安装本包?
+未安装 nodemailer 时:
 
-在项目 `package.json` 中查找 `@amechan/email`:
-
-- **已安装**:直接 `import { createEmailClient, smtpProvider } from "@amechan/email"`,跳过安装。
-- **未安装但项目在 ts-dev-kits monorepo 内**:`pnpm add @amechan/email@workspace:*`。
-- **未安装且在外部项目**:
-  1. 在消费项目 `pnpm-workspace.yaml` 添加授权:
-     ```yaml
-     allowBuilds:
-       '@amechan/email@git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git': true
-     ```
-  2. `pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/email"`
-- **无法安装包时**:降级直接用 nodemailer(见「无包降级」)。
+```bash
+npm install nodemailer        # 或 pnpm add nodemailer
+```
 
 ## 核心流程
 
-发邮件固定三步:**创建 → 发送(可选先 verify)→ close**。
+发送邮件固定三步:**创建 transport → 发送 → 关闭**。
 
 ```ts
-import { createEmailClient, smtpProvider } from "@amechan/email";
+import nodemailer from "nodemailer";
 
-// 1. 创建客户端(凭据从环境变量/配置系统读取,不要硬编码)
-const email = createEmailClient({
-  provider: smtpProvider({
-    host: process.env.SMTP_HOST!,
-    port: Number(process.env.SMTP_PORT ?? 587),
-    secure: process.env.SMTP_SECURE === "true",
-    auth: {
-      user: process.env.SMTP_USER!,
-      pass: process.env.SMTP_PASSWORD!,
-    },
-  }),
+// 1. 创建 transport(凭据从环境变量读取,不要硬编码)
+const transport = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,          // 如 smtp.gmail.com / smtp.qq.com
+  port: Number(process.env.SMTP_PORT ?? 587),
+  secure: process.env.SMTP_SECURE === "true",
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASSWORD,    // 多数服务商用"应用专用密码"
+  },
 });
 
 try {
-  // 2a.(可选)先验证连接与认证
-  await email.verify();
-
-  // 2b. 发送
-  const result = await email.send({
-    from: process.env.SMTP_FROM!,           // 必填
-    to: ["alice@example.com", { name: "Bob", address: "bob@example.com" }],
-    cc: ["cc@example.com"],
-    bcc: ["bcc@example.com"],
+  // 2. 发送
+  const info = await transport.sendMail({
+    from: process.env.SMTP_FROM,        // 必填
+    to: ["a@example.com", "b@example.com"],
+    cc: "cc@example.com",
+    bcc: "bcc@example.com",
     replyTo: "support@example.com",
-    subject: "测试邮件",                     // 必填
-    text: "纯文本内容",                       // text 与 html 至少一个
+    subject: "测试邮件",                 // 必填
+    text: "纯文本内容",                   // text 与 html 至少一个
     html: "<h1>HTML</h1><p>内容</p>",
     attachments: [
       { filename: "hello.txt", contentType: "text/plain", content: Buffer.from("hello") },
@@ -62,146 +49,167 @@ try {
     headers: { "X-Application": "example-service" },
   });
 
-  console.log(result.messageId, result.accepted, result.rejected);
+  console.log(info.messageId, info.accepted, info.rejected);
 } finally {
-  // 3. 释放连接(使用连接池或进程退出前必须调用)
-  await email.close();
+  // 3. 关闭连接(长连接/进程退出前必须调用)
+  await transport.close();
 }
 ```
 
-## API 速查
-
-### 创建
-
-- `createEmailClient({ provider })` — 创建客户端。
-- `smtpProvider({ host, port, secure, auth?, tls?, pool?, maxConnections?, maxMessages?, connectionTimeoutMs?, greetingTimeoutMs?, socketTimeoutMs? })` — SMTP 适配器。
-
-端口与 `secure` 配对(以服务商文档为准):
+## 端口与 secure 配对
 
 | 端口 | secure | 说明 |
 | --- | --- | --- |
 | 465 | `true` | 连接即 TLS |
-| 587 / 25 | `false` | 普通连接后 STARTTLS |
+| 587 / 25 | `false` | 普通连接后 STARTTLS(常用) |
 
-### 发送参数 `send(message)`
+以邮件服务商文档为准。
 
-| 字段 | 必填 | 说明 |
-| --- | --- | --- |
-| `from` | 是 | 发件人,字符串或 `{ name, address }` |
-| `to` / `cc` / `bcc` / `replyTo` | 否 | 收件人,字符串 / 对象 / 数组 |
-| `subject` | 是 | 主题,不能含换行 |
-| `text` / `html` | 至少一个 | 正文 |
-| `attachments` | 否 | `{ filename, contentType?, cid?, path? 或 content? }`(path 与 content 二选一) |
-| `headers` | 否 | 自定义头,值可为字符串或字符串数组 |
-
-### 返回 `EmailSendResult`
-
-`{ provider, messageId, accepted: string[], rejected: string[], response }`
-
-### 生命周期
-
-- `email.verify()` — 只验证连接与认证,不发送邮件。
-- `email.send(message)` — 发送,只尝试一次,SDK 不自动重试。
-- `email.close()` — 释放底层连接,使用连接池或进程退出前调用。
-
-## 错误处理
-
-统一 `EmailError`,错误码:
-
-| 错误码 | 含义 | 常见原因 |
-| --- | --- | --- |
-| `CONFIGURATION` | 配置无效 | SMTP host/port/auth 缺失 |
-| `VALIDATION` | 消息字段无效 | 收件人为空、subject 含换行、附件缺 path/content |
-| `AUTHENTICATION` | 认证失败 | 用户名/密码错误 |
-| `CONNECTION` | 连接失败 | DNS、超时、TLS、服务器不可达 |
-| `DELIVERY` | 投递被拒 | 收件人不存在、邮件被服务器拒绝 |
-| `UNKNOWN` | 未能分类 | 底层异常 |
+## 常用服务商配置
 
 ```ts
-import { EmailError } from "@amechan/email";
-try {
-  await email.send(message);
-} catch (error) {
-  const e = error as EmailError;
-  console.error(e.code, e.message);   // 如 "AUTHENTICATION", "Invalid login"
-}
+// Gmail(需开启两步验证 + 应用专用密码)
+{ host: "smtp.gmail.com", port: 465, secure: true }
+
+// QQ 邮箱(需生成授权码)
+{ host: "smtp.qq.com", port: 465, secure: true }
+
+// Outlook / Office 365
+{ host: "smtp.office365.com", port: 587, secure: false }
+
+// 阿里云企业邮箱
+{ host: "smtp.mxhichina.com", port: 465, secure: true }
 ```
 
 ## 任务配方
 
-### 发送简单文本邮件
+### 简单文本邮件
 
 ```ts
-await email.send({ from: "a@example.com", to: "b@example.com", subject: "Hello", text: "Hi!" });
+await transport.sendMail({
+  from: "a@example.com",
+  to: "b@example.com",
+  subject: "Hello",
+  text: "Hi!",
+});
 ```
 
-### 发送带附件邮件
+### 带附件邮件
 
 ```ts
-await email.send({
+await transport.sendMail({
   from: "a@example.com",
   to: "b@example.com",
   subject: "Report",
   text: "See attached",
   attachments: [
-    { filename: "report.pdf", path: "/tmp/report.pdf" },
-    { filename: "note.txt", content: Buffer.from("inline note") },
+    { filename: "report.pdf", path: "/tmp/report.pdf" },   // 路径
+    { filename: "note.txt", content: Buffer.from("inline") }, // 内存内容
+    { filename: "image.png", path: "https://example.com/a.png" }, // URL
   ],
 });
 ```
 
-### 发 HTML 营销样式邮件
+### 发 HTML 邮件(营销样式)
 
 ```ts
-await email.send({
-  from: "noreply@example.com",
+await transport.sendMail({
+  from: '"No Reply" <noreply@example.com>',
   to: ["user@example.com"],
   subject: "Weekly digest",
   html: `<h1>本周摘要</h1><a href="https://example.com">查看详情</a>`,
 });
 ```
 
-### 发信前先验证配置
+### 发送前验证配置
 
 ```ts
 try {
-  await email.verify();
+  await transport.verify();           // 验证连接与认证
   console.log("SMTP 连接正常");
 } catch (error) {
-  console.error("配置有误:", (error as EmailError).code);
+  console.error("配置有误:", error.message);
+}
+```
+
+### 批量发送(逐个,带间隔)
+
+```ts
+for (const email of recipients) {
+  await transport.sendMail({ from, to: email, subject, text });
+  await new Promise((r) => setTimeout(r, 1000));  // 避免被限流
+}
+```
+
+### 使用连接池(高频发送)
+
+```ts
+const transport = nodemailer.createTransport({
+  host, port, secure,
+  auth: { user, pass },
+  pool: true,              // 复用连接
+  maxConnections: 5,       // 最大并发连接
+  maxMessages: 100,        // 每条连接最多发送数
+});
+```
+
+## 错误处理
+
+nodemailer 的错误是原生 Error,判断方式:
+
+```ts
+try {
+  await transport.sendMail(...);
+} catch (error) {
+  const e = error as NodeJS.ErrnoException;
+  // e.code: EAUTH(认证失败) / ECONNECTION(连接失败) / ETIMEDOUT(超时) 等
+  if (e.code === "EAUTH") console.error("用户名/密码错误");
+  else console.error("发送失败:", e.message);
+  // 注意:错误对象里可能包含 SMTP 响应,不要整段记录到日志(可能含敏感信息)
 }
 ```
 
 ## 陷阱清单
 
-- **不要硬编码 SMTP 密码**。从环境变量或配置系统读取,不写进代码/日志/错误输出。
-- **端口与 secure 要配对**:465 用 `secure: true`,587/25 用 `false`。配错会连接失败。
-- **`send` 不自动重试**:网络超时不能证明邮件未送达,盲目重试会造成重复投递。需要重试时由上层自行设计幂等。
-- **`text` 与 `html` 至少提供一种**,否则抛 `VALIDATION`。
-- **`attachments` 的 `path` 与 `content` 二选一**,两者都缺或都有会抛 `VALIDATION`。
-- **密码会脱敏**:SDK 会对错误消息中的凭据做 `[REDACTED]`,但调用方仍不应记录错误对象的 `cause`、完整环境变量或原始 SMTP 配置。
-- **长连接用完要 `close()`**:使用连接池(`pool: true`)或长时间运行的服务,进程退出前必须 `await email.close()`。
-- **SDK 不自动读 `.env`**:由调用方显式传入配置,避免隐藏的全局行为。
+- **不要硬编码密码**:从环境变量/配置系统读取,不写进代码、日志、错误输出。
+- **多数邮箱服务商要求"应用专用密码"或"授权码"**,不是邮箱登录密码。
+- **`text` 与 `html` 至少提供一种**,否则可能发送空邮件或失败。
+- **`attachments` 的 `path` 与 `content` 二选一**,不要同时给。
+- **发送失败不等于邮件没送达**:SMTP 已接受但网络中断等边界情况可能重复。生产环境需要幂等/去重机制。
+- **不要盲目自动重试**:网络超时不能证明邮件未送达,盲目重试会造成重复投递。
+- **端口/secure 配对错会连接失败**:465→true,587/25→false。
+- **长连接用完要 `close()`**,否则进程可能不退出或连接泄漏。
 
-## 无包降级
+## 使用 @amechan/email(可选)
 
-包不可用时,直接用 nodemailer:
+若项目已安装 `@amechan/email` 包,接口更统一,错误有分类:
 
 ```ts
-import nodemailer from "nodemailer";
-const transport = nodemailer.createTransport({
-  host, port, secure,
-  auth: { user, pass },
+import { createEmailClient, smtpProvider, EmailError } from "@amechan/email";
+
+const email = createEmailClient({
+  provider: smtpProvider({
+    host: process.env.SMTP_HOST!,
+    port: Number(process.env.SMTP_PORT ?? 587),
+    secure: process.env.SMTP_SECURE === "true",
+    auth: { user: process.env.SMTP_USER!, pass: process.env.SMTP_PASSWORD! },
+  }),
 });
-const info = await transport.sendMail({ from, to, subject, text, html, attachments });
-await transport.close();
+
+await email.verify();
+const result = await email.send({
+  from: process.env.SMTP_FROM!,
+  to: ["a@example.com"],
+  subject: "Hello",
+  text: "Hi!",
+});
+await email.close();
 ```
 
-注意:直接使用 nodemailer 时错误结构、脱敏、校验需自行处理。
+错误码:`CONFIGURATION` / `VALIDATION` / `AUTHENTICATION` / `CONNECTION` / `DELIVERY` / `UNKNOWN`,并自动对凭据脱敏。安装方式见仓库 `packages/email/README.md`。
 
 ## 验证
 
-- `email.verify()` 成功 = 连接与认证正常。
-- `send` 返回的 `accepted` 数组包含成功收件人,`rejected` 应为空(正常情况)。
-- 可先发给自己测试,确认收到后再发真实收件人。
-- 自动化验证可用本地 `smtp-server` 起测试服务器(见仓库 `packages/email/tests/helpers/smtp-test-server.ts`)。
+- 先发给自己测试,确认收到后再发真实收件人。
+- 检查 `info.accepted`(成功收件人)与 `info.rejected`(被拒收件人)。
+- 本地自动化测试可用 `smtp-server` 包起测试服务器。

@@ -7,7 +7,7 @@
 个人 TypeScript 开发工具 monorepo,用 pnpm workspace 组织。当前核心产物是邮件 SDK。私有 GitHub 仓库 `SakuraChiyo0v0/ts-dev-kits`,暂不发布到公共 npm registry。
 
 - `packages/*` — 可复用依赖包(`@amechan/<name>`,当前有 `email`、`ffmpeg`)
-- `skills/` — 给 AI 使用的能力手册(`email`、`ffmpeg`),教 AI 直接调用各包功能
+- `skills/` — 给 AI 的直接使用手册(`email`、`ffmpeg`),不依赖安装即可执行
 - `docs/` — 设计文档、规范、包索引与模板
 - `scripts/` — 仓库级验证脚本
 
@@ -63,8 +63,8 @@ pnpm verify:email-git-package        # git 子目录依赖方式验证安装
 - `docs/packages-index.md` — 依赖包总览表 + 每包详情
 - `docs/package-template.md` — 新增依赖包的目录/文件/接线模板
 - `docs/superpowers/` — 设计与实现文档(方案、验收条件)
-- `skills/` — 给 AI 的能力手册:AI 用这些包时加载对应 SKILL.md,直接调用包功能
-- 新增可复用包时:按模板创建,更新 `docs/packages-index.md`,并补一个 `skills/<name>/SKILL.md` 能力手册。
+- `skills/` — 给 AI 的直接使用手册:不依赖安装,加载即可执行(ffmpeg 纯命令、email 通用代码)
+- 新增可复用包时:按模板创建,更新 `docs/packages-index.md`,并补一个 `skills/<name>/SKILL.md` 使用手册。
 
 ## 已知环境注意事项
 
