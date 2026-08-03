@@ -1,0 +1,68 @@
+import { extractErrorMessage, toLlmError } from "./errors.js";
+
+/** 简易超时信号。 */
+export function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  what: string,
+): Promise<T> {
+  if (timeoutMs <= 0) {
+    return promise;
+  }
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`${what} timed out after ${timeoutMs} ms`));
+    }, timeoutMs);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error: unknown) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
+/** 发送 JSON 请求并返回解析后的 body。非 2xx 抛 LlmError。 */
+export async function jsonRequest(
+  provider: string,
+  url: string,
+  init: {
+    method?: string;
+    headers: Record<string, string>;
+    body?: unknown;
+    timeoutMs: number;
+  },
+): Promise<unknown> {
+  const { timeoutMs, ...requestInit } = init;
+  const response = await withTimeout(
+    fetch(url, {
+      method: requestInit.method ?? "POST",
+      headers: requestInit.headers,
+      ...(requestInit.body !== undefined
+        ? { body: typeof requestInit.body === "string" ? requestInit.body : JSON.stringify(requestInit.body) }
+        : {}),
+    }),
+    timeoutMs,
+    `${provider} request`,
+  );
+
+  const text = await withTimeout(response.text(), timeoutMs, `${provider} response body`);
+  let body: unknown = null;
+  if (text !== "") {
+    try {
+      body = JSON.parse(text) as unknown;
+    } catch {
+      body = text;
+    }
+  }
+
+  if (!response.ok) {
+    const message = extractErrorMessage(body, `HTTP ${response.status}`);
+    throw toLlmError({ status: response.status, message }, provider);
+  }
+  return body;
+}
