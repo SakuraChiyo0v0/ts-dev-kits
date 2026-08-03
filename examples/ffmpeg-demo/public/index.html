@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FFmpeg Demo</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <main class="container">
+    <h1>FFmpeg 演示</h1>
+    <p class="status" id="status">检测 FFmpeg…</p>
+
+    <section class="card">
+      <h2>上传视频</h2>
+      <input type="file" id="file" accept="video/*,audio/*" />
+      <button id="upload">上传并读取信息</button>
+      <div id="upload-result" class="result hidden"></div>
+    </section>
+
+    <section class="card">
+      <h2>转码</h2>
+      <label>
+        视频编码器
+        <select id="codec">
+          <option value="libvpx">libvpx (WebM)</option>
+          <option value="libx264">libx264 (H.264)</option>
+        </select>
+      </label>
+      <button id="transcode" disabled>开始转码</button>
+      <progress id="progress" max="100" value="0"></progress>
+      <div id="transcode-result" class="result hidden"></div>
+    </section>
+  </main>
+
+  <script src="/app.js" type="module"></script>
+</body>
+</html>
