@@ -7,7 +7,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "pnpm --filter @amechan/email build && pnpm --filter @amechan/ffmpeg build",
+    "build": "pnpm --filter @amechan/email build && pnpm --filter @amechan/ffmpeg build && pnpm --filter @amechan/llm build",
     "typecheck": "pnpm -r --if-present typecheck",
     "test": "pnpm -r --if-present test",
     "check": "pnpm typecheck && pnpm test && pnpm build",

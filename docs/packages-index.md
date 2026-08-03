@@ -12,6 +12,7 @@
 | --- | --- | --- | --- | --- |
 | `@amechan/email` | 0.1.0 | 与供应商解耦的 Node.js 邮件 SDK | 可用（SMTP 适配器） | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/email` |
 | `@amechan/ffmpeg` | 0.1.0 | FFmpeg/ffprobe 进程封装 + 媒体处理高层函数 | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/ffmpeg` |
+| `@amechan/llm` | 0.1.0 | OpenAI 兼容多提供商 LLM 客户端(OpenAI/Anthropic/Gemini/Azure) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/llm` |
 
 ## 包详情
 
@@ -152,3 +153,58 @@ pnpm --filter @amechan/ffmpeg build  # 构建 ESM + CJS + d.ts
 ```
 
 **更多细节：** [`packages/ffmpeg/README.md`](../packages/ffmpeg/README.md)
+
+### `@amechan/llm`
+
+OpenAI 兼容的多提供商 LLM 客户端。统一接口调用主流模型提供商,内置格式转换、流式输出、工具调用与错误归一化,附带轻量 OpenAI 兼容 HTTP 代理。
+
+**适用环境：** Node.js 20+,使用各提供商时需对应的 API Key。
+
+**核心接口：**
+
+- `createLlmClient({ adapter })` — 创建客户端
+- `openaiAdapter({ apiKey, baseUrl?, ... })` / `anthropicAdapter({ apiKey })` / `geminiAdapter({ apiKey })` / `azureAdapter({ apiKey, baseUrl, deployment })` — 各家适配器
+- `client.chat(request)` — 非流式补全,返回 OpenAI 兼容响应
+- `client.chatStream(request, onChunk)` — 流式补全,逐块回调
+- `createLlmProxy({ adapter, defaultModel? })` — 起 OpenAI 兼容 HTTP 服务
+- `LlmError` — 统一错误类型,错误码 `AUTHENTICATION` / `RATE_LIMIT` / `TIMEOUT` / `INVALID_REQUEST` / `MODEL_NOT_FOUND` / `OVERLOADED` / `NETWORK` / `UNKNOWN`
+
+**请求形态：** OpenAI 兼容(`model` + `messages`,支持 `temperature` / `maxTokens` / `tools` / `toolChoice` / 多模态图片 / 流式),响应归一为 OpenAI 格式。
+
+**安装方式：**
+
+同一 pnpm workspace 内：
+
+```powershell
+pnpm add @amechan/llm@workspace:*
+```
+
+从私有 GitHub monorepo 安装(需先在消费项目 `pnpm-workspace.yaml` 中授权构建脚本,见包内 README)：
+
+```powershell
+pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/llm"
+```
+
+**API 示例：**
+
+```ts
+import { createLlmClient, openaiAdapter } from "@amechan/llm";
+
+const client = createLlmClient({
+  adapter: openaiAdapter({ apiKey: process.env.OPENAI_API_KEY! }),
+});
+const result = await client.chat({
+  model: "gpt-4o",
+  messages: [{ role: "user", content: "你好" }],
+});
+console.log(result.choices[0]?.message.content);
+```
+
+**在仓库内的验证方式：**
+
+```powershell
+pnpm --filter @amechan/llm test   # mock 服务器验证四家适配器转换/错误/流式/代理
+pnpm --filter @amechan/llm build  # 构建 ESM + CJS + d.ts
+```
+
+**更多细节：** [`packages/llm/README.md`](../packages/llm/README.md)
