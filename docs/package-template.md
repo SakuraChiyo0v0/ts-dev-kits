@@ -81,6 +81,35 @@ Vitest 测试。真实协议路径优先(如本地 `smtp-server` 起一个仅测
 
 必备内容:环境要求、安装方式(workspace / 本地目录 / git 子目录,含 pnpm `allowBuilds` 授权)、最小可运行示例、参数表、错误码表、验证命令。这是其他项目接入该包的第一手资料。
 
+## 包间依赖
+
+仓库内的包可以互相依赖。`examples/email-demo` 依赖 `@amechan/email` 就是这个模式的现成例子。
+
+### 推荐方式:workspace 依赖
+
+```json
+// packages/<name>/package.json
+"dependencies": {
+  "@amechan/email": "workspace:*"
+}
+```
+
+- `workspace:*` 始终取当前 workspace 内该包的最新版,开发时改动源码即生效,`pnpm install` 一次解析好依赖图。
+- 需要跟随版本范围时可写 `workspace:^0.1.0`,发布后 `workspace:` 前缀会被替换为实际版本号(本仓库暂不发布,无此环节)。
+- 只有 `packages/*` 与 `examples/*` 下的 workspace 包能这样引用;外部项目不适用,应改用 git 子目录依赖。
+
+### 依赖方向
+
+保持依赖图单向、无环。A → B → A 会导致 pnpm 解析混乱。若两个包确有共享逻辑,把公共部分抽到第三个包,让 A、B 同时依赖它。
+
+### 构建顺序
+
+pnpm 按依赖解析的是构建产物:`@amechan/<name>` 的 `exports` 默认指向 `dist`。因此:
+
+- 被依赖的包要先 `build`,依赖方再运行。开发时可用 `pnpm --filter @amechan/<name> build` 先构建依赖,或依赖方通过 `tsx`/vitest 直接跑源码(此时 import 的是依赖包构建产物)。
+- 保持"只发 `dist` + README"的约定,不要用 `exports` 额外暴露 `./src/*`,否则每个消费方都要绑定源码布局。
+- 仓库根 `build` 脚本逐包执行时注意先后:可在根 `package.json` 的 `build` 里按依赖顺序排列 `pnpm --filter` 调用。
+
 ## 与 monorepo 的接线
 
 新增包后需要确认:
