@@ -1,0 +1,32 @@
+export { createFfmpegClient, tokenizeCommand } from "./client.js";
+export { FfmpegError, toFfmpegError, type FfmpegErrorCode } from "./errors.js";
+export { parseProgressLines } from "./runner.js";
+export type {
+  CompositeImageOptions,
+  CompressImageOptions,
+  ConcatOptions,
+  ConvertAudioOptions,
+  ConvertImageOptions,
+  CropImageOptions,
+  CutOptions,
+  ExtractAudioOptions,
+  ExtractFrameOptions,
+  FfmpegClient,
+  FfmpegOptions,
+  FfmpegProgress,
+  JoinAudioOptions,
+  LoopVideoOptions,
+  NormalizeAudioOptions,
+  ProbeResult,
+  ProbeStream,
+  ResizeImageOptions,
+  RunControls,
+  RunOptions,
+  RunResult,
+  ScaleSpec,
+  SetVolumeOptions,
+  ThumbnailOptions,
+  ToGifOptions,
+  TranscodeOptions,
+  WatermarkOptions,
+} from "./types.js";
