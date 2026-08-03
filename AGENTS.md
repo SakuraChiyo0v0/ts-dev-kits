@@ -6,8 +6,8 @@
 
 个人 TypeScript 开发工具 monorepo,用 pnpm workspace 组织。当前核心产物是邮件 SDK。私有 GitHub 仓库 `SakuraChiyo0v0/ts-dev-kits`,暂不发布到公共 npm registry。
 
-- `packages/*` — 可复用依赖包(`@amechan/<name>`,当前有 `email`)
-- `examples/*` — 本机演示应用(私有包,不发布,当前有 `email-demo`)
+- `packages/*` — 可复用依赖包(`@amechan/<name>`,当前有 `email`、`ffmpeg`)
+- `examples/*` — 本机演示应用(私有包,不发布,当前有 `email-demo`、`ffmpeg-demo`)
 - `docs/` — 设计文档、规范、包索引与模板
 - `scripts/` — 仓库级验证脚本
 
@@ -20,12 +20,15 @@ pnpm install              # 安装全部 workspace 依赖
 pnpm check                # typecheck + test + build 全仓验证
 pnpm typecheck            # 递归类型检查
 pnpm test                 # 递归运行测试
-pnpm build                # 构建 @amechan/email
+pnpm build                # 构建全部包(email + ffmpeg)
 pnpm --filter @amechan/email test    # 单包测试
 pnpm --filter @amechan/email build   # 单包构建
+pnpm --filter @amechan/ffmpeg test   # ffmpeg 包测试
+pnpm --filter @amechan/ffmpeg build  # ffmpeg 包构建
 pnpm verify:email-package            # pack 后从临时消费项目验证导入
 pnpm verify:email-git-package        # git 子目录依赖方式验证安装
-pnpm email:demo           # 启动本机演示(仅监听 127.0.0.1)
+pnpm email:demo           # 启动邮件演示(仅监听 127.0.0.1)
+pnpm ffmpeg:demo          # 启动 ffmpeg 演示(仅监听 127.0.0.1)
 ```
 
 ## 关键约定

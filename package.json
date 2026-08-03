@@ -7,11 +7,12 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "pnpm --filter @amechan/email build",
+    "build": "pnpm --filter @amechan/email build && pnpm --filter @amechan/ffmpeg build",
     "typecheck": "pnpm -r --if-present typecheck",
     "test": "pnpm -r --if-present test",
     "check": "pnpm typecheck && pnpm test && pnpm build",
     "email:demo": "pnpm --filter @amechan/email-demo dev",
+    "ffmpeg:demo": "pnpm --filter @amechan/ffmpeg-demo dev",
     "verify:email-package": "node scripts/verify-email-package.mjs",
     "verify:email-git-package": "node scripts/verify-email-git-package.mjs"
   },

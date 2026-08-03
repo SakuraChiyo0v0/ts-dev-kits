@@ -11,6 +11,7 @@
 | 包名 | 版本 | 用途 | 状态 | 引用方式 |
 | --- | --- | --- | --- | --- |
 | `@amechan/email` | 0.1.0 | 与供应商解耦的 Node.js 邮件 SDK | 可用（SMTP 适配器） | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/email` |
+| `@amechan/ffmpeg` | 0.1.0 | FFmpeg/ffprobe 进程封装 + 媒体处理高层函数 | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/ffmpeg` |
 
 ## 包详情
 
@@ -92,3 +93,62 @@ pnpm verify:email-git-package       # 以 git 子目录依赖方式安装并导�
 ```
 
 **更多细节：** [`packages/email/README.md`](../packages/email/README.md)
+
+### `@amechan/ffmpeg`
+
+FFmpeg/ffprobe 进程封装 SDK。底层提供任意参数的运行器与原生命令输入,上层提供视频/音频/图片常用处理函数,适合服务端音视频处理场景。
+
+**适用环境：** Node.js 20+,系统需已安装 `ffmpeg` 与 `ffprobe`(或创建客户端时显式传入二进制路径)。
+
+**核心接口：**
+
+- `createFfmpegClient({ ffmpegPath?, ffprobePath? })` — 创建客户端
+- `client.run(args, options?)` / `client.runFfprobe(args, options?)` — 任意参数运行,支持超时、stdin 输入、进度回调
+- `client.runCommand(command)` — 原生命令字符串输入,任何 ffmpeg 功能都能用(兜底)
+- `client.probe(input)` — 用 ffprobe 读取媒体元数据
+- 视频:`transcode`、`cut`、`concat`、`watermark`、`loopVideo`、`toGif`、`extractFrame`、`thumbnail`
+- 音频:`extractAudio`、`convertAudio`、`toMp3` / `toFlac` / `toWav` / `toOgg` / `toM4a`、`setVolume`、`normalizeAudio`、`joinAudio`
+- 图片:`resizeImage`、`cropImage`、`convertImage`、`compositeImage`、`compressImage`
+- `FfmpegError` — 统一错误类型,错误码 `CONFIGURATION` / `NOT_FOUND` / `INVALID_INPUT` / `TIMEOUT` / `CANCELLED` / `PROCESS_ERROR` / `UNKNOWN`
+
+**进度支持：** 高层函数默认带 `-progress pipe:1`,通过 `onProgress` 回调拿到 `frame`、`outTime`、`percent`(需提供 `progressTotalMs`)等进度快照。
+
+**安装方式：**
+
+同一 pnpm workspace 内：
+
+```powershell
+pnpm add @amechan/ffmpeg@workspace:*
+```
+
+从私有 GitHub monorepo 安装(需先在消费项目 `pnpm-workspace.yaml` 中授权构建脚本,见包内 README)：
+
+```powershell
+pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/ffmpeg"
+```
+
+**API 示例：**
+
+```ts
+import { createFfmpegClient } from "@amechan/ffmpeg";
+
+const ffmpeg = createFfmpegClient();
+const info = await ffmpeg.probe("input.mp4");
+await ffmpeg.transcode({
+  input: "input.mp4",
+  output: "output.webm",
+  videoCodec: "libvpx",
+  progressTotalMs: info.duration * 1000,
+  onProgress: (p) => console.log(p.percent),
+});
+await ffmpeg.thumbnail({ input: "input.mp4", output: "thumb.jpg" });
+```
+
+**在仓库内的验证方式：**
+
+```powershell
+pnpm --filter @amechan/ffmpeg test   # 单测(真实 ffmpeg 生成视频 + 转码/截图/音频)
+pnpm --filter @amechan/ffmpeg build  # 构建 ESM + CJS + d.ts
+```
+
+**更多细节：** [`packages/ffmpeg/README.md`](../packages/ffmpeg/README.md)
