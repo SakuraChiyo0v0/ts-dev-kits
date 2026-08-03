@@ -83,7 +83,7 @@ Vitest 测试。真实协议路径优先(如本地 `smtp-server` 起一个仅测
 
 ## 包间依赖
 
-仓库内的包可以互相依赖。`examples/email-demo` 依赖 `@amechan/email` 就是这个模式的现成例子。
+仓库内的包可以互相依赖。各 SDK 包共享构建配置,`packages/email` 与 `packages/ffmpeg` 的结构一致。
 
 ### 推荐方式:workspace 依赖
 
@@ -96,7 +96,7 @@ Vitest 测试。真实协议路径优先(如本地 `smtp-server` 起一个仅测
 
 - `workspace:*` 始终取当前 workspace 内该包的最新版,开发时改动源码即生效,`pnpm install` 一次解析好依赖图。
 - 需要跟随版本范围时可写 `workspace:^0.1.0`,发布后 `workspace:` 前缀会被替换为实际版本号(本仓库暂不发布,无此环节)。
-- 只有 `packages/*` 与 `examples/*` 下的 workspace 包能这样引用;外部项目不适用,应改用 git 子目录依赖。
+- 只有 `packages/*` 下的 workspace 包能这样引用;外部项目不适用,应改用 git 子目录依赖。
 
 ### 依赖方向
 
@@ -114,14 +114,10 @@ pnpm 按依赖解析的是构建产物:`@amechan/<name>` 的 `exports` 默认指
 
 新增包后需要确认:
 
-1. `pnpm-workspace.yaml` 已包含 `packages/*`(`examples/*` 同理),新包自动进入 workspace。
+1. `pnpm-workspace.yaml` 已包含 `packages/*`,新包自动进入 workspace。
 2. 运行 `pnpm install`,把新包写入 `pnpm-lock.yaml`。
 3. 根 `package.json` 的 `typecheck` / `test` 用 `pnpm -r --if-present` 递归执行,新包无需改根脚本。
 4. `build` 只对根列出的包执行:如需纳入根 `build`,在根 `package.json` 的 `build` 脚本里追加 `pnpm --filter @amechan/<name> build`。
-
-## 可选:示例应用
-
-若需要一个本机演示(而非对外复用包),按 `examples/<name>/` 创建私有 workspace 包(`"private": true`),通过 `workspace:*` 依赖对应包。示例包不发布,只承担集成演示,见 `examples/email-demo`。
 
 ## 新包验证清单
 

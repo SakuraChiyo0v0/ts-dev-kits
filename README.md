@@ -8,8 +8,6 @@
 | --- | --- | --- |
 | `@amechan/email` | 与供应商解耦的 Node.js 邮件 SDK | SMTP 适配器可用 |
 | `@amechan/ffmpeg` | FFmpeg/ffprobe 进程封装与媒体处理函数 | 可用 |
-| `@amechan/email-demo` | 本机 HTML 功能演示和真实 SMTP 发送 | 仅监听 `127.0.0.1` |
-| `@amechan/ffmpeg-demo` | 本机 HTML 上传转码演示 | 仅监听 `127.0.0.1` |
 
 ## 开始使用
 
@@ -25,35 +23,11 @@ pnpm check
 ```powershell
 pnpm --filter @amechan/email test
 pnpm --filter @amechan/email build
+pnpm --filter @amechan/ffmpeg test
+pnpm --filter @amechan/ffmpeg build
 pnpm verify:email-package
 pnpm verify:email-git-package
 ```
-
-## 启动邮件演示
-
-复制示例配置：
-
-```powershell
-Copy-Item examples/email-demo/.env.example examples/email-demo/.env
-```
-
-只在本机编辑 `examples/email-demo/.env`，填入邮箱服务商提供的 SMTP 主机、端口、用户名、密码或应用专用密码。该文件已被 Git 忽略。
-
-```powershell
-pnpm email:demo
-```
-
-打开 `http://127.0.0.1:4173`。演示服务只监听回环地址，不提供局域网或公网访问；真实外部投递必须使用你自己的 SMTP 账户。
-
-## 启动 ffmpeg 演示
-
-需要本机已安装 `ffmpeg` 和 `ffprobe`：
-
-```powershell
-pnpm ffmpeg:demo
-```
-
-打开 `http://127.0.0.1:4174`。上传一个视频文件后即可查看媒体信息并进行转码。演示服务只监听回环地址，不提供局域网或公网访问。
 
 ## 使用 `@amechan/email`
 
