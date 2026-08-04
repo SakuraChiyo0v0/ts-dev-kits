@@ -18,17 +18,22 @@
       "require": "./dist/index.cjs"
     }
   },
+  "bin": {
+    "amechan-llm": "./dist/cli/llm.js"
+  },
   "files": [
     "dist",
     "README.md"
   ],
   "scripts": {
-    "build": "node scripts/clean.mjs && tsc --project tsconfig.bundle.json && rollup --config rollup.config.mjs && tsc --project tsconfig.build.json && node scripts/clean.mjs --intermediate-only",
+    "build": "node scripts/clean.mjs && tsc --project tsconfig.bundle.json && rollup --config rollup.config.mjs && tsc --project tsconfig.build.json && tsc --project tsconfig.cli.json && node scripts/clean.mjs --intermediate-only",
     "prepare": "npm run build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@amechan/cli-utils": "workspace:*"
+  },
   "devDependencies": {
     "@types/node": "^26.1.2",
     "rollup": "^4.62.4",
