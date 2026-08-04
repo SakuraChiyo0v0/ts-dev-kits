@@ -49,7 +49,11 @@ export class WbiSigner {
       `${this.#session.baseUrl}/x/web-interface/nav`,
       {},
     );
-    const record = checkApiResponse(body, "nav");
+    // nav 在未登录时 code=-101 但 data.wbi_img 依然存在,直接读 wbi_img 即可。
+    const record = (typeof body === "object" && body !== null ? body : {}) as Record<
+      string,
+      unknown
+    >;
     const data = (record.data ?? {}) as Record<string, unknown>;
     const wbiImg = (data.wbi_img ?? {}) as Record<string, unknown>;
     const imgUrl = String(wbiImg.img_url ?? "");

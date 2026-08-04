@@ -14,7 +14,7 @@ import {
   SpaceParser,
   WatchLaterParser,
 } from "./parsers/aggregate.js";
-import { StreamResolverImpl, selectBestStream } from "./streams.js";
+import { StreamResolverImpl, selectBestAudioStream, selectBestStream } from "./streams.js";
 import { parseUrl } from "./url.js";
 import type {
   BilibiliClientOptions,
@@ -105,7 +105,7 @@ export class BilibiliClient {
     // 音频项:直接下载音频流,不合并。
     if (item.type === "audio") {
       const streams = await this.getStreams(item);
-      const audioStream = selectBestStream(streams.audioStreams, 0);
+      const audioStream = selectBestAudioStream(streams.audioStreams);
       if (audioStream === undefined) {
         throw new BilibiliError("DOWNLOAD_FAILED", "No audio stream available");
       }
@@ -154,7 +154,7 @@ export class BilibiliClient {
 
     // 选音频流(DASH 才有)。
     let audioFile: string | undefined;
-    const audioStream = selectBestStream(streams.audioStreams, 0);
+    const audioStream = selectBestAudioStream(streams.audioStreams);
     if (audioStream !== undefined && merge) {
       await downloadStream(audioStream, audioPath, {
         referer: "https://www.bilibili.com/",

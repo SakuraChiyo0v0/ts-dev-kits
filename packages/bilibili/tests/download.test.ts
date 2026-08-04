@@ -18,14 +18,17 @@ afterEach(async () => {
 });
 
 describe("filterPcdnUrls", () => {
-  it("filters out pcdn and mcdn links", () => {
+  it("filters out pcdn but keeps mcdn links", () => {
     const urls = [
       "https://upos-sz-mirrorcos.bilivideo.com/video.mp4",
       "https://upos-sz-mcdn.bilivideo.com/video.mp4",
       "https://upos-sz-pcdn.bilivideo.com/video.mp4",
     ];
     const filtered = filterPcdnUrls(urls);
-    expect(filtered).toEqual(["https://upos-sz-mirrorcos.bilivideo.com/video.mp4"]);
+    expect(filtered).toEqual([
+      "https://upos-sz-mirrorcos.bilivideo.com/video.mp4",
+      "https://upos-sz-mcdn.bilivideo.com/video.mp4",
+    ]);
   });
 });
 

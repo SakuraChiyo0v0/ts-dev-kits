@@ -4,7 +4,8 @@ import type { DownloadConfig, DownloadProgress, MediaStream } from "./types.js";
 
 const RETRYABLE_STATUS = new Set([408, 429, 500, 502, 503, 504]);
 const PERMANENT_STATUS = new Set([400, 401, 403, 404, 405, 410, 416]);
-const PCDN_BLACKLIST = ["mcdn", "pcdn", "szbdyd.com", "mountaintoys.cn"];
+// 过滤劣质 P2P CDN。mcdn(media CDN)是 B 站正常媒体 CDN,不能过滤。
+const PCDN_BLACKLIST = ["pcdn", "szbdyd.com", "mountaintoys.cn"];
 
 /** 下载器配置默认值。 */
 export const DEFAULT_DOWNLOAD_CONFIG: Required<DownloadConfig> = {
@@ -40,7 +41,8 @@ async function probeUrlSize(
       return await probeRangeGet(url, referer, userAgent, timeoutMs, minFileSize);
     }
     if (!head.ok) {
-      return null;
+      // HEAD 可能不被 CDN 支持(如 B 站 mcdn 返回 404),回退到 GET Range 探测。
+      return await probeRangeGet(url, referer, userAgent, timeoutMs, minFileSize);
     }
     const size = extractSize(head.headers);
     if (size !== null && size > minFileSize) {

@@ -24,6 +24,7 @@ export {
   WatchLaterParser,
 } from "./parsers/aggregate.js";
 export {
+  selectBestAudioStream,
   selectBestStream,
   StreamResolverImpl,
 } from "./streams.js";

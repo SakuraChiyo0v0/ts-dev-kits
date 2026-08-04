@@ -259,3 +259,11 @@ export function selectBestStream(
   }
   return candidates[0];
 }
+
+/** 选择最佳音频流:按码率优先(音频 id 不是清晰度,不能用过滤逻辑)。 */
+export function selectBestAudioStream(streams: MediaStream[]): MediaStream | undefined {
+  if (streams.length === 0) {
+    return undefined;
+  }
+  return [...streams].sort((a, b) => (b.bandwidth ?? 0) - (a.bandwidth ?? 0))[0];
+}
