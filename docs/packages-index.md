@@ -13,6 +13,7 @@
 | `@amechan/email` | 0.1.0 | 与供应商解耦的 Node.js 邮件 SDK | 可用（SMTP 适配器） | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/email` |
 | `@amechan/ffmpeg` | 0.1.0 | FFmpeg/ffprobe 进程封装 + 媒体处理高层函数 | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/ffmpeg` |
 | `@amechan/llm` | 0.1.0 | OpenAI 兼容多提供商 LLM 客户端(OpenAI/Anthropic/Gemini/Azure) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/llm` |
+| `@amechan/bilibili` | 0.1.0 | B 站视频下载 SDK(解析/取流/下载/ffmpeg 合并) | 可用(投稿视频) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/bilibili` |
 
 ## 包详情
 
@@ -208,3 +209,52 @@ pnpm --filter @amechan/llm build  # 构建 ESM + CJS + d.ts
 ```
 
 **更多细节：** [`packages/llm/README.md`](../packages/llm/README.md)
+
+### `@amechan/bilibili`
+
+B 站视频下载 SDK。解析视频信息、获取播放流、可配置下载器下载,并用 `@amechan/ffmpeg` 合并音视频。核心逻辑参考开源项目 [Bili23-Downloader](https://github.com/ScottSloan/Bili23-Downloader)。
+
+**适用环境：** Node.js 20+,下载合并视频需系统安装 `ffmpeg`。
+
+**核心接口：**
+
+- `createBilibiliClient({ cookie?, download?, merge? })` — 创建客户端
+- `client.parse(url)` — 解析 B 站链接,返回 `MediaItem[]`(第一版支持投稿视频/BV/av,其余类型第二版)
+- `client.getStreams(item, { quality?, codec? })` — 获取 DASH/MP4 播放流,支持清晰度与编码选择
+- `client.download(item, { outputDir, quality?, onProgress? })` — 下载并合并,返回文件路径
+- 下载器可配置:并发数/分块大小/重试/限速/断点续传/CDN 过滤
+- `BilibiliError` — 统一错误码:`NETWORK` / `API_ERROR` / `INVALID_URL` / `LOGIN_REQUIRED` / `DOWNLOAD_FAILED` / `MERGE_FAILED` / `UNSUPPORTED_TYPE`
+
+**WBI 签名内置**,自动处理 img_key/sub_key 获取与签名;高画质需传入登录 Cookie。
+
+**安装方式：**
+
+同一 pnpm workspace 内：
+
+```powershell
+pnpm add @amechan/bilibili@workspace:*
+```
+
+从私有 GitHub monorepo 安装(需授权 `@amechan/bilibili` 与 `@amechan/ffmpeg` 两个构建脚本)：
+
+```powershell
+pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/bilibili"
+```
+
+**API 示例：**
+
+```ts
+import { createBilibiliClient } from "@amechan/bilibili";
+const bili = createBilibiliClient({ download: { concurrency: 4 } });
+const items = await bili.parse("https://www.bilibili.com/video/BV1xx411c7mD");
+await bili.download(items[0]!, { outputDir: "./downloads", quality: 80 });
+```
+
+**在仓库内的验证方式：**
+
+```powershell
+pnpm --filter @amechan/bilibili test   # mock API 验证解析/取流/WBI/下载/清晰度选择
+pnpm --filter @amechan/bilibili build  # 构建 ESM + CJS + d.ts
+```
+
+**更多细节：** [`packages/bilibili/README.md`](../packages/bilibili/README.md)
