@@ -103,7 +103,12 @@ export class ChatPlatformClient {
       }
       // 表情回应：若适配器支持 react 且策略选出了表情
       if (decision.reaction) {
-        await this.#adapters.get(platform)?.react?.(message, decision.reaction).catch(() => undefined);
+        await this.#adapters
+          .get(platform)
+          ?.react?.(message, decision.reaction)
+          .catch((err) => {
+            console.error(`[chat-platforms] 表情回应失败(${platform}):`, err instanceof Error ? err.message : err);
+          });
       }
     }
     await this.#onMessage?.(message);
