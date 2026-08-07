@@ -1,8 +1,14 @@
 node_modules/
 dist/
+# 仅 @amechan/llm 与 @amechan/cli-utils 提交 dist（git 依赖安装需要构建产物）
+!packages/llm/dist/
+!packages/llm/dist/**
+!packages/cli-utils/dist/
+!packages/cli-utils/dist/**
 .build/
 coverage/
 *.tgz
+.codegraph/
 .env
 .env.*
 !.env.example

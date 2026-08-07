@@ -21,7 +21,7 @@ export interface RegistryEntry {
 /** 内置的 OpenAI 兼容提供商注册表。 */
 export const openaiCompatibleProviders: readonly RegistryEntry[] = [
   { id: "openai", name: "OpenAI", baseUrl: "https://api.openai.com/v1", defaultModels: ["gpt-4o", "gpt-4o-mini"] },
-  { id: "deepseek", name: "DeepSeek", baseUrl: "https://api.deepseek.com/v1", defaultModels: ["deepseek-chat", "deepseek-reasoner"] },
+  { id: "deepseek", name: "DeepSeek", baseUrl: "https://api.deepseek.com/v1", defaultModels: ["deepseek-v4-pro", "deepseek-v4-flash"] },
   { id: "moonshot", name: "Moonshot AI (Kimi)", baseUrl: "https://api.moonshot.cn/v1", defaultModels: ["moonshot-v1-8k", "moonshot-v1-32k"] },
   { id: "zhipu", name: "智谱 AI (BigModel)", baseUrl: "https://open.bigmodel.cn/api/paas/v4", defaultModels: ["glm-4-plus", "glm-4-flash"] },
   { id: "groq", name: "Groq", baseUrl: "https://api.groq.com/openai/v1", defaultModels: ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"] },
