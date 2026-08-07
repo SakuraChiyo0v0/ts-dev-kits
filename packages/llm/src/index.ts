@@ -29,6 +29,7 @@ export type {
   ImageResponse,
   ImageVariationRequest,
   LlmClientOptions,
+  LlmTool,
   OpenAIProviderConfig,
   ProviderAdapter,
   ProviderConfig,

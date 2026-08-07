@@ -209,3 +209,15 @@ export interface LlmClientOptions {
   /** 使用的适配器。 */
   adapter: ProviderAdapter;
 }
+
+/** 供 LLM 调用的工具（Skill / MCP / 自定义工具统一实现此接口）。 */
+export interface LlmTool {
+  /** 工具名（唯一，用于 LLM 选择） */
+  name: string;
+  /** 工具说明（LLM 根据它决定何时调用） */
+  description: string;
+  /** JSON Schema 参数定义 */
+  parameters: Record<string, unknown>;
+  /** 执行工具，返回给 LLM 的结果文本 */
+  execute(args: Record<string, unknown>): Promise<string>;
+}
