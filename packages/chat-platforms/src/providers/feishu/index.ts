@@ -4,7 +4,7 @@ import { validateFeishuConfig } from "./feishu-types.js";
 import type { FeishuConfig } from "./feishu-types.js";
 
 export { feishuProvider } from "./feishu-provider.js";
-export { validateFeishuConfig } from "./feishu-types.js";
+export { FEISHU_EMOJI_KEYS, validateFeishuConfig, validateFeishuEmoji } from "./feishu-types.js";
 export type { FeishuConfig } from "./feishu-types.js";
 
 /** 向默认注册表注册飞书平台 */

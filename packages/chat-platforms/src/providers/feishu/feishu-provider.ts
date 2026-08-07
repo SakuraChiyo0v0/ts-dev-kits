@@ -8,7 +8,12 @@ import type {
   ChatSource,
 } from "../../types.js";
 import { ChatPlatformError } from "../../errors.js";
-import { feishuErrorCode, validateFeishuConfig, type FeishuConfig } from "./feishu-types.js";
+import {
+  feishuErrorCode,
+  validateFeishuConfig,
+  validateFeishuEmoji,
+  type FeishuConfig,
+} from "./feishu-types.js";
 
 /** 飞书 im.message.receive_v1 事件的 data 类型 */
 type FeishuMessageEvent = Parameters<
@@ -188,6 +193,11 @@ export function feishuProvider(config: FeishuConfig): ChatPlatformAdapter {
       return { ok: true };
     },
     async react(message: ChatMessage, emoji: string): Promise<void> {
+      const invalid = validateFeishuEmoji(emoji);
+      if (invalid) {
+        // 飞书 emoji_type 是英文枚举 key；传 Unicode 会报 400/231001
+        throw new ChatPlatformError("VALIDATION", invalid);
+      }
       try {
         await client.im.messageReaction.create({
           path: { message_id: message.messageId },

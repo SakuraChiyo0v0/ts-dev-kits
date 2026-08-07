@@ -20,3 +20,11 @@ export interface FeishuConfig {
 export declare function feishuErrorCode(code: number): ChatPlatformErrorCode;
 /** 校验配置，返回错误信息（null 表示通过） */
 export declare function validateFeishuConfig(config: unknown): string | null;
+/**
+ * 飞书表情回应支持的表情 key（英文枚举，非 Unicode emoji）。
+ * 完整 182 个见官方文档：https://open.feishu.cn/document/server-docs/im-v1/message-reaction/emojis-introduce
+ * 这里收录常用子集；传不在此列表的值飞书 API 会返回 400/231001。
+ */
+export declare const FEISHU_EMOJI_KEYS: readonly string[];
+/** 校验表情 key 是否合法（飞书支持）；返回错误信息（null 表示合法） */
+export declare function validateFeishuEmoji(emoji: string): string | null;

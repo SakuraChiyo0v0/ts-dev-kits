@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { feishuProvider, validateFeishuConfig } from "../src/index.js";
+import { feishuProvider, validateFeishuConfig, validateFeishuEmoji, FEISHU_EMOJI_KEYS } from "../src/index.js";
 
 /** 构造一个飞书 im.message.receive_v1 事件 payload（与 SDK 类型对齐） */
 function messageEvent(overrides: {
@@ -140,5 +140,27 @@ describe("feishuProvider", () => {
     expect(msg.source.type).toBe("group");
     expect(msg.source.chatId).toBe("oc_group");
     await adapter.disconnect();
+  });
+});
+
+describe("validateFeishuEmoji", () => {
+  it("accepts official English keys", () => {
+    for (const key of ["THUMBSUP", "OK", "Typing", "LGTM", "REDPACKET"]) {
+      expect(validateFeishuEmoji(key)).toBeNull();
+    }
+  });
+
+  it("rejects Unicode emoji", () => {
+    expect(validateFeishuEmoji("👍")).toMatch(/飞书表情 key/);
+    expect(validateFeishuEmoji("🤔")).toMatch(/飞书表情 key/);
+  });
+
+  it("rejects unknown keys", () => {
+    expect(validateFeishuEmoji("NOT_A_REAL_EMOJI")).toMatch(/不在已知/);
+  });
+
+  it("FEISHU_EMOJI_KEYS contains the common set", () => {
+    expect(FEISHU_EMOJI_KEYS).toContain("Typing");
+    expect(FEISHU_EMOJI_KEYS).toContain("THUMBSUP");
   });
 });

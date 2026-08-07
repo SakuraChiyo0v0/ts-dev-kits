@@ -96,17 +96,22 @@ class PolicyChecker {
         }
         // 3. 唤醒词（群聊或私聊开启时）
         let text = message.text;
+        const isPrivate = !isGroup;
         const needsWake = isGroup
             ? this.#policy.groupWakePrefixes.length > 0
             : this.#policy.privateNeedsWakePrefix;
+        let woken = false;
         if (needsWake) {
             const matched = this.#policy.groupWakePrefixes.find((p) => p && text.startsWith(p));
             if (!matched) {
                 return { action: "ignore", reason: "not-woken" };
             }
+            woken = true;
             // 去掉唤醒词前缀
             text = text.slice(matched.length).trim();
         }
+        // 私聊（且未开唤醒要求）视为已唤醒；群聊命中唤醒词视为已唤醒
+        const isWoken = woken || isPrivate;
         // 4. 关键词屏蔽（对去掉唤醒词后的正文判断）
         if (this.#policy.blockedKeywords.some((k) => k && text.includes(k))) {
             return { action: "ignore", reason: "blocked-keyword" };
@@ -118,8 +123,8 @@ class PolicyChecker {
                 return { action: "ignore", reason: "rate-limited" };
             }
         }
-        // 6. 表情回应
-        const reaction = this.pickReaction();
+        // 6. 表情回应（仅对已唤醒的消息触发，参考 AstrBot is_at_or_wake_command）
+        const reaction = isWoken ? this.pickReaction() : undefined;
         return reaction
             ? { action: "respond", reaction, ...(text !== message.text ? { strippedText: text } : {}) }
             : text !== message.text
@@ -380,6 +385,49 @@ function validateFeishuConfig(config) {
     }
     return null;
 }
+/**
+ * 飞书表情回应支持的表情 key（英文枚举，非 Unicode emoji）。
+ * 完整 182 个见官方文档：https://open.feishu.cn/document/server-docs/im-v1/message-reaction/emojis-introduce
+ * 这里收录常用子集；传不在此列表的值飞书 API 会返回 400/231001。
+ */
+const FEISHU_EMOJI_KEYS = [
+    "OK",
+    "THUMBSUP",
+    "THANKS",
+    "Typing",
+    "LGTM",
+    "OnIt",
+    "OneSecond",
+    "ThumbsDown",
+    "RoarForYou",
+    "FACEPALM",
+    "REDPACKET",
+    "EatingFood",
+    "MeMeMe",
+    "Sigh",
+    "Get",
+    "Lemon",
+    "VRHeadset",
+    "YouAreTheBest",
+    "Clap",
+    "Heart",
+    "Fire",
+    "666",
+];
+/** 校验表情 key 是否合法（飞书支持）；返回错误信息（null 表示合法） */
+function validateFeishuEmoji(emoji) {
+    if (!emoji.trim()) {
+        return "表情不能为空";
+    }
+    // Unicode emoji（含非 ASCII 字符）直接判非法
+    if (/[^\x00-\x7F]/u.test(emoji)) {
+        return `"${emoji}" 不是飞书表情 key。飞书用英文枚举（如 THUMBSUP / OK / Typing），不是 Unicode emoji（如 👍）`;
+    }
+    if (!FEISHU_EMOJI_KEYS.includes(emoji)) {
+        return `"${emoji}" 不在已知飞书表情列表中。可用：${FEISHU_EMOJI_KEYS.join("、")}（完整列表见飞书文档）`;
+    }
+    return null;
+}
 
 /**
  * 飞书适配器。
@@ -538,6 +586,11 @@ function feishuProvider(config) {
             return { ok: true };
         },
         async react(message, emoji) {
+            const invalid = validateFeishuEmoji(emoji);
+            if (invalid) {
+                // 飞书 emoji_type 是英文枚举 key；传 Unicode 会报 400/231001
+                throw new ChatPlatformError("VALIDATION", invalid);
+            }
             try {
                 await client.im.messageReaction.create({
                     path: { message_id: message.messageId },
@@ -578,6 +631,7 @@ function registerFeishuPlatform() {
 exports.ChatPlatformClient = ChatPlatformClient;
 exports.ChatPlatformError = ChatPlatformError;
 exports.ChatPlatformRegistry = ChatPlatformRegistry;
+exports.FEISHU_EMOJI_KEYS = FEISHU_EMOJI_KEYS;
 exports.PolicyChecker = PolicyChecker;
 exports.createPolicyChecker = createPolicyChecker;
 exports.defaultPolicy = defaultPolicy;
@@ -587,4 +641,5 @@ exports.registerFeishuPlatform = registerFeishuPlatform;
 exports.registerPlatform = registerPlatform;
 exports.toChatPlatformError = toChatPlatformError;
 exports.validateFeishuConfig = validateFeishuConfig;
+exports.validateFeishuEmoji = validateFeishuEmoji;
 exports.validatePolicy = validatePolicy;

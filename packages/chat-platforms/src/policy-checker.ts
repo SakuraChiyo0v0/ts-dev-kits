@@ -86,17 +86,22 @@ export class PolicyChecker {
 
     // 3. 唤醒词（群聊或私聊开启时）
     let text = message.text;
+    const isPrivate = !isGroup;
     const needsWake = isGroup
       ? this.#policy.groupWakePrefixes.length > 0
       : this.#policy.privateNeedsWakePrefix;
+    let woken = false;
     if (needsWake) {
       const matched = this.#policy.groupWakePrefixes.find((p) => p && text.startsWith(p));
       if (!matched) {
         return { action: "ignore", reason: "not-woken" };
       }
+      woken = true;
       // 去掉唤醒词前缀
       text = text.slice(matched.length).trim();
     }
+    // 私聊（且未开唤醒要求）视为已唤醒；群聊命中唤醒词视为已唤醒
+    const isWoken = woken || isPrivate;
 
     // 4. 关键词屏蔽（对去掉唤醒词后的正文判断）
     if (this.#policy.blockedKeywords.some((k) => k && text.includes(k))) {
@@ -111,8 +116,8 @@ export class PolicyChecker {
       }
     }
 
-    // 6. 表情回应
-    const reaction = this.pickReaction();
+    // 6. 表情回应（仅对已唤醒的消息触发，参考 AstrBot is_at_or_wake_command）
+    const reaction = isWoken ? this.pickReaction() : undefined;
     return reaction
       ? { action: "respond", reaction, ...(text !== message.text ? { strippedText: text } : {}) }
       : text !== message.text

@@ -16,8 +16,10 @@ export {
 export { PolicyChecker, createPolicyChecker } from "./policy-checker.js";
 export { feishuProvider } from "./providers/feishu/index.js";
 export {
+  FEISHU_EMOJI_KEYS,
   registerFeishuPlatform,
   validateFeishuConfig,
+  validateFeishuEmoji,
 } from "./providers/feishu/index.js";
 export type { FeishuConfig } from "./providers/feishu/index.js";
 export type {

@@ -58,3 +58,48 @@ export function validateFeishuConfig(config: unknown): string | null {
   }
   return null;
 }
+
+/**
+ * 飞书表情回应支持的表情 key（英文枚举，非 Unicode emoji）。
+ * 完整 182 个见官方文档：https://open.feishu.cn/document/server-docs/im-v1/message-reaction/emojis-introduce
+ * 这里收录常用子集；传不在此列表的值飞书 API 会返回 400/231001。
+ */
+export const FEISHU_EMOJI_KEYS: readonly string[] = [
+  "OK",
+  "THUMBSUP",
+  "THANKS",
+  "Typing",
+  "LGTM",
+  "OnIt",
+  "OneSecond",
+  "ThumbsDown",
+  "RoarForYou",
+  "FACEPALM",
+  "REDPACKET",
+  "EatingFood",
+  "MeMeMe",
+  "Sigh",
+  "Get",
+  "Lemon",
+  "VRHeadset",
+  "YouAreTheBest",
+  "Clap",
+  "Heart",
+  "Fire",
+  "666",
+] as const;
+
+/** 校验表情 key 是否合法（飞书支持）；返回错误信息（null 表示合法） */
+export function validateFeishuEmoji(emoji: string): string | null {
+  if (!emoji.trim()) {
+    return "表情不能为空";
+  }
+  // Unicode emoji（含非 ASCII 字符）直接判非法
+  if (/[^\x00-\x7F]/u.test(emoji)) {
+    return `"${emoji}" 不是飞书表情 key。飞书用英文枚举（如 THUMBSUP / OK / Typing），不是 Unicode emoji（如 👍）`;
+  }
+  if (!FEISHU_EMOJI_KEYS.includes(emoji)) {
+    return `"${emoji}" 不在已知飞书表情列表中。可用：${FEISHU_EMOJI_KEYS.join("、")}（完整列表见飞书文档）`;
+  }
+  return null;
+}

@@ -113,14 +113,45 @@ describe("PolicyChecker", () => {
     expect(checker.decide(msg({ messageId: "3" })).action).toBe("ignore");
   });
 
-  it("emoji reaction picked when enabled", () => {
+  it("emoji reaction picked when enabled and woken (private)", () => {
     const checker = new PolicyChecker(
-      policy({ emojiReaction: { enabled: true, emojis: ["👍"] } }),
+      policy({ emojiReaction: { enabled: true, emojis: ["THUMBSUP"] } }),
     );
+    // 私聊视为已唤醒 → 触发表情
     const decision = checker.decide(msg());
     expect(decision.action).toBe("respond");
     if (decision.action === "respond") {
-      expect(decision.reaction).toBe("👍");
+      expect(decision.reaction).toBe("THUMBSUP");
+    }
+  });
+
+  it("emoji reaction NOT picked for non-woken group messages", () => {
+    // 群聊无唤醒词要求时，消息虽响应但不触发表情（参考 AstrBot is_at_or_wake_command）
+    const checker = new PolicyChecker(
+      policy({
+        groupWakePrefixes: [],
+        emojiReaction: { enabled: true, emojis: ["THUMBSUP"] },
+      }),
+    );
+    const decision = checker.decide(msg({ type: "group", text: "你好" }));
+    expect(decision.action).toBe("respond");
+    if (decision.action === "respond") {
+      expect(decision.reaction).toBeUndefined();
+    }
+  });
+
+  it("emoji reaction picked for woken group messages", () => {
+    const checker = new PolicyChecker(
+      policy({
+        groupWakePrefixes: ["/h"],
+        emojiReaction: { enabled: true, emojis: ["Typing"] },
+      }),
+    );
+    const decision = checker.decide(msg({ type: "group", text: "/h你好" }));
+    // 群聊命中唤醒词 → 已唤醒 → 触发
+    expect(decision.action).toBe("respond");
+    if (decision.action === "respond") {
+      expect(decision.reaction).toBe("Typing");
     }
   });
 });
