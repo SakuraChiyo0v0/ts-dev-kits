@@ -29,10 +29,10 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@amechan/llm": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.30.0"
   },
   "devDependencies": {
+    "@amechan/llm": "workspace:*",
     "@types/node": "^26.1.2",
     "rollup": "^4.62.4",
     "typescript": "^7.0.2"
