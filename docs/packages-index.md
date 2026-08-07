@@ -14,6 +14,7 @@
 | `@amechan/ffmpeg` | 0.1.0 | FFmpeg/ffprobe 进程封装 + 媒体处理高层函数 | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/ffmpeg` |
 | `@amechan/llm` | 0.1.0 | OpenAI 兼容多提供商 LLM 客户端(OpenAI/Anthropic/Gemini/Azure) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/llm` |
 | `@amechan/bilibili` | 0.1.0 | B 站视频下载 SDK(解析/取流/下载/ffmpeg 合并) | 可用(投稿视频) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/bilibili` |
+| `@amechan/chat-platforms` | 0.1.0 | 统一聊天平台接入 SDK(消息模型/适配器注册表,当前飞书) | 可用(飞书, websocket/webhook) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/chat-platforms` |
 
 ## 包详情
 
@@ -258,3 +259,59 @@ pnpm --filter @amechan/bilibili build  # 构建 ESM + CJS + d.ts
 ```
 
 **更多细节：** [`packages/bilibili/README.md`](../packages/bilibili/README.md)
+
+### `@amechan/chat-platforms`
+
+统一聊天平台接入 SDK。平台差异在适配器内消化，上层只面对统一消息模型（`ChatSource` / `ChatMessage` / `ChatMessageOutbound`），通过注册表 + 工厂新增平台零改核心。架构参考 AstrBot 与 hermes-agent 的平台适配体系。第一版内置**飞书**适配器（长连接/WebSocket 与 webhook 两种事件接收方式）。
+
+**适用环境：** Node.js 20+，运行在可信任的服务端进程（含 Electron 主进程）；不要在浏览器/WebView 中保存应用凭证。
+
+**核心接口：**
+
+- `ChatPlatformClient` — 多平台客户端：`add(adapter)` / `remove(name)` / `send(source, message)` / `onMessage(handler)` / `disconnectAll()`
+- `ChatPlatformAdapter` — 适配器统一接口：`connect({ onMessage })` / `disconnect()` / `send(source, message)` / `handleWebhook?(body)`
+- `ChatPlatformRegistry` / `registerPlatform()` — 注册表 + 工厂
+- `feishuProvider(config)` — 飞书适配器工厂；`registerFeishuPlatform()` 注册到默认注册表
+- `ChatPlatformError` — 统一错误码：`CONFIGURATION` / `VALIDATION` / `AUTHENTICATION` / `CONNECTION` / `DELIVERY` / `NOT_FOUND` / `UNKNOWN`
+
+**安装方式：**
+
+同一 pnpm workspace 内：
+
+```powershell
+pnpm add @amechan/chat-platforms@workspace:*
+```
+
+从私有 GitHub monorepo 安装（需授权 `@amechan/chat-platforms` 与 `@larksuiteoapi/node-sdk` 构建脚本）：
+
+```powershell
+pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/chat-platforms"
+```
+
+**API 示例：**
+
+```ts
+import { ChatPlatformClient, feishuProvider } from "@amechan/chat-platforms";
+
+const client = new ChatPlatformClient();
+client.onMessage(async (message) => {
+  await client.send(message.source, { text: "收到：" + message.text });
+});
+
+await client.add(
+  feishuProvider({
+    appId: process.env.FEISHU_APP_ID!,
+    appSecret: process.env.FEISHU_APP_SECRET!,
+    transport: "websocket",
+  }),
+);
+```
+
+**在仓库内的验证方式：**
+
+```powershell
+pnpm --filter @amechan/chat-platforms test   # 单测（注册表/客户端/飞书事件解析/webhook challenge）
+pnpm --filter @amechan/chat-platforms build  # 构建 ESM + CJS + d.ts
+```
+
+**更多细节：** [`packages/chat-platforms/README.md`](../packages/chat-platforms/README.md)

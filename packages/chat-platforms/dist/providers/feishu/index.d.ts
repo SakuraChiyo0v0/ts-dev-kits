@@ -1,0 +1,5 @@
+export { feishuProvider } from "./feishu-provider.js";
+export { validateFeishuConfig } from "./feishu-types.js";
+export type { FeishuConfig } from "./feishu-types.js";
+/** 向默认注册表注册飞书平台 */
+export declare function registerFeishuPlatform(): void;

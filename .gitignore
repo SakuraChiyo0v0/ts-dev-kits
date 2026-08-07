@@ -5,6 +5,8 @@ dist/
 !packages/llm/dist/**
 !packages/cli-utils/dist/
 !packages/cli-utils/dist/**
+!packages/chat-platforms/dist/
+!packages/chat-platforms/dist/**
 .build/
 coverage/
 *.tgz
