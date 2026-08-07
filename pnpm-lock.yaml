@@ -118,11 +118,10 @@ importers:
         version: 7.0.2
 
   packages/llm:
-    dependencies:
+    devDependencies:
       '@amechan/cli-utils':
         specifier: workspace:*
         version: link:../cli-utils
-    devDependencies:
       '@types/node':
         specifier: ^26.1.2
         version: 26.1.2

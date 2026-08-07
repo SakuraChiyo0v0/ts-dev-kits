@@ -31,10 +31,17 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
-  "dependencies": {
-    "@amechan/cli-utils": "workspace:*"
+  "dependencies": {},
+  "peerDependencies": {
+    "@amechan/cli-utils": "workspace:^"
+  },
+  "peerDependenciesMeta": {
+    "@amechan/cli-utils": {
+      "optional": true
+    }
   },
   "devDependencies": {
+    "@amechan/cli-utils": "workspace:*",
     "@types/node": "^26.1.2",
     "rollup": "^4.62.4",
     "tslib": "^2.8.1",
