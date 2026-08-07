@@ -91,6 +91,11 @@ export function feishuProvider(config: FeishuConfig): ChatPlatformAdapter {
     const message = toChatMessage(event);
     if (!message) return;
     if (message.source.type === "private" && config.enablePrivateChat === false) return;
+
+    // 过滤机器人自己发的消息（sender_type === "app"），否则机器人回复会再次触发入站 → 无限循环
+    const senderType = event.sender?.sender_type;
+    if (senderType === "app") return;
+
     await onMessage?.(message);
   }
 
