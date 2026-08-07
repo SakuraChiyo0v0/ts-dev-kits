@@ -5,6 +5,15 @@ export {
   type ChatPlatformErrorCode,
 } from "./errors.js";
 export { ChatPlatformRegistry, defaultRegistry, registerPlatform } from "./registry.js";
+export {
+  defaultPolicy,
+  validatePolicy,
+  type ChatResponsePolicy,
+  type EmojiReactionConfig,
+  type PolicyDecision,
+  type RateLimitConfig,
+} from "./policy.js";
+export { PolicyChecker, createPolicyChecker } from "./policy-checker.js";
 export { feishuProvider } from "./providers/feishu/index.js";
 export {
   registerFeishuPlatform,

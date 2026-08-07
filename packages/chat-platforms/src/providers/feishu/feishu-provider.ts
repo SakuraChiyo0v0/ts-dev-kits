@@ -182,6 +182,17 @@ export function feishuProvider(config: FeishuConfig): ChatPlatformAdapter {
       }
       return { ok: true };
     },
+    async react(message: ChatMessage, emoji: string): Promise<void> {
+      try {
+        await client.im.messageReaction.create({
+          path: { message_id: message.messageId },
+          data: { reaction_type: { emoji_type: emoji } },
+        });
+      } catch (error) {
+        // 表情回应失败不阻断主流程
+        throw toFeishuError(error);
+      }
+    },
   };
 }
 

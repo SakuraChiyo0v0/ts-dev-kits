@@ -12,6 +12,54 @@
 - **`ChatPlatformAdapter`** —— 平台适配器统一接口：`connect` / `disconnect` / `send` / `handleWebhook?`。
 - **`ChatPlatformRegistry`** —— 适配器注册表（工厂模式，新增平台零改核心）。
 - **`ChatPlatformClient`** —— 多平台客户端：统一管理所有已启用平台 + 统一入站路由。
+- **`ChatResponsePolicy`** —— 消息响应策略（平台无关）：白名单/黑名单/唤醒词/关键词屏蔽/限流/表情回应，参考 AstrBot `platform_settings` 设计。
+
+## 响应策略（白名单 / 表情 / 唤醒）
+
+`ChatResponsePolicy` 控制"哪些消息值得响应"，在 `ChatPlatformClient.add(adapter, policy)` 时注入，收到消息先过策略再回调：
+
+```ts
+import { ChatPlatformClient, feishuProvider, defaultPolicy } from "@amechan/chat-platforms";
+
+const policy = {
+  ...defaultPolicy(),
+  enableWhitelist: true,
+  userWhitelist: ["ou_xxx"],       // 用户白名单
+  groupWhitelist: ["oc_xxx"],      // 群白名单
+  adminUserIds: ["ou_admin"],      // 管理员（豁免白名单）
+  replyWhenBlocked: true,          // 被拦时回复提示
+  blockedReplyText: "我没有权限与你对话。",
+  groupWakePrefixes: ["/h"],       // 群聊唤醒词：/h 开头才响应
+  blockedKeywords: ["广告", "垃圾"], // 关键词屏蔽
+  rateLimit: { windowSeconds: 60, maxMessages: 30 }, // 限流
+  emojiReaction: { enabled: true, emojis: ["👍", "🤔"] }, // 表情回应
+};
+
+const client = new ChatPlatformClient();
+client.onMessage(async (m) => { /* 收到可响应消息 */ });
+client.onBlocked(async (m, replyText) => { /* 被拦截时可发提示 */ });
+await client.add(feishuProvider({ appId, appSecret }), policy);
+```
+
+**判定顺序**：黑名单 → 白名单（管理员豁免）→ 唤醒词 → 关键词屏蔽 → 限流 → 表情回应。
+
+**策略字段：**
+
+| 字段 | 说明 |
+| --- | --- |
+| `enableWhitelist` | 启用白名单（启用后仅白名单可对话） |
+| `userWhitelist` | 用户白名单（userId，全局适用） |
+| `groupWhitelist` | 群白名单（chatId，群聊适用） |
+| `userBlacklist` / `groupBlacklist` | 用户/群黑名单（命中直接忽略） |
+| `adminUserIds` | 管理员（豁免白名单） |
+| `ignoreAdminInGroup` / `ignoreAdminInPrivate` | 管理员豁免开关 |
+| `replyWhenBlocked` + `blockedReplyText` | 被拦截时是否回复提示 |
+| `groupWakePrefixes` | 群聊唤醒词（前缀匹配，命中后剥掉前缀） |
+| `privateNeedsWakePrefix` | 私聊是否也需唤醒词 |
+| `ignoreBotSelf` / `ignoreAtAll` | 忽略自身/@全体消息 |
+| `blockedKeywords` | 关键词屏蔽 |
+| `rateLimit` | 限流（`{windowSeconds, maxMessages}`，null=不限） |
+| `emojiReaction` | 表情回应（`{enabled, emojis}`，随机选一个） |
 
 ## 安装
 

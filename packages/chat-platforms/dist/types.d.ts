@@ -74,6 +74,11 @@ export interface ChatPlatformAdapter {
         challenge?: string;
         ok: boolean;
     }>;
+    /**
+     * 可选：表情回应（对消息加表情反馈）。
+     * 不支持表情的平台可不实现。
+     */
+    react?(message: ChatMessage, emoji: string): Promise<void>;
 }
 /** 平台能力特性（参考 hermes BasePlatformAdapter 的能力声明模式） */
 export interface ChatPlatformCapabilities {

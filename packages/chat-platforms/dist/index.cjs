@@ -21,26 +21,157 @@ function _interopNamespaceDefault(e) {
 
 var lark__namespace = /*#__PURE__*/_interopNamespaceDefault(lark);
 
+/** 滑动窗口限流器（每会话独立） */
+class RateLimiter {
+    #timestamps = new Map();
+    #windowSeconds;
+    #maxMessages;
+    constructor(windowSeconds, maxMessages) {
+        this.#windowSeconds = windowSeconds;
+        this.#maxMessages = maxMessages;
+    }
+    /** 尝试放行一条消息，返回 false 表示超过限流 */
+    allow(key, nowMs = Date.now()) {
+        const cutoff = nowMs - this.#windowSeconds * 1000;
+        const list = (this.#timestamps.get(key) ?? []).filter((t) => t > cutoff);
+        if (list.length >= this.#maxMessages) {
+            this.#timestamps.set(key, list);
+            return false;
+        }
+        list.push(nowMs);
+        this.#timestamps.set(key, list);
+        return true;
+    }
+}
+/** 在策略配置变化时可复用（重置限流状态） */
+function createPolicyChecker(policy) {
+    return new PolicyChecker(policy);
+}
+/**
+ * 策略执行器：判定一条入站消息是否应响应。
+ * 判断顺序：黑名单 → 白名单 → 唤醒词 → 关键词 → 限流 → 表情回应。
+ */
+class PolicyChecker {
+    #policy;
+    #rateLimiter;
+    constructor(policy) {
+        this.#policy = policy;
+        this.#rateLimiter = policy.rateLimit
+            ? new RateLimiter(policy.rateLimit.windowSeconds, policy.rateLimit.maxMessages)
+            : null;
+    }
+    get policy() {
+        return this.#policy;
+    }
+    /**
+     * 判定消息；返回 respond（可能带表情回应）或 ignore/blocked。
+     * 注意：respond 时可能附带 strippedText（去掉唤醒词后的正文）。
+     */
+    decide(message) {
+        const source = message.source;
+        const userId = source.userId ?? "";
+        const chatId = source.chatId;
+        const isGroup = source.type === "group";
+        const isAdmin = this.#policy.adminUserIds.includes(userId);
+        // 1. 黑名单
+        if (this.#policy.userBlacklist.includes(userId)) {
+            return { action: "ignore", reason: "user-blacklist" };
+        }
+        if (isGroup && this.#policy.groupBlacklist.includes(chatId)) {
+            return { action: "ignore", reason: "group-blacklist" };
+        }
+        // 2. 白名单（管理员豁免）
+        const whitelistEnabled = this.#policy.enableWhitelist;
+        const adminExempt = isGroup
+            ? this.#policy.ignoreAdminInGroup
+            : this.#policy.ignoreAdminInPrivate;
+        if (whitelistEnabled && !(isAdmin && adminExempt)) {
+            const userOk = this.#policy.userWhitelist.includes(userId);
+            const groupOk = isGroup && this.#policy.groupWhitelist.includes(chatId);
+            if (!userOk && !groupOk) {
+                return this.#policy.replyWhenBlocked
+                    ? { action: "blocked", replyText: this.#policy.blockedReplyText }
+                    : { action: "ignore", reason: "whitelist" };
+            }
+        }
+        // 3. 唤醒词（群聊或私聊开启时）
+        let text = message.text;
+        const needsWake = isGroup
+            ? this.#policy.groupWakePrefixes.length > 0
+            : this.#policy.privateNeedsWakePrefix;
+        if (needsWake) {
+            const matched = this.#policy.groupWakePrefixes.find((p) => p && text.startsWith(p));
+            if (!matched) {
+                return { action: "ignore", reason: "not-woken" };
+            }
+            // 去掉唤醒词前缀
+            text = text.slice(matched.length).trim();
+        }
+        // 4. 关键词屏蔽（对去掉唤醒词后的正文判断）
+        if (this.#policy.blockedKeywords.some((k) => k && text.includes(k))) {
+            return { action: "ignore", reason: "blocked-keyword" };
+        }
+        // 5. 限流
+        if (this.#rateLimiter) {
+            const key = `${source.platform}:${chatId}`;
+            if (!this.#rateLimiter.allow(key)) {
+                return { action: "ignore", reason: "rate-limited" };
+            }
+        }
+        // 6. 表情回应
+        const reaction = this.pickReaction();
+        return reaction
+            ? { action: "respond", reaction, ...(text !== message.text ? { strippedText: text } : {}) }
+            : text !== message.text
+                ? { action: "respond", strippedText: text }
+                : { action: "respond" };
+    }
+    /** 随机选一个表情（若启用且非空） */
+    pickReaction() {
+        const { enabled, emojis } = this.#policy.emojiReaction;
+        if (!enabled || emojis.length === 0)
+            return undefined;
+        return emojis[Math.floor(Math.random() * emojis.length)];
+    }
+}
+
 /**
  * 多平台客户端：持有若干平台适配器，统一入口收发消息。
  * 上层（如 hoshino-ai 主进程）通过它管理所有已启用平台。
+ * 可配置响应策略：收到消息先过策略（白名单/黑名单/唤醒/关键词/限流/表情），再决定是否回调。
  */
 class ChatPlatformClient {
     #adapters = new Map();
+    #checkers = new Map();
     #onMessage = null;
-    /** 注册适配器实例并注入消息回调。同名平台重复注册会覆盖（先断开旧的）。 */
-    async add(adapter) {
+    #onBlocked = null;
+    /**
+     * 注册适配器实例并注入消息回调。
+     * policy 为可选：提供后，入站消息先过策略再决定是否回调。
+     */
+    async add(adapter, policy) {
         await this.#adapters.get(adapter.name)?.disconnect();
         this.#adapters.set(adapter.name, adapter);
+        this.#checkers.set(adapter.name, policy ? createPolicyChecker(policy) : null);
         await adapter.connect({
-            onMessage: (message) => this.#onMessage?.(message),
+            onMessage: (message) => this.#route(adapter.name, message),
         });
+    }
+    /** 更新某平台的响应策略（不改动连接） */
+    setPolicy(name, policy) {
+        if (policy) {
+            this.#checkers.set(name, createPolicyChecker(policy));
+        }
+        else {
+            this.#checkers.delete(name);
+        }
     }
     remove(name) {
         const adapter = this.#adapters.get(name);
         if (!adapter)
             return Promise.resolve();
         this.#adapters.delete(name);
+        this.#checkers.delete(name);
         return adapter.disconnect();
     }
     get(name) {
@@ -52,6 +183,10 @@ class ChatPlatformClient {
     /** 设置统一入站消息处理器（收到任何平台消息都会回调） */
     onMessage(handler) {
         this.#onMessage = handler;
+    }
+    /** 设置被策略拦截（blocked）时的处理器（可发送提示回复） */
+    onBlocked(handler) {
+        this.#onBlocked = handler;
     }
     /** 向指定平台会话发送消息 */
     async send(source, message) {
@@ -65,7 +200,31 @@ class ChatPlatformClient {
     async disconnectAll() {
         const adapters = [...this.#adapters.values()];
         this.#adapters.clear();
+        this.#checkers.clear();
         await Promise.allSettled(adapters.map((adapter) => adapter.disconnect()));
+    }
+    /** 入站消息路由：过策略 → 回调 or 拦截 */
+    async #route(platform, message) {
+        const checker = this.#checkers.get(platform);
+        if (checker) {
+            const decision = checker.decide(message);
+            if (decision.action === "ignore") {
+                return;
+            }
+            if (decision.action === "blocked") {
+                await this.#onBlocked?.(message, decision.replyText);
+                return;
+            }
+            // respond：若去掉了唤醒词，把处理后的文本回填
+            if (decision.strippedText !== undefined) {
+                message.text = decision.strippedText;
+            }
+            // 表情回应：若适配器支持 react 且策略选出了表情
+            if (decision.reaction) {
+                await this.#adapters.get(platform)?.react?.(message, decision.reaction).catch(() => undefined);
+            }
+        }
+        await this.#onMessage?.(message);
     }
 }
 
@@ -133,6 +292,54 @@ const defaultRegistry = new ChatPlatformRegistry();
 /** 便捷函数：向全局默认注册表注册 */
 function registerPlatform(entry) {
     defaultRegistry.register(entry);
+}
+
+/**
+ * 消息响应策略 —— 平台无关的入站消息控制层。
+ * 参考 AstrBot platform_settings 设计：白名单/黑名单/唤醒/关键词/限流/表情回应。
+ * 上层（如 hoshino-ai）通过 ChatResponsePolicy 控制"哪些消息值得响应"。
+ */
+/** 默认策略：全放行，不限制 */
+function defaultPolicy() {
+    return {
+        enableWhitelist: false,
+        userWhitelist: [],
+        groupWhitelist: [],
+        userBlacklist: [],
+        groupBlacklist: [],
+        adminUserIds: [],
+        ignoreAdminInGroup: true,
+        ignoreAdminInPrivate: true,
+        replyWhenBlocked: false,
+        blockedReplyText: "我没有权限与你对话。",
+        groupWakePrefixes: [],
+        privateNeedsWakePrefix: false,
+        ignoreBotSelf: false,
+        ignoreAtAll: false,
+        blockedKeywords: [],
+        rateLimit: null,
+        emojiReaction: { enabled: false, emojis: [] },
+    };
+}
+/** 校验策略配置，返回错误信息（null 表示通过） */
+function validatePolicy(policy) {
+    if (typeof policy !== "object" || policy === null) {
+        return "策略配置必须是对象";
+    }
+    if (policy.enableWhitelist && policy.userWhitelist.length === 0 && policy.groupWhitelist.length === 0) {
+        return "启用白名单但用户/群白名单均为空，将无人可对话";
+    }
+    for (const keyword of policy.blockedKeywords) {
+        if (!keyword.trim()) {
+            return "屏蔽关键词不能为空字符串";
+        }
+    }
+    if (policy.rateLimit) {
+        if (policy.rateLimit.windowSeconds <= 0 || policy.rateLimit.maxMessages <= 0) {
+            return "限流窗口与最大消息数必须为正数";
+        }
+    }
+    return null;
 }
 
 /** 事件处理错误码映射（飞书错误码 → 统一错误码） */
@@ -326,6 +533,18 @@ function feishuProvider(config) {
             }
             return { ok: true };
         },
+        async react(message, emoji) {
+            try {
+                await client.im.messageReaction.create({
+                    path: { message_id: message.messageId },
+                    data: { reaction_type: { emoji_type: emoji } },
+                });
+            }
+            catch (error) {
+                // 表情回应失败不阻断主流程
+                throw toFeishuError(error);
+            }
+        },
     };
 }
 /** 从飞书 SDK 错误归类为统一错误 */
@@ -355,9 +574,13 @@ function registerFeishuPlatform() {
 exports.ChatPlatformClient = ChatPlatformClient;
 exports.ChatPlatformError = ChatPlatformError;
 exports.ChatPlatformRegistry = ChatPlatformRegistry;
+exports.PolicyChecker = PolicyChecker;
+exports.createPolicyChecker = createPolicyChecker;
+exports.defaultPolicy = defaultPolicy;
 exports.defaultRegistry = defaultRegistry;
 exports.feishuProvider = feishuProvider;
 exports.registerFeishuPlatform = registerFeishuPlatform;
 exports.registerPlatform = registerPlatform;
 exports.toChatPlatformError = toChatPlatformError;
 exports.validateFeishuConfig = validateFeishuConfig;
+exports.validatePolicy = validatePolicy;
