@@ -10,7 +10,7 @@ import {
   type ChatResponsePolicy,
 } from "../src/index.js";
 
-function msg(overrides: Partial<ChatMessage> & { userId?: string; chatId?: string; type?: "private" | "group"; text?: string } = {}): ChatMessage {
+function msg(overrides: Partial<ChatMessage> & { userId?: string; chatId?: string; type?: "private" | "group"; text?: string; mentionedBot?: boolean } = {}): ChatMessage {
   return {
     messageId: overrides.messageId ?? "m-1",
     source: {
@@ -18,6 +18,7 @@ function msg(overrides: Partial<ChatMessage> & { userId?: string; chatId?: strin
       chatId: overrides.chatId ?? "chat-1",
       type: overrides.type ?? "private",
       ...(overrides.userId !== undefined ? { userId: overrides.userId } : {}),
+      ...(overrides.mentionedBot !== undefined ? { mentionedBot: overrides.mentionedBot } : {}),
     },
     text: overrides.text ?? "你好",
   };
@@ -125,8 +126,8 @@ describe("PolicyChecker", () => {
     }
   });
 
-  it("emoji reaction NOT picked for non-woken group messages", () => {
-    // 群聊无唤醒词要求时，消息虽响应但不触发表情（参考 AstrBot is_at_or_wake_command）
+  it("emoji reaction NOT picked for non-woken group messages (no @bot, no wake prefix)", () => {
+    // 群聊无唤醒词要求且未 @ 机器人时，消息虽响应但不触发表情
     const checker = new PolicyChecker(
       policy({
         groupWakePrefixes: [],
@@ -137,6 +138,23 @@ describe("PolicyChecker", () => {
     expect(decision.action).toBe("respond");
     if (decision.action === "respond") {
       expect(decision.reaction).toBeUndefined();
+    }
+  });
+
+  it("emoji reaction picked for group messages that @ the bot", () => {
+    // 群聊 @ 机器人（mentionedBot=true）→ 已唤醒 → 触发表情（无唤醒词要求）
+    const checker = new PolicyChecker(
+      policy({
+        groupWakePrefixes: [],
+        emojiReaction: { enabled: true, emojis: ["THUMBSUP"] },
+      }),
+    );
+    const decision = checker.decide(
+      msg({ type: "group", text: "你好", mentionedBot: true }),
+    );
+    expect(decision.action).toBe("respond");
+    if (decision.action === "respond") {
+      expect(decision.reaction).toBe("THUMBSUP");
     }
   });
 

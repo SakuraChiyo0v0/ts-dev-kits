@@ -25,6 +25,8 @@ export interface ChatSource {
   isAdmin?: boolean;
   /** 群聊时所在群的标题 */
   groupName?: string;
+  /** 群聊中是否 @ 了机器人（飞书 mentions 命中机器人） */
+  mentionedBot?: boolean;
 }
 
 /** 入站消息（平台事件归一化后） */

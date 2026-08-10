@@ -79,11 +79,37 @@ export function feishuProvider(config: FeishuConfig): ChatPlatformAdapter {
     const userId =
       sender?.sender_id?.user_id ?? sender?.sender_id?.open_id ?? sender?.sender_id?.union_id;
 
+    // 群聊 @ 机器人检测：飞书机器人默认只收到 @ 它的群消息（除非开了接收群内所有消息权限）。
+    // 因此群聊消息一律视为被 @ 唤醒；@all（mentioned_type="all"）也算被 @。
+    // 若将来开了"接收群内所有消息"，可改为精确匹配机器人 open_id。
+    let mentionedBot = false;
+    if (chatType === "group") {
+      const mentions = (
+        message as {
+          mentions?: Array<{
+            key?: string
+            id?: { union_id?: string; user_id?: string; open_id?: string }
+            name?: string
+            mentioned_type?: string
+          }>
+        }
+      ).mentions
+      if (Array.isArray(mentions) && mentions.length > 0) {
+        mentionedBot = mentions.some(
+          (m) => m.mentioned_type === "all" || m.mentioned_type === "ALL",
+        )
+      } else {
+        // 无 mentions 字段也按被 @ 处理（机器人默认只收 @ 消息）
+        mentionedBot = true
+      }
+    }
+
     const source: ChatSource = {
       platform: "feishu",
       chatId: message.chat_id ?? "",
       type: chatType as ChatMessageType,
       ...(userId ? { userId } : {}),
+      ...(mentionedBot ? { mentionedBot: true } : {}),
     };
 
     return {

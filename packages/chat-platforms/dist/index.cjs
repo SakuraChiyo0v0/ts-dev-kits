@@ -110,8 +110,8 @@ class PolicyChecker {
             // 去掉唤醒词前缀
             text = text.slice(matched.length).trim();
         }
-        // 私聊（且未开唤醒要求）视为已唤醒；群聊命中唤醒词视为已唤醒
-        const isWoken = woken || isPrivate;
+        // 私聊（且未开唤醒要求）视为已唤醒；群聊命中唤醒词或 @ 机器人视为已唤醒
+        const isWoken = woken || isPrivate || source.mentionedBot === true;
         // 4. 关键词屏蔽（对去掉唤醒词后的正文判断）
         if (this.#policy.blockedKeywords.some((k) => k && text.includes(k))) {
             return { action: "ignore", reason: "blocked-keyword" };
@@ -494,11 +494,26 @@ function feishuProvider(config) {
             return null; // 忽略图片/文件等非文本消息（后续版本扩展）
         const sender = event.sender;
         const userId = sender?.sender_id?.user_id ?? sender?.sender_id?.open_id ?? sender?.sender_id?.union_id;
+        // 群聊 @ 机器人检测：飞书机器人默认只收到 @ 它的群消息（除非开了接收群内所有消息权限）。
+        // 因此群聊消息一律视为被 @ 唤醒；@all（mentioned_type="all"）也算被 @。
+        // 若将来开了"接收群内所有消息"，可改为精确匹配机器人 open_id。
+        let mentionedBot = false;
+        if (chatType === "group") {
+            const mentions = message.mentions;
+            if (Array.isArray(mentions) && mentions.length > 0) {
+                mentionedBot = mentions.some((m) => m.mentioned_type === "all" || m.mentioned_type === "ALL");
+            }
+            else {
+                // 无 mentions 字段也按被 @ 处理（机器人默认只收 @ 消息）
+                mentionedBot = true;
+            }
+        }
         const source = {
             platform: "feishu",
             chatId: message.chat_id ?? "",
             type: chatType,
             ...(userId ? { userId } : {}),
+            ...(mentionedBot ? { mentionedBot: true } : {}),
         };
         return {
             messageId: message.message_id ?? "",

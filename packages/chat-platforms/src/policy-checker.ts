@@ -100,8 +100,8 @@ export class PolicyChecker {
       // 去掉唤醒词前缀
       text = text.slice(matched.length).trim();
     }
-    // 私聊（且未开唤醒要求）视为已唤醒；群聊命中唤醒词视为已唤醒
-    const isWoken = woken || isPrivate;
+    // 私聊（且未开唤醒要求）视为已唤醒；群聊命中唤醒词或 @ 机器人视为已唤醒
+    const isWoken = woken || isPrivate || source.mentionedBot === true;
 
     // 4. 关键词屏蔽（对去掉唤醒词后的正文判断）
     if (this.#policy.blockedKeywords.some((k) => k && text.includes(k))) {
