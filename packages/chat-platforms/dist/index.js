@@ -610,19 +610,17 @@ function feishuProvider(config) {
         }
     }
     /** 发送交互卡片：CardKit 创建卡片实体 → interactive 消息 */
+    /**
+     * 发送交互卡片：im.message 直接发 interactive，content 内嵌卡片 JSON（schema 2.0）。
+     * 不走 cardkit 创建卡片实体（cardkit:card:write 权限机器人通常未开通，
+     * 且 im.message 直接发 interactive 是老方式，仅需 im:message 权限）。
+     */
     async function sendCard(source, message) {
         const card = message.card;
         const cardJson = buildCardJson(card);
-        // 1. 创建卡片实体（schema 2.0）
-        const created = await client.cardkit.v1.card.create({
-            data: { type: "card_json", data: JSON.stringify(cardJson) },
-        });
-        const cardId = created.data?.card_id;
-        if (!cardId) {
-            throw new ChatPlatformError("DELIVERY", "飞书卡片创建失败：未返回 card_id");
-        }
-        // 2. 以 interactive 消息发送
-        const content = JSON.stringify({ type: "card", data: { card_id: cardId } });
+        // update_multi 标记共享卡片，允许后续 patch（流式更新用）
+        const cardPayload = { ...cardJson, config: { ...(cardJson.config ?? {}), update_multi: true } };
+        const content = JSON.stringify(cardPayload);
         if (message.replyToMessageId) {
             const res = await client.im.message.reply({
                 path: { message_id: message.replyToMessageId },
