@@ -42,8 +42,9 @@ describe("PolicyChecker", () => {
 
   it("group blacklist ignores group messages", () => {
     const checker = new PolicyChecker(policy({ groupBlacklist: ["g_bad"] }));
-    expect(checker.decide(msg({ type: "group", chatId: "g_bad" })).action).toBe("ignore");
-    expect(checker.decide(msg({ type: "group", chatId: "g_ok" })).action).toBe("respond");
+    // 群消息带 @ 机器人（否则会被群聊门控拦截，测不到黑名单逻辑）
+    expect(checker.decide(msg({ type: "group", chatId: "g_bad", mentionedBot: true })).action).toBe("ignore");
+    expect(checker.decide(msg({ type: "group", chatId: "g_ok", mentionedBot: true })).action).toBe("respond");
   });
 
   it("whitelist: only whitelisted users/groups respond", () => {
@@ -52,12 +53,12 @@ describe("PolicyChecker", () => {
     );
     expect(checker.decide(msg({ userId: "u_ok" })).action).toBe("respond");
     expect(checker.decide(msg({ userId: "u_no" })).action).toBe("ignore");
-    // 群聊：群白名单命中即可（即使发送者不在用户白名单）
-    expect(checker.decide(msg({ type: "group", chatId: "g_ok", userId: "u_no" })).action).toBe("respond");
+    // 群聊：群白名单命中即可（即使发送者不在用户白名单）；群消息带 @ 机器人绕过群聊门控
+    expect(checker.decide(msg({ type: "group", chatId: "g_ok", userId: "u_no", mentionedBot: true })).action).toBe("respond");
     // 群聊：发送者在用户白名单（全局适用），即使群不在群白名单也放行
-    expect(checker.decide(msg({ type: "group", chatId: "g_no", userId: "u_ok" })).action).toBe("respond");
+    expect(checker.decide(msg({ type: "group", chatId: "g_no", userId: "u_ok", mentionedBot: true })).action).toBe("respond");
     // 群聊：两者都不在白名单 → 拦截
-    expect(checker.decide(msg({ type: "group", chatId: "g_no", userId: "u_no" })).action).toBe("ignore");
+    expect(checker.decide(msg({ type: "group", chatId: "g_no", userId: "u_no", mentionedBot: true })).action).toBe("ignore");
   });
 
   it("whitelist: admin exempt", () => {
@@ -126,11 +127,27 @@ describe("PolicyChecker", () => {
     }
   });
 
-  it("emoji reaction NOT picked for non-woken group messages (no @bot, no wake prefix)", () => {
-    // 群聊无唤醒词要求且未 @ 机器人时，消息虽响应但不触发表情
+  it("group messages without @bot or wake prefix are ignored by default", () => {
+    // 群聊未 @ 机器人、未命中唤醒词、未开 respondToUnmentionedGroup → 忽略（防止群里乱说话）
     const checker = new PolicyChecker(
       policy({
         groupWakePrefixes: [],
+        emojiReaction: { enabled: true, emojis: ["THUMBSUP"] },
+      }),
+    );
+    const decision = checker.decide(msg({ type: "group", text: "你好" }));
+    expect(decision.action).toBe("ignore");
+    if (decision.action === "ignore") {
+      expect(decision.reason).toBe("not-mentioned");
+    }
+  });
+
+  it("group messages respond when respondToUnmentionedGroup is enabled", () => {
+    // 显式开启"响应所有群消息"后，未 @ 的群消息也响应（但不触发表情，因未唤醒）
+    const checker = new PolicyChecker(
+      policy({
+        groupWakePrefixes: [],
+        respondToUnmentionedGroup: true,
         emojiReaction: { enabled: true, emojis: ["THUMBSUP"] },
       }),
     );

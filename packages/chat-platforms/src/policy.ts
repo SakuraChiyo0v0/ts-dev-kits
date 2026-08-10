@@ -47,6 +47,12 @@ export interface ChatResponsePolicy {
    * 群聊中为空时：仅响应 @ 机器人的消息（依赖平台侧推送 @ 事件）。
    */
   groupWakePrefixes: readonly string[];
+  /**
+   * 群聊未 @ 机器人且未命中唤醒词时是否响应。
+   * 默认 false：群聊消息必须 @ 机器人（mentionedBot）或命中唤醒词才响应，
+   * 避免应用开启"接收群内所有消息"权限后机器人在群里乱说话。
+   */
+  respondToUnmentionedGroup: boolean;
   /** 私聊是否需要唤醒词（false = 私聊所有消息都响应） */
   privateNeedsWakePrefix: boolean;
   /** 忽略机器人自己的消息（如需平台推送自身消息时） */
@@ -81,6 +87,7 @@ export function defaultPolicy(): ChatResponsePolicy {
     replyWhenBlocked: false,
     blockedReplyText: "我没有权限与你对话。",
     groupWakePrefixes: [],
+    respondToUnmentionedGroup: false,
     privateNeedsWakePrefix: false,
     ignoreBotSelf: false,
     ignoreAtAll: false,

@@ -110,6 +110,12 @@ class PolicyChecker {
             // 去掉唤醒词前缀
             text = text.slice(matched.length).trim();
         }
+        // 群聊门控：未 @ 机器人、未命中唤醒词、且未开启"响应所有群消息"时忽略。
+        // （飞书应用若开启"接收群内所有消息"权限，未 @ 的群消息也会推送进来，
+        //  不加这个门控机器人会在群里对每条消息都回话。）
+        if (isGroup && !woken && source.mentionedBot !== true && !this.#policy.respondToUnmentionedGroup) {
+            return { action: "ignore", reason: "not-mentioned" };
+        }
         // 私聊（且未开唤醒要求）视为已唤醒；群聊命中唤醒词或 @ 机器人视为已唤醒
         const isWoken = woken || isPrivate || source.mentionedBot === true;
         // 4. 关键词屏蔽（对去掉唤醒词后的正文判断）
@@ -329,6 +335,7 @@ function defaultPolicy() {
         replyWhenBlocked: false,
         blockedReplyText: "我没有权限与你对话。",
         groupWakePrefixes: [],
+        respondToUnmentionedGroup: false,
         privateNeedsWakePrefix: false,
         ignoreBotSelf: false,
         ignoreAtAll: false,
@@ -454,6 +461,26 @@ function feishuProvider(config) {
     let wsClient = null;
     let onMessage = null;
     let onCardAction = null;
+    // 机器人自身 open_id（群聊 @ 门控用）。connect 时异步拉取；拉取失败保持空。
+    let botOpenId = "";
+    /** 拉取机器人自身 open_id（GET /open-apis/bot/v3/info），失败静默（群聊门控保持严格） */
+    async function fetchBotOpenId() {
+        try {
+            const resp = await client.request({
+                method: "GET",
+                url: "/open-apis/bot/v3/info",
+            });
+            const data = resp?.data;
+            const bot = data?.bot;
+            const openId = bot?.open_id;
+            if (typeof openId === "string" && openId) {
+                botOpenId = openId;
+            }
+        }
+        catch {
+            // 拉取失败：botOpenId 保持空 → 群聊 @ 门控严格（只认 @all，不误判）
+        }
+    }
     /** 从事件数据提取消息内容（文本/富文本 → 可读文本） */
     function extractText(rawContent, msgType) {
         try {
@@ -494,18 +521,17 @@ function feishuProvider(config) {
             return null; // 忽略图片/文件等非文本消息（后续版本扩展）
         const sender = event.sender;
         const userId = sender?.sender_id?.user_id ?? sender?.sender_id?.open_id ?? sender?.sender_id?.union_id;
-        // 群聊 @ 机器人检测：飞书机器人默认只收到 @ 它的群消息（除非开了接收群内所有消息权限）。
-        // 因此群聊消息一律视为被 @ 唤醒；@all（mentioned_type="all"）也算被 @。
-        // 若将来开了"接收群内所有消息"，可改为精确匹配机器人 open_id。
+        // 群聊 @ 机器人检测：精确匹配。mentions 里存在 open_id 等于机器人自身的
+        // 条目（@ 机器人本人），或 mentioned_type="all"（@所有人）时才算被 @。
+        // 普通 @ 他人、或未 @ 的群消息（应用开了接收群内所有消息权限时会收到）
+        // 一律不算，避免机器人不 @ 也乱说话。
         let mentionedBot = false;
         if (chatType === "group") {
             const mentions = message.mentions;
             if (Array.isArray(mentions) && mentions.length > 0) {
-                mentionedBot = mentions.some((m) => m.mentioned_type === "all" || m.mentioned_type === "ALL");
-            }
-            else {
-                // 无 mentions 字段也按被 @ 处理（机器人默认只收 @ 消息）
-                mentionedBot = true;
+                mentionedBot = mentions.some((m) => m.mentioned_type === "all" ||
+                    m.mentioned_type === "ALL" ||
+                    (botOpenId !== "" && m.id?.open_id === botOpenId));
             }
         }
         const source = {
@@ -638,6 +664,8 @@ function feishuProvider(config) {
         async connect({ onMessage: handler, onCardAction: cardHandler }) {
             onMessage = handler;
             onCardAction = cardHandler ?? null;
+            // 异步拉取机器人自身 open_id（用于群聊 @ 门控精确匹配），失败不阻塞连接
+            void fetchBotOpenId();
             if (config.transport === "webhook") {
                 return;
             }

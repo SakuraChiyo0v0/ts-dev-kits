@@ -100,6 +100,12 @@ export class PolicyChecker {
       // 去掉唤醒词前缀
       text = text.slice(matched.length).trim();
     }
+    // 群聊门控：未 @ 机器人、未命中唤醒词、且未开启"响应所有群消息"时忽略。
+    // （飞书应用若开启"接收群内所有消息"权限，未 @ 的群消息也会推送进来，
+    //  不加这个门控机器人会在群里对每条消息都回话。）
+    if (isGroup && !woken && source.mentionedBot !== true && !this.#policy.respondToUnmentionedGroup) {
+      return { action: "ignore", reason: "not-mentioned" };
+    }
     // 私聊（且未开唤醒要求）视为已唤醒；群聊命中唤醒词或 @ 机器人视为已唤醒
     const isWoken = woken || isPrivate || source.mentionedBot === true;
 

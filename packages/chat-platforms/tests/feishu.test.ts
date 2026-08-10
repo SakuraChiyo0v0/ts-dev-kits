@@ -164,3 +164,57 @@ describe("validateFeishuEmoji", () => {
     expect(FEISHU_EMOJI_KEYS).toContain("THUMBSUP");
   });
 });
+
+describe("feishu mention gating", () => {
+  async function receive(evt: Record<string, unknown>) {
+    const adapter = feishuProvider({
+      appId: "cli_x",
+      appSecret: "s",
+      transport: "webhook",
+    });
+    const received: unknown[] = [];
+    await adapter.connect({ onMessage: async (m) => { received.push(m) } });
+    const body = JSON.stringify({
+      schema: "2.0",
+      header: { event_type: "im.message.receive_v1" },
+      event: evt,
+    });
+    await adapter.handleWebhook!(body);
+    await adapter.disconnect();
+    return received as Array<{ source: { mentionedBot?: boolean; type: string }; text: string }>;
+  }
+
+  it("group message without mentions → not mentionedBot", async () => {
+    const received = await receive(
+      messageEvent({
+        chatType: "group",
+        content: JSON.stringify({ text: "今晚吃什么" }),
+      }),
+    );
+    expect(received).toHaveLength(1);
+    expect(received[0].source.type).toBe("group");
+    expect(received[0].source.mentionedBot).toBeUndefined();
+  });
+
+  it("group message @all → mentionedBot", async () => {
+    const received = await receive({
+      ...messageEvent({
+        chatType: "group",
+        content: JSON.stringify({ text: "@_all 大家看下" }),
+      }),
+      message: {
+        ...messageEvent({ chatType: "group", content: JSON.stringify({ text: "@_all 大家看下" }) })
+          .message,
+        mentions: [{ key: "@_all", id: { open_id: "ou_all" }, name: "所有人", mentioned_type: "all" }],
+      },
+    });
+    expect(received).toHaveLength(1);
+    expect(received[0].source.mentionedBot).toBe(true);
+  });
+
+  it("private message → no mention gating", async () => {
+    const received = await receive(messageEvent());
+    expect(received[0].source.type).toBe("private");
+    expect(received[0].source.mentionedBot).toBeUndefined();
+  });
+});

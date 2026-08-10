@@ -39,6 +39,27 @@ export function feishuProvider(config: FeishuConfig): ChatPlatformAdapter {
   let onCardAction: ((action: ChatCardAction) => void | Promise<void>) | null = null;
   let connected = false;
 
+  // 机器人自身 open_id（群聊 @ 门控用）。connect 时异步拉取；拉取失败保持空。
+  let botOpenId = "";
+
+  /** 拉取机器人自身 open_id（GET /open-apis/bot/v3/info），失败静默（群聊门控保持严格） */
+  async function fetchBotOpenId(): Promise<void> {
+    try {
+      const resp = await client.request({
+        method: "GET",
+        url: "/open-apis/bot/v3/info",
+      });
+      const data = resp?.data as Record<string, unknown> | undefined;
+      const bot = data?.bot as Record<string, unknown> | undefined;
+      const openId = bot?.open_id;
+      if (typeof openId === "string" && openId) {
+        botOpenId = openId;
+      }
+    } catch {
+      // 拉取失败：botOpenId 保持空 → 群聊 @ 门控严格（只认 @all，不误判）
+    }
+  }
+
   /** 从事件数据提取消息内容（文本/富文本 → 可读文本） */
   function extractText(rawContent: string, msgType: string): string {
     try {
@@ -79,9 +100,10 @@ export function feishuProvider(config: FeishuConfig): ChatPlatformAdapter {
     const userId =
       sender?.sender_id?.user_id ?? sender?.sender_id?.open_id ?? sender?.sender_id?.union_id;
 
-    // 群聊 @ 机器人检测：飞书机器人默认只收到 @ 它的群消息（除非开了接收群内所有消息权限）。
-    // 因此群聊消息一律视为被 @ 唤醒；@all（mentioned_type="all"）也算被 @。
-    // 若将来开了"接收群内所有消息"，可改为精确匹配机器人 open_id。
+    // 群聊 @ 机器人检测：精确匹配。mentions 里存在 open_id 等于机器人自身的
+    // 条目（@ 机器人本人），或 mentioned_type="all"（@所有人）时才算被 @。
+    // 普通 @ 他人、或未 @ 的群消息（应用开了接收群内所有消息权限时会收到）
+    // 一律不算，避免机器人不 @ 也乱说话。
     let mentionedBot = false;
     if (chatType === "group") {
       const mentions = (
@@ -96,11 +118,11 @@ export function feishuProvider(config: FeishuConfig): ChatPlatformAdapter {
       ).mentions
       if (Array.isArray(mentions) && mentions.length > 0) {
         mentionedBot = mentions.some(
-          (m) => m.mentioned_type === "all" || m.mentioned_type === "ALL",
+          (m) =>
+            m.mentioned_type === "all" ||
+            m.mentioned_type === "ALL" ||
+            (botOpenId !== "" && m.id?.open_id === botOpenId),
         )
-      } else {
-        // 无 mentions 字段也按被 @ 处理（机器人默认只收 @ 消息）
-        mentionedBot = true
       }
     }
 
@@ -250,6 +272,8 @@ export function feishuProvider(config: FeishuConfig): ChatPlatformAdapter {
     async connect({ onMessage: handler, onCardAction: cardHandler }): Promise<void> {
       onMessage = handler;
       onCardAction = cardHandler ?? null;
+      // 异步拉取机器人自身 open_id（用于群聊 @ 门控精确匹配），失败不阻塞连接
+      void fetchBotOpenId();
       if (config.transport === "webhook") {
         // webhook 模式：由外部 HTTP 服务把事件 POST 进来（见 handleWebhook）
         connected = true;
