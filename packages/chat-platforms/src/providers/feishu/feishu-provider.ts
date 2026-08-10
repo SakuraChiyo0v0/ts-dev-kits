@@ -49,8 +49,11 @@ export function feishuProvider(config: FeishuConfig): ChatPlatformAdapter {
         method: "GET",
         url: "/open-apis/bot/v3/info",
       });
-      const data = resp?.data as Record<string, unknown> | undefined;
-      const bot = data?.bot as Record<string, unknown> | undefined;
+      // lark client.request 返回的是响应体本身：{ bot: {...}, code, msg }
+      // （个别版本包一层 data，兼容读取）
+      const body = resp as Record<string, unknown> | undefined;
+      const data = body?.data as Record<string, unknown> | undefined;
+      const bot = (body?.bot ?? data?.bot) as Record<string, unknown> | undefined;
       const openId = bot?.open_id;
       if (typeof openId === "string" && openId) {
         botOpenId = openId;

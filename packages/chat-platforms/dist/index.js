@@ -449,8 +449,11 @@ function feishuProvider(config) {
                 method: "GET",
                 url: "/open-apis/bot/v3/info",
             });
-            const data = resp?.data;
-            const bot = data?.bot;
+            // lark client.request 返回的是响应体本身：{ bot: {...}, code, msg }
+            // （个别版本包一层 data，兼容读取）
+            const body = resp;
+            const data = body?.data;
+            const bot = (body?.bot ?? data?.bot);
             const openId = bot?.open_id;
             if (typeof openId === "string" && openId) {
                 botOpenId = openId;
