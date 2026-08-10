@@ -654,10 +654,10 @@ function feishuProvider(config) {
     async function updateCardImpl(source, messageId, card) {
         const cardJson = buildCardJson(card);
         const cardPayload = { ...cardJson, config: { ...(cardJson.config ?? {}), update_multi: true } };
-        // patch 只传 content（卡片 JSON），无需 msg_type（保持原 interactive 类型）
+        // patch 需要 msg_type（lark 类型定义漏了，但 API 实际必填，否则报 230099/11310）
         await client.im.message.patch({
             path: { message_id: messageId },
-            data: { content: JSON.stringify(cardPayload) },
+            data: { msg_type: "interactive", content: JSON.stringify(cardPayload) },
         });
     }
     return {
