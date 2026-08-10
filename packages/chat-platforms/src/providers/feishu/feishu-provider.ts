@@ -370,11 +370,10 @@ function buildCardJson(card: ChatCard): Record<string, unknown> {
   if (card.markdown) {
     bodyElements.push({ tag: "markdown", content: card.markdown });
   }
-  // 交互元素：按钮/菜单合并进一个 action 容器
-  const actions: unknown[] = [];
+  // 交互元素：schema 2.0 卡片按钮/下拉直接作为 body 元素（不支持 tag: action 容器）
   for (const el of card.elements) {
     if (el.tag === "button") {
-      actions.push({
+      bodyElements.push({
         tag: "button",
         text: { tag: "plain_text", content: el.text },
         ...(el.type ? { type: el.type } : {}),
@@ -382,7 +381,7 @@ function buildCardJson(card: ChatCard): Record<string, unknown> {
         ...(el.value ? { value: el.value } : {}),
       });
     } else if (el.tag === "select") {
-      actions.push({
+      bodyElements.push({
         tag: "select_static",
         ...(el.placeholder ? { placeholder: { tag: "plain_text", content: el.placeholder } } : {}),
         ...(el.name ? { name: el.name } : {}),
@@ -392,9 +391,6 @@ function buildCardJson(card: ChatCard): Record<string, unknown> {
         })),
       });
     }
-  }
-  if (actions.length > 0) {
-    bodyElements.push({ tag: "action", actions });
   }
 
   const cardJson: Record<string, unknown> = {
