@@ -1,4 +1,5 @@
 import type {
+  ChatCardAction,
   ChatMessage,
   ChatMessageOutbound,
   ChatPlatformAdapter,
@@ -18,6 +19,7 @@ export class ChatPlatformClient {
   readonly #checkers = new Map<string, PolicyChecker>();
   #onMessage: ((message: ChatMessage) => void | Promise<void>) | null = null;
   #onBlocked: ((message: ChatMessage, replyText: string) => void | Promise<void>) | null = null;
+  #onCardAction: ((action: ChatCardAction) => void | Promise<void>) | null = null;
 
   /**
    * 注册适配器实例并注入消息回调。
@@ -30,6 +32,7 @@ export class ChatPlatformClient {
 
     await adapter.connect({
       onMessage: (message) => this.#route(adapter.name, message),
+      onCardAction: (action) => this.#onCardAction?.(action),
     });
   }
 
@@ -66,6 +69,11 @@ export class ChatPlatformClient {
   /** 设置被策略拦截（blocked）时的处理器（可发送提示回复） */
   onBlocked(handler: (message: ChatMessage, replyText: string) => void | Promise<void>): void {
     this.#onBlocked = handler;
+  }
+
+  /** 设置卡片按钮/菜单点击处理器 */
+  onCardAction(handler: (action: ChatCardAction) => void | Promise<void>): void {
+    this.#onCardAction = handler;
   }
 
   /** 向指定平台会话发送消息 */

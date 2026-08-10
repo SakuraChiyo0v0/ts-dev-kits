@@ -1,4 +1,4 @@
-import type { ChatMessage, ChatMessageOutbound, ChatPlatformAdapter, ChatSendResult, ChatSource } from "./types.js";
+import type { ChatCardAction, ChatMessage, ChatMessageOutbound, ChatPlatformAdapter, ChatSendResult, ChatSource } from "./types.js";
 import type { ChatResponsePolicy } from "./policy.js";
 /**
  * 多平台客户端：持有若干平台适配器，统一入口收发消息。
@@ -21,6 +21,8 @@ export declare class ChatPlatformClient {
     onMessage(handler: (message: ChatMessage) => void | Promise<void>): void;
     /** 设置被策略拦截（blocked）时的处理器（可发送提示回复） */
     onBlocked(handler: (message: ChatMessage, replyText: string) => void | Promise<void>): void;
+    /** 设置卡片按钮/菜单点击处理器 */
+    onCardAction(handler: (action: ChatCardAction) => void | Promise<void>): void;
     /** 向指定平台会话发送消息 */
     send(source: ChatSource, message: ChatMessageOutbound): Promise<ChatSendResult>;
     /** 断开所有平台 */

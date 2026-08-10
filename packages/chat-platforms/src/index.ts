@@ -23,6 +23,12 @@ export {
 } from "./providers/feishu/index.js";
 export type { FeishuConfig } from "./providers/feishu/index.js";
 export type {
+  ChatCard,
+  ChatCardAction,
+  ChatCardButton,
+  ChatCardElement,
+  ChatCardSelect,
+  ChatCardSelectOption,
   ChatMessage,
   ChatMessageOutbound,
   ChatMessageType,

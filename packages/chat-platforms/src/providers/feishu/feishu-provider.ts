@@ -1,5 +1,7 @@
 import * as lark from "@larksuiteoapi/node-sdk";
 import type {
+  ChatCard,
+  ChatCardAction,
   ChatMessage,
   ChatMessageOutbound,
   ChatMessageType,
@@ -34,6 +36,7 @@ export function feishuProvider(config: FeishuConfig): ChatPlatformAdapter {
 
   let wsClient: lark.WSClient | null = null;
   let onMessage: ((message: ChatMessage) => void | Promise<void>) | null = null;
+  let onCardAction: ((action: ChatCardAction) => void | Promise<void>) | null = null;
   let connected = false;
 
   /** 从事件数据提取消息内容（文本/富文本 → 可读文本） */
@@ -104,9 +107,47 @@ export function feishuProvider(config: FeishuConfig): ChatPlatformAdapter {
     await onMessage?.(message);
   }
 
-  /** 发送消息：有 replyToMessageId 走回复，否则发新消息 */
+  /** card.action.trigger 事件（用户点击卡片按钮/菜单）→ 归一化 ChatCardAction */
+  async function handleCardAction(event: unknown): Promise<void> {
+    const raw = (typeof event === "object" && event !== null ? event : {}) as Record<string, unknown>;
+    // 事件结构：operator 操作者 + action.value + context.open_chat_id/open_message_id
+    const operator = (typeof raw.operator === "object" && raw.operator !== null ? raw.operator : {}) as Record<string, unknown>;
+    const action = (typeof raw.action === "object" && raw.action !== null ? raw.action : {}) as Record<string, unknown>;
+    const context = (typeof raw.context === "object" && raw.context !== null ? raw.context : {}) as Record<string, unknown>;
+    const openChatId = (context.open_chat_id ?? raw.open_chat_id) as string | undefined;
+    const openMessageId = (context.open_message_id ?? raw.open_message_id) as string | undefined;
+
+    const operatorId =
+      (operator.open_id as string | undefined) ??
+      (operator.user_id as string | undefined) ??
+      (operator.union_id as string | undefined) ??
+      "";
+
+    if (!operatorId || !openChatId) return;
+
+    const value = action.value ?? action.option ?? action.name ?? "";
+    await onCardAction?.({
+      platform: "feishu",
+      source: {
+        platform: "feishu",
+        chatId: openChatId,
+        type: "private", // 卡片回调不区分群/私聊，用会话 id 定位即可
+        userId: operatorId,
+      },
+      operatorId,
+      value: value as ChatCardAction["value"],
+      raw: event,
+    });
+  }
+
+  /** 发送消息：有 replyToMessageId 走回复，否则发新消息；带 card 时发交互卡片 */
   async function sendMessage(source: ChatSource, message: ChatMessageOutbound): Promise<ChatSendResult> {
     try {
+      // 交互卡片优先：cardkit.create 创建卡片实体 → im.message 发送 interactive
+      if (message.card) {
+        return sendCard(source, message);
+      }
+
       const content = JSON.stringify({ text: message.text });
       const data: {
         receive_id?: string;
@@ -139,6 +180,34 @@ export function feishuProvider(config: FeishuConfig): ChatPlatformAdapter {
     }
   }
 
+  /** 发送交互卡片：CardKit 创建卡片实体 → interactive 消息 */
+  async function sendCard(source: ChatSource, message: ChatMessageOutbound): Promise<ChatSendResult> {
+    const card = message.card!;
+    const cardJson = buildCardJson(card);
+    // 1. 创建卡片实体（schema 2.0）
+    const created = await client.cardkit.v1.card.create({
+      data: { type: "card_json", data: JSON.stringify(cardJson) },
+    });
+    const cardId = created.data?.card_id;
+    if (!cardId) {
+      throw new ChatPlatformError("DELIVERY", "飞书卡片创建失败：未返回 card_id");
+    }
+    // 2. 以 interactive 消息发送
+    const content = JSON.stringify({ type: "card", data: { card_id: cardId } });
+    if (message.replyToMessageId) {
+      const res = await client.im.message.reply({
+        path: { message_id: message.replyToMessageId },
+        data: { content, msg_type: "interactive" },
+      });
+      return { platform: "feishu", ok: true, messageId: res.data?.message_id ?? "" };
+    }
+    const res = await client.im.message.create({
+      params: { receive_id_type: "chat_id" },
+      data: { receive_id: source.chatId, msg_type: "interactive", content },
+    });
+    return { platform: "feishu", ok: true, messageId: res.data?.message_id ?? "" };
+  }
+
   return {
     name: "feishu",
     capabilities: {
@@ -146,8 +215,9 @@ export function feishuProvider(config: FeishuConfig): ChatPlatformAdapter {
       supportsImages: false,
       splitsLongMessages: false,
     },
-    async connect({ onMessage: handler }): Promise<void> {
+    async connect({ onMessage: handler, onCardAction: cardHandler }): Promise<void> {
       onMessage = handler;
+      onCardAction = cardHandler ?? null;
       if (config.transport === "webhook") {
         // webhook 模式：由外部 HTTP 服务把事件 POST 进来（见 handleWebhook）
         connected = true;
@@ -162,6 +232,8 @@ export function feishuProvider(config: FeishuConfig): ChatPlatformAdapter {
       await wsClient.start({
         eventDispatcher: new lark.EventDispatcher({}).register({
           "im.message.receive_v1": handleEvent,
+          // 卡片按钮/菜单点击回调（schema 2.0 卡片）
+          "card.action.trigger": handleCardAction,
         }),
       });
       connected = true;
@@ -188,6 +260,11 @@ export function feishuProvider(config: FeishuConfig): ChatPlatformAdapter {
       const event = data.event as FeishuMessageEvent | undefined;
       if (eventType === "im.message.receive_v1" && event) {
         await handleEvent(event);
+        return { ok: true };
+      }
+      // 卡片按钮/菜单点击（webhook 模式）
+      if (eventType === "card.action.trigger" && data.event) {
+        await handleCardAction(data.event);
         return { ok: true };
       }
       return { ok: true };
@@ -225,4 +302,55 @@ function toFeishuError(error: unknown): ChatPlatformError {
     (error instanceof Error ? error.message : "") ||
     "飞书 API 调用失败";
   return new ChatPlatformError(feishuErrorCode(code), rawMsg, { cause: error });
+}
+
+/**
+ * 把平台无关的 ChatCard 转成飞书 schema 2.0 卡片 JSON。
+ * 按钮带 value（回调原样带回），select 映射为下拉菜单。
+ */
+function buildCardJson(card: ChatCard): Record<string, unknown> {
+  const bodyElements: unknown[] = [];
+  if (card.markdown) {
+    bodyElements.push({ tag: "markdown", content: card.markdown });
+  }
+  // 交互元素：按钮/菜单合并进一个 action 容器
+  const actions: unknown[] = [];
+  for (const el of card.elements) {
+    if (el.tag === "button") {
+      actions.push({
+        tag: "button",
+        text: { tag: "plain_text", content: el.text },
+        ...(el.type ? { type: el.type } : {}),
+        ...(el.url ? { url: el.url } : {}),
+        ...(el.value ? { value: el.value } : {}),
+      });
+    } else if (el.tag === "select") {
+      actions.push({
+        tag: "select_static",
+        ...(el.placeholder ? { placeholder: { tag: "plain_text", content: el.placeholder } } : {}),
+        ...(el.name ? { name: el.name } : {}),
+        options: el.options.map((o) => ({
+          text: { tag: "plain_text", content: o.text },
+          value: o.value,
+        })),
+      });
+    }
+  }
+  if (actions.length > 0) {
+    bodyElements.push({ tag: "action", actions });
+  }
+
+  const cardJson: Record<string, unknown> = {
+    schema: "2.0",
+    body: { elements: bodyElements },
+  };
+  if (card.header) {
+    cardJson.header = {
+      title: { tag: "plain_text", content: card.header },
+      ...(card.headerColor
+        ? { template: card.headerColor }
+        : { template: "blue" }),
+    };
+  }
+  return cardJson;
 }

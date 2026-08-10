@@ -55,6 +55,71 @@ export interface ChatSendResult {
   ok: boolean;
 }
 
+/** 卡片按钮（点击触发 card.action.trigger 回调） */
+export interface ChatCardButton {
+  tag: "button";
+  text: string;
+  /** 按钮样式 */
+  type?: "default" | "primary" | "danger";
+  /** 回调时原样带回的 value */
+  value?: Record<string, unknown>;
+  /** 跳转链接（有则点击跳转而非回调） */
+  url?: string;
+}
+
+/** 卡片下拉菜单项 */
+export interface ChatCardSelectOption {
+  text: string;
+  value: string;
+}
+
+/** 卡片下拉菜单 */
+export interface ChatCardSelect {
+  tag: "select";
+  placeholder?: string;
+  options: ChatCardSelectOption[];
+  /** 回调时带回的 name（区分是哪个菜单） */
+  name?: string;
+}
+
+/** 交互卡片元素（按钮/菜单） */
+export type ChatCardElement = ChatCardButton | ChatCardSelect;
+
+/** 交互卡片（平台无关的抽象，飞书/微信等适配器各自转换） */
+export interface ChatCard {
+  /** 卡片标题 */
+  header?: string;
+  /** 卡片主题色 */
+  headerColor?: string;
+  /** 卡片正文（markdown） */
+  markdown?: string;
+  /** 交互元素（按钮/菜单） */
+  elements: ChatCardElement[];
+}
+
+/** 卡片按钮/菜单点击回调（card.action.trigger 归一化） */
+export interface ChatCardAction {
+  /** 平台 id */
+  platform: string;
+  /** 会话来源（操作者所在会话） */
+  source: ChatSource;
+  /** 操作者 userId */
+  operatorId: string;
+  /** 按钮 value（按钮 value 或 select name+option） */
+  value: Record<string, unknown> | string;
+  /** 原始平台事件 */
+  raw?: unknown;
+}
+
+/** 出站消息（发送回复/主动推送的统一形态） */
+export interface ChatMessageOutbound {
+  text: string;
+  /** 被回复的消息 id（可选） */
+  replyToMessageId?: string;
+  /** 交互卡片（可选，发送卡片消息而非纯文本） */
+  card?: ChatCard;
+}
+
 /** 平台适配器统一接口。每个平台一个实现，注册到 registry。 */
 export interface ChatPlatformAdapter {
   readonly name: string;
@@ -63,12 +128,16 @@ export interface ChatPlatformAdapter {
   /**
    * 建立连接并开始接收消息。
    * 收到消息后调用 onMessage 回调（由上层注入）。
+   * 卡片按钮/菜单点击时调用 onCardAction 回调（由上层注入）。
    * 返回的 Promise 在连接被主动断开时 resolve。
    */
-  connect(options: { onMessage: (message: ChatMessage) => void | Promise<void> }): Promise<void>;
+  connect(options: {
+    onMessage: (message: ChatMessage) => void | Promise<void>;
+    onCardAction?: (action: ChatCardAction) => void | Promise<void>;
+  }): Promise<void>;
   /** 断开连接，停止接收消息 */
   disconnect(): Promise<void>;
-  /** 发送一条消息到指定会话 */
+  /** 发送一条消息到指定会话（可带交互卡片） */
   send(source: ChatSource, message: ChatMessageOutbound): Promise<ChatSendResult>;
   /**
    * 可选：webhook 模式的入站入口。

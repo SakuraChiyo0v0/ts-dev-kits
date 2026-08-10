@@ -14,6 +14,58 @@
 - **`ChatPlatformClient`** —— 多平台客户端：统一管理所有已启用平台 + 统一入站路由。
 - **`ChatResponsePolicy`** —— 消息响应策略（平台无关）：白名单/黑名单/唤醒词/关键词屏蔽/限流/表情回应，参考 AstrBot `platform_settings` 设计。
 
+## 交互卡片（按钮 / 菜单）
+
+`ChatCard` 是平台无关的交互卡片抽象：正文 markdown + 按钮/下拉菜单。发送时 `ChatMessageOutbound.card` 携带，飞书适配器自动用 CardKit（schema 2.0）创建并发送。
+
+```ts
+import { ChatPlatformClient, feishuProvider } from "@amechan/chat-platforms";
+
+const client = new ChatPlatformClient();
+// 卡片按钮点击回调（card.action.trigger 归一化）
+client.onCardAction(async (action) => {
+  // action.value 是按钮携带的 value；action.operatorId 是点击者
+  await client.send(action.source, { text: `你点了：${JSON.stringify(action.value)}` });
+});
+
+await client.add(feishuProvider({ appId, appSecret }));
+
+// 发送带按钮的卡片
+await client.send(
+  { platform: "feishu", chatId: "oc_xxx", type: "private" },
+  {
+    text: "", // 文本可留空，卡片为主
+    card: {
+      header: "任务选择",
+      headerColor: "blue",
+      markdown: "请选择一个操作：",
+      elements: [
+        { tag: "button", text: "开始", type: "primary", value: { action: "start" } },
+        { tag: "button", text: "取消", type: "danger", value: { action: "cancel" } },
+        {
+          tag: "select",
+          placeholder: "选择模式",
+          name: "mode",
+          options: [
+            { text: "快速", value: "fast" },
+            { text: "详细", value: "detail" },
+          ],
+        },
+      ],
+    },
+  },
+);
+```
+
+**卡片元素：**
+
+| 元素 | tag | 说明 |
+| --- | --- | --- |
+| 按钮 | `button` | `text` / `type`(default/primary/danger) / `value`(回调带回) / `url`(跳转) |
+| 下拉菜单 | `select` | `placeholder` / `name` / `options[{text, value}]` |
+
+**回调 `ChatCardAction`：** `platform` / `source`(会话) / `operatorId`(点击者) / `value`(按钮 value 或 select 选项)。
+
 ## 响应策略（白名单 / 表情 / 唤醒）
 
 `ChatResponsePolicy` 控制"哪些消息值得响应"，在 `ChatPlatformClient.add(adapter, policy)` 时注入，收到消息先过策略再回调：
