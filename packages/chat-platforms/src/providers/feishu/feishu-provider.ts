@@ -268,6 +268,20 @@ export function feishuProvider(config: FeishuConfig): ChatPlatformAdapter {
     return { platform: "feishu", ok: true, messageId: res.data?.message_id ?? "" };
   }
 
+  /**
+   * 更新已发送的卡片消息（流式回复用）：im.message.patch 替换整个卡片内容。
+   * 要求原卡片发送时带 config.update_multi（sendCard 已加），否则飞书拒绝 patch。
+   */
+  async function updateCardImpl(source: ChatSource, messageId: string, card: ChatCard): Promise<void> {
+    const cardJson = buildCardJson(card);
+    const cardPayload = { ...cardJson, config: { ...(cardJson.config ?? {}), update_multi: true } };
+    // patch 只传 content（卡片 JSON），无需 msg_type（保持原 interactive 类型）
+    await client.im.message.patch({
+      path: { message_id: messageId },
+      data: { content: JSON.stringify(cardPayload) },
+    });
+  }
+
   return {
     name: "feishu",
     capabilities: {
@@ -344,6 +358,13 @@ export function feishuProvider(config: FeishuConfig): ChatPlatformAdapter {
         });
       } catch (error) {
         // 表情回应失败不阻断主流程
+        throw toFeishuError(error);
+      }
+    },
+    async updateCard(source: ChatSource, messageId: string, card: ChatCard): Promise<void> {
+      try {
+        await updateCardImpl(source, messageId, card);
+      } catch (error) {
         throw toFeishuError(error);
       }
     },

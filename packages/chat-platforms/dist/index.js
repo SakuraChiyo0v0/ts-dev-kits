@@ -192,6 +192,14 @@ class ChatPlatformClient {
         }
         return adapter.send(source, message);
     }
+    /** 更新已发送的卡片消息（流式回复用）；平台不支持时抛错 */
+    async updateCard(source, messageId, card) {
+        const adapter = this.#adapters.get(source.platform);
+        if (!adapter?.updateCard) {
+            throw new Error(`platform "${source.platform}" does not support card update`);
+        }
+        return adapter.updateCard(source, messageId, card);
+    }
     /** 断开所有平台 */
     async disconnectAll() {
         const adapters = [...this.#adapters.values()];
@@ -639,6 +647,19 @@ function feishuProvider(config) {
         });
         return { platform: "feishu", ok: true, messageId: res.data?.message_id ?? "" };
     }
+    /**
+     * 更新已发送的卡片消息（流式回复用）：im.message.patch 替换整个卡片内容。
+     * 要求原卡片发送时带 config.update_multi（sendCard 已加），否则飞书拒绝 patch。
+     */
+    async function updateCardImpl(source, messageId, card) {
+        const cardJson = buildCardJson(card);
+        const cardPayload = { ...cardJson, config: { ...(cardJson.config ?? {}), update_multi: true } };
+        // patch 只传 content（卡片 JSON），无需 msg_type（保持原 interactive 类型）
+        await client.im.message.patch({
+            path: { message_id: messageId },
+            data: { content: JSON.stringify(cardPayload) },
+        });
+    }
     return {
         name: "feishu",
         capabilities: {
@@ -712,6 +733,14 @@ function feishuProvider(config) {
             }
             catch (error) {
                 // 表情回应失败不阻断主流程
+                throw toFeishuError(error);
+            }
+        },
+        async updateCard(source, messageId, card) {
+            try {
+                await updateCardImpl(source, messageId, card);
+            }
+            catch (error) {
                 throw toFeishuError(error);
             }
         },

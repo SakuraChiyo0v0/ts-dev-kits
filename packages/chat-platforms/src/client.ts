@@ -1,4 +1,5 @@
 import type {
+  ChatCard,
   ChatCardAction,
   ChatMessage,
   ChatMessageOutbound,
@@ -83,6 +84,15 @@ export class ChatPlatformClient {
       throw new Error(`no adapter for platform "${source.platform}"`);
     }
     return adapter.send(source, message);
+  }
+
+  /** 更新已发送的卡片消息（流式回复用）；平台不支持时抛错 */
+  async updateCard(source: ChatSource, messageId: string, card: ChatCard): Promise<void> {
+    const adapter = this.#adapters.get(source.platform);
+    if (!adapter?.updateCard) {
+      throw new Error(`platform "${source.platform}" does not support card update`);
+    }
+    return adapter.updateCard(source, messageId, card);
   }
 
   /** 断开所有平台 */

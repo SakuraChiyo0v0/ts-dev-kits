@@ -1,4 +1,4 @@
-import type { ChatCardAction, ChatMessage, ChatMessageOutbound, ChatPlatformAdapter, ChatSendResult, ChatSource } from "./types.js";
+import type { ChatCard, ChatCardAction, ChatMessage, ChatMessageOutbound, ChatPlatformAdapter, ChatSendResult, ChatSource } from "./types.js";
 import type { ChatResponsePolicy } from "./policy.js";
 /**
  * 多平台客户端：持有若干平台适配器，统一入口收发消息。
@@ -25,6 +25,8 @@ export declare class ChatPlatformClient {
     onCardAction(handler: (action: ChatCardAction) => void | Promise<void>): void;
     /** 向指定平台会话发送消息 */
     send(source: ChatSource, message: ChatMessageOutbound): Promise<ChatSendResult>;
+    /** 更新已发送的卡片消息（流式回复用）；平台不支持时抛错 */
+    updateCard(source: ChatSource, messageId: string, card: ChatCard): Promise<void>;
     /** 断开所有平台 */
     disconnectAll(): Promise<void>;
 }

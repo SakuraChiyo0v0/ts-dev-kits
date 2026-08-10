@@ -141,6 +141,12 @@ export interface ChatPlatformAdapter {
      * 不支持表情的平台可不实现。
      */
     react?(message: ChatMessage, emoji: string): Promise<void>;
+    /**
+     * 可选：更新已发送的卡片消息内容（流式回复用）。
+     * 通过 im.message.patch 更新卡片；卡片发送时需带 update_multi 标记才可 patch。
+     * 不支持的平台可不实现。
+     */
+    updateCard?(source: ChatSource, messageId: string, card: ChatCard): Promise<void>;
 }
 /** 平台能力特性（参考 hermes BasePlatformAdapter 的能力声明模式） */
 export interface ChatPlatformCapabilities {
