@@ -564,7 +564,10 @@ function feishuProvider(config) {
         const chatType = (typeof value === "object" && value !== null && value.chat_type === "group")
             ? "group"
             : "private";
-        await onCardAction?.({
+        // fire-and-forget：不等待 onCardAction 完成。
+        // 飞书卡片回调限时 3 秒，而上层处理（LLM 对话）可能数秒，
+        // 等待会导致"目标服务器回调超时未响应"。立即返回，后台处理。
+        Promise.resolve(onCardAction?.({
             platform: "feishu",
             source: {
                 platform: "feishu",
@@ -575,6 +578,8 @@ function feishuProvider(config) {
             operatorId,
             value: value,
             raw: event,
+        })).catch((err) => {
+            console.error("[chat-platforms] 卡片回调处理失败:", err instanceof Error ? err.message : err);
         });
     }
     /** 发送消息：有 replyToMessageId 走回复，否则发新消息；带 card 时发交互卡片 */

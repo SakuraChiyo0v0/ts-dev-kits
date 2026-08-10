@@ -183,7 +183,10 @@ export function feishuProvider(config: FeishuConfig): ChatPlatformAdapter {
       (typeof value === "object" && value !== null && (value as Record<string, unknown>).chat_type === "group")
         ? ("group" as const)
         : ("private" as const);
-    await onCardAction?.({
+    // fire-and-forget：不等待 onCardAction 完成。
+    // 飞书卡片回调限时 3 秒，而上层处理（LLM 对话）可能数秒，
+    // 等待会导致"目标服务器回调超时未响应"。立即返回，后台处理。
+    Promise.resolve(onCardAction?.({
       platform: "feishu",
       source: {
         platform: "feishu",
@@ -194,6 +197,8 @@ export function feishuProvider(config: FeishuConfig): ChatPlatformAdapter {
       operatorId,
       value: value as ChatCardAction["value"],
       raw: event,
+    })).catch((err) => {
+      console.error("[chat-platforms] 卡片回调处理失败:", err instanceof Error ? err.message : err);
     });
   }
 
