@@ -16,6 +16,12 @@ export {
 export { PolicyChecker, createPolicyChecker } from "./policy-checker.js";
 export { feishuProvider } from "./providers/feishu/index.js";
 export {
+  actionCard,
+  cardCommandValue,
+  parseCardCommandValue,
+  type CardCommandValue,
+} from "./card-command.js";
+export {
   FEISHU_EMOJI_KEYS,
   registerFeishuPlatform,
   validateFeishuConfig,

@@ -152,12 +152,18 @@ export function feishuProvider(config: FeishuConfig): ChatPlatformAdapter {
     if (!operatorId || !openChatId) return;
 
     const value = action.value ?? action.option ?? action.name ?? "";
+    // 从按钮 value 解码会话类型（卡片即命令协议：value 里编码 chat_type）
+    // 无 chat_type 时按私聊处理（旧行为兜底）
+    const chatType =
+      (typeof value === "object" && value !== null && (value as Record<string, unknown>).chat_type === "group")
+        ? ("group" as const)
+        : ("private" as const);
     await onCardAction?.({
       platform: "feishu",
       source: {
         platform: "feishu",
         chatId: openChatId,
-        type: "private", // 卡片回调不区分群/私聊，用会话 id 定位即可
+        type: chatType,
         userId: operatorId,
       },
       operatorId,

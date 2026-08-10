@@ -530,12 +530,17 @@ function feishuProvider(config) {
         if (!operatorId || !openChatId)
             return;
         const value = action.value ?? action.option ?? action.name ?? "";
+        // 从按钮 value 解码会话类型（卡片即命令协议：value 里编码 chat_type）
+        // 无 chat_type 时按私聊处理（旧行为兜底）
+        const chatType = (typeof value === "object" && value !== null && value.chat_type === "group")
+            ? "group"
+            : "private";
         await onCardAction?.({
             platform: "feishu",
             source: {
                 platform: "feishu",
                 chatId: openChatId,
-                type: "private", // 卡片回调不区分群/私聊，用会话 id 定位即可
+                type: chatType,
                 userId: operatorId,
             },
             operatorId,
@@ -752,4 +757,81 @@ function registerFeishuPlatform() {
     });
 }
 
-export { ChatPlatformClient, ChatPlatformError, ChatPlatformRegistry, FEISHU_EMOJI_KEYS, PolicyChecker, createPolicyChecker, defaultPolicy, defaultRegistry, feishuProvider, registerFeishuPlatform, registerPlatform, toChatPlatformError, validateFeishuConfig, validateFeishuEmoji, validatePolicy };
+/**
+ * 卡片命令协议 —— 借鉴 Reasonix internal/bot/render.go 的"卡片即命令"设计。
+ *
+ * 核心思想：卡片按钮的 value 编码"要执行的命令 + 路由上下文"（command/chat_type/user_id）。
+ * 用户点击按钮 → card.action.trigger 回调 → SDK 解码出 command，重新作为入站消息处理。
+ * 这样按钮点击复用整套策略/会话/命令链路，而不是为卡片单独写一套逻辑。
+ */
+/**
+ * 构造卡片按钮 value（编码命令 + 路由上下文）。
+ * 用法：按钮点击后 value 会原样回到 onCardAction，用 parseCardCommandValue 解码。
+ */
+function cardCommandValue(command, opts = {}) {
+    const value = { command };
+    if (opts.chatType)
+        value.chat_type = opts.chatType;
+    if (opts.userId && opts.userId.trim() !== "")
+        value.user_id = opts.userId.trim();
+    return value;
+}
+/**
+ * 解码卡片回调的 value。
+ * 兼容三种形态：
+ *  1. 本协议编码的对象 { command, chat_type, user_id }
+ *  2. 纯字符串（旧式：直接当文本）
+ *  3. 其他对象（无 command 字段 → 返回 null，调用方按普通文本处理）
+ */
+function parseCardCommandValue(value) {
+    if (value == null)
+        return null;
+    if (typeof value === "string") {
+        return value.trim() !== "" ? { command: value.trim() } : null;
+    }
+    const command = typeof value.command === "string" ? value.command.trim() : "";
+    if (command === "")
+        return null;
+    const out = { command };
+    const chatType = value.chat_type;
+    if (chatType === "group" || chatType === "private")
+        out.chat_type = chatType;
+    if (typeof value.user_id === "string" && value.user_id.trim() !== "") {
+        out.user_id = value.user_id.trim();
+    }
+    return out;
+}
+/**
+ * 结构化卡片构造 —— 参考 Reasonix approvalCard/askCard。
+ * 一个 markdown 正文 + 一行按钮的简单交互卡片。
+ */
+function actionCard(opts) {
+    const elements = [];
+    if (opts.buttons && opts.buttons.length > 0) {
+        const buttons = opts.buttons.map((b) => {
+            const base = {
+                tag: "button",
+                text: b.text,
+                ...(b.type ? { type: b.type } : {}),
+            };
+            if ("command" in b) {
+                base.value = cardCommandValue(b.command, {
+                    ...(opts.chatType ? { chatType: opts.chatType } : {}),
+                    ...(opts.userId ? { userId: opts.userId } : {}),
+                });
+            }
+            else if (b.value) {
+                base.value = b.value;
+            }
+            return base;
+        });
+        elements.push(...buttons);
+    }
+    return {
+        ...(opts.header ? { header: opts.header } : {}),
+        ...(opts.markdown ? { markdown: opts.markdown } : {}),
+        elements,
+    };
+}
+
+export { ChatPlatformClient, ChatPlatformError, ChatPlatformRegistry, FEISHU_EMOJI_KEYS, PolicyChecker, actionCard, cardCommandValue, createPolicyChecker, defaultPolicy, defaultRegistry, feishuProvider, parseCardCommandValue, registerFeishuPlatform, registerPlatform, toChatPlatformError, validateFeishuConfig, validateFeishuEmoji, validatePolicy };
