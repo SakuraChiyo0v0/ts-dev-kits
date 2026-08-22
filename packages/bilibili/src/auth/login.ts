@@ -168,8 +168,8 @@ const SCANNED_CODES = new Set([86038, 86102, 86103, -5]);
 /** B 站新版扫码状态码:二维码已失效(重新生成)。 */
 const EXPIRED_CODES = new Set([86090, -4]);
 
-/** 本地登录窗口的页面 HTML(内嵌二维码 SVG + 轮询脚本)。 */
-function buildPage(qrSvg: string, token: string): string {
+/** 本地登录窗口的页面 HTML(内嵌二维码 PNG + 轮询脚本)。 */
+function buildPage(qrDataUrl: string, token: string): string {
   return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -181,13 +181,14 @@ function buildPage(qrSvg: string, token: string): string {
          background: #f5f6f7; color: #222; }
   h1 { font-size: 20px; margin-bottom: 8px; }
   .qr { background: #fff; padding: 16px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+  .qr img { display: block; width: 220px; height: 220px; }
   #status { margin-top: 16px; font-size: 15px; color: #666; min-height: 22px; }
   .ok { color: #00aeec; }
 </style>
 </head>
 <body>
   <h1>哔哩哔哩扫码登录</h1>
-  <div class="qr">${qrSvg}</div>
+  <div class="qr"><img src="${qrDataUrl}" alt="登录二维码"></div>
   <div id="status">请使用哔哩哔哩 App 扫码</div>
   <script>
     const token = ${JSON.stringify(token)};
@@ -224,9 +225,9 @@ export async function qrcodeLogin(options: LoginOptions = {}): Promise<LoginResu
 
   // 一次性 token,防止本机其它进程误触发本地接口。
   const token = randomBytes(16).toString("hex");
-  const state: { status: LoginStatus; qrSvg: string } = {
+  const state: { status: LoginStatus; qrDataUrl: string } = {
     status: { state: "waiting", message: "请使用哔哩哔哩 App 扫码" },
-    qrSvg: "",
+    qrDataUrl: "",
   };
 
   const server: Server = createServer((request, response) => {
@@ -242,7 +243,7 @@ export async function qrcodeLogin(options: LoginOptions = {}): Promise<LoginResu
       return;
     }
     response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
-    response.end(buildPage(state.qrSvg, token));
+    response.end(buildPage(state.qrDataUrl, token));
   });
 
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -258,7 +259,8 @@ export async function qrcodeLogin(options: LoginOptions = {}): Promise<LoginResu
   try {
     for (let attempt = 0; attempt <= maxRegenerates; attempt += 1) {
       const { qrcode_key: qrcodeKey, url: scanUrl } = await generateQrcode(fetchImpl);
-      state.qrSvg = await QRCode.toString(scanUrl, { type: "svg", margin: 1 });
+      // 用 PNG data URL(SVG 带 XML 声明,内嵌 HTML 可能不渲染)。
+      state.qrDataUrl = await QRCode.toDataURL(scanUrl, { margin: 1, width: 280 });
       emit({ state: "waiting", message: "请使用哔哩哔哩 App 扫码" });
 
       if (options.autoOpenBrowser !== false) {
