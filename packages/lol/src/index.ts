@@ -41,6 +41,8 @@ export type { RankedTier, RankShown } from "./endpoints/profile.js";
 export { ChatApi } from "./endpoints/chat.js";
 export type { Availability, ChatMe, Conversation } from "./endpoints/chat.js";
 export { LiveClientApi, createLiveClient } from "./live-client.js";
+export { ChampionNamesService, DEFAULT_CHAMPION_SOURCE_URL, BUILTIN_CHAMPION_NAMES } from "./champion-names.js";
+export type { ChampionNamesOptions, ChampionNameMap } from "./champion-names.js";
 export type {
   LiveClientOptions,
   ActivePlayer,

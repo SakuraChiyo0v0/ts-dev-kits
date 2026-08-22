@@ -86,6 +86,7 @@ await client.close();
 | `client.events` | `onGameflowPhase(cb)` / `onChampSelect(cb)` / `onCurrentSummoner(cb)` / `onSgpToken(cb)` / `subscribe(eventName, cb)` | WebSocket 事件订阅 |
 | `client.liveClient` | `getAllGameData()` / `getPlayerList()` / `getActivePlayer()` / `getActivePlayerName()` / `getGameStats()` / `getEventData()` / `getScores()` / `getItems()` / `getAbilities()` / `getRunes()` / `getPlayerXxx(name)` | 游戏内 Live Client Data（端口 2999，只读；⚠️ **国服客户端实测不可用**：端口由游戏进程监听但 `/liveclientdata` 无响应，疑似国服/反作弊限制；海外客户端可用性未验证，该 API 近期仍有社区项目在使用） |
 | `client.sgp` | `getMatches()` / `getRankedStats()` / `getSummonerByPuuid()` / `getSpectatorInfo()` | 腾讯国服 SGP 通道（非国服为 `undefined`） |
+| `client.championNames` | `getName(id)` / `getMap()` / `refresh()` | 英雄名映射（id → 中文名）：内置全量表离线可用，运行时自动从 CommunityDragon latest 通道更新，出新英雄自动生效；不依赖 LCU 连接 |
 
 **parsers 解析层**（纯函数，无 IO，把 raw JSON 转友好结构）：
 
@@ -100,6 +101,20 @@ console.log(`${formatDuration(results[0].gameDuration)}  ${results[0].kda}`);
 ```
 
 `getTeammates(match, puuid)` 可提取对局队友/对手；`parseRankSummary()` 解析 LCU 段位格式。全部为纯函数，可直接在 Node 或浏览器端使用。
+
+**英雄名映射**（内置表 + 自动更新，无需连接客户端）：
+
+```ts
+import { ChampionNamesService, BUILTIN_CHAMPION_NAMES } from "@sakurachiyo0v0/lol";
+
+const names = new ChampionNamesService();           // 默认源 CommunityDragon latest zh_cn
+const name = await names.getName(876);              // "含羞蓓蕾"（缓存 24h，过期自动刷新）
+const map = await names.getMap();                   // 全量 {id → 中文名}
+console.log(BUILTIN_CHAMPION_NAMES[103]);           // "九尾妖狐"（内置表，离线可用）
+await names.close();
+```
+
+拉取失败时静默回退内置表（或上次成功缓存），不会抛错；可用 `new ChampionNamesService({ sourceUrl, cacheTtlMs, timeoutMs })` 自定义数据源（测试可注入本地地址）。
 
 端点返回的 raw JSON 原样透传，TypeScript 类型只做描述；需要高层解析（KDA、对局摘要）的场景由调用方自行处理。
 

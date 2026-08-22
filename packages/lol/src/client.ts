@@ -17,6 +17,7 @@ import { LobbyApi } from "./endpoints/lobby.js";
 import { ProfileApi } from "./endpoints/profile.js";
 import { ChatApi } from "./endpoints/chat.js";
 import { LiveClientApi } from "./live-client.js";
+import { ChampionNamesService } from "./champion-names.js";
 import type { LcuConnectionInfo, LolClientOptions } from "./types.js";
 
 export interface LolClient {
@@ -35,6 +36,8 @@ export interface LolClient {
   readonly chat: ChatApi;
   /** 游戏内 Live Client Data（端口 2999，游戏进行中时可用） */
   readonly liveClient: LiveClientApi;
+  /** 英雄名映射（内置表 + 运行时自动更新，不依赖 LCU 连接） */
+  readonly championNames: ChampionNamesService;
   /** 腾讯国服 SGP 通道；非国服为 undefined */
   readonly sgp?: SgpApi;
   /** 关闭传输层（HTTP 会话 + WebSocket + SGP 会话） */
@@ -104,10 +107,12 @@ export async function createLolClient(options: LolClientOptions = {}): Promise<L
     profile: new ProfileApi(transport),
     chat: new ChatApi(transport),
     liveClient: new LiveClientApi(),
+    championNames: new ChampionNamesService(),
     ...(sgp ? { sgp } : {}),
     async close() {
       await transport.close();
       await client.liveClient.close();
+      await client.championNames.close();
       if (sgp) {
         await sgp.close();
       }
