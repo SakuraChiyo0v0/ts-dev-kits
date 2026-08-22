@@ -368,8 +368,10 @@ describe("runCommand", () => {
     trackCleanup(ctx.directory);
     const output = join(ctx.directory, "from-command.mp4");
 
+    // tokenizeCommand 把 `\` 当转义符,Windows 路径需转义反斜杠。
+    const escapeBackslashes = (value: string): string => value.replace(/\\/gu, "\\\\");
     const result = await ffmpeg.runCommand(
-      `ffmpeg -i "${ctx.video}" -c:v libx264 -c:a aac -y "${output}"`,
+      `ffmpeg -i "${escapeBackslashes(ctx.video)}" -c:v libx264 -c:a aac -y "${escapeBackslashes(output)}"`,
     );
 
     expect(result.exitCode).toBe(0);
@@ -380,8 +382,9 @@ describe("runCommand", () => {
     const ctx = await makeFixtures();
     trackCleanup(ctx.directory);
 
+    const escapeBackslashes = (value: string): string => value.replace(/\\/gu, "\\\\");
     const result = await ffmpeg.runCommand(
-      `ffprobe -v error -show_entries format=duration -of csv=p=0 "${ctx.video}"`,
+      `ffprobe -v error -show_entries format=duration -of csv=p=0 "${escapeBackslashes(ctx.video)}"`,
     );
 
     expect(result.exitCode).toBe(0);

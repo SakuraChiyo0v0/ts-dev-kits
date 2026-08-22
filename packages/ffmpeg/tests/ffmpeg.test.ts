@@ -53,9 +53,11 @@ describe("createFfmpegClient", () => {
   });
 
   it("accepts explicit binary paths", () => {
-    const c = createFfmpegClient({ ffmpegPath: "/usr/bin/ffmpeg", ffprobePath: "/usr/bin/ffprobe" });
-    expect(c.ffmpegPath).toBe("/usr/bin/ffmpeg");
-    expect(c.ffprobePath).toBe("/usr/bin/ffprobe");
+    // 用本机必然存在的可执行文件(Windows 上 /usr/bin/ffmpeg 不存在)。
+    const binary = process.execPath;
+    const c = createFfmpegClient({ ffmpegPath: binary, ffprobePath: binary });
+    expect(c.ffmpegPath).toBe(binary);
+    expect(c.ffprobePath).toBe(binary);
   });
 
   it("throws NOT_FOUND when an explicit binary path is missing", () => {
