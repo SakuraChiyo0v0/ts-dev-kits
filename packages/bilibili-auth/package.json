@@ -1,8 +1,11 @@
 {
-  "name": "@amechan/bilibili-auth",
+  "name": "@sakurachiyo0v0/bilibili-auth",
   "version": "0.1.0",
   "description": "Bilibili QR-code login: browser window, cookie collection and refresh-token renewal",
   "license": "UNLICENSED",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
+  },
   "type": "module",
   "sideEffects": false,
   "engines": {

@@ -1,5 +1,5 @@
-import { createFfmpegClient } from "@amechan/ffmpeg";
-import { AuthStore, refreshCookies, type AuthData } from "@amechan/bilibili-auth";
+import { createFfmpegClient } from "@sakurachiyo0v0/ffmpeg";
+import { AuthStore, refreshCookies, type AuthData } from "@sakurachiyo0v0/bilibili-auth";
 import { BilibiliError } from "./errors.js";
 import { ApiSession } from "./network.js";
 import { downloadStream } from "./download.js";

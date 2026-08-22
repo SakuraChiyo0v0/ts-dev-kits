@@ -1,6 +1,6 @@
-# @amechan/bilibili
+# @sakurachiyo0v0/bilibili
 
-B 站视频下载 SDK。解析视频信息、获取播放流、可配置下载器下载,并用 `@amechan/ffmpeg` 合并音视频。支持投稿视频、番剧、课程、B 站音乐,以及空间/收藏夹/合集/每周必看/稍后再看/历史记录等聚合类型。
+B 站视频下载 SDK。解析视频信息、获取播放流、可配置下载器下载,并用 `@sakurachiyo0v0/ffmpeg` 合并音视频。支持投稿视频、番剧、课程、B 站音乐,以及空间/收藏夹/合集/每周必看/稍后再看/历史记录等聚合类型。
 
 > 核心逻辑参考开源项目 [Bili23-Downloader](https://github.com/ScottSloan/Bili23-Downloader) 的下载引擎。
 
@@ -14,15 +14,15 @@ B 站视频下载 SDK。解析视频信息、获取播放流、可配置下载�
 同一 pnpm workspace 内:
 
 ```powershell
-pnpm add @amechan/bilibili@workspace:*
+pnpm add @sakurachiyo0v0/bilibili@workspace:*
 ```
 
 从私有 GitHub monorepo 使用(需先在消费项目 `pnpm-workspace.yaml` 中授权构建脚本):
 
 ```yaml
 allowBuilds:
-  '@amechan/bilibili@git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git': true
-  '@amechan/ffmpeg@git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git': true
+  '@sakurachiyo0v0/bilibili@git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git': true
+  '@sakurachiyo0v0/ffmpeg@git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git': true
 ```
 
 ```powershell
@@ -32,7 +32,7 @@ pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/b
 ## 快速开始
 
 ```ts
-import { createBilibiliClient } from "@amechan/bilibili";
+import { createBilibiliClient } from "@sakurachiyo0v0/bilibili";
 
 const bili = createBilibiliClient({
   download: { concurrency: 4 },   // 4 线程并发下载
@@ -69,7 +69,7 @@ amechan-bilibili logout    # 清除登录态
 
 SDK 侧,`createBilibiliClient` 未传 `cookie` 时自动从登录态存储加载(显式 `cookie` 优先),可用 `authPath` 指定存储文件。
 
-> 登录实现(二维码/状态机/存储/续期)在独立包 [`@amechan/bilibili-auth`](../../bilibili-auth/README.md):`qrcodeLogin()` / `AuthStore` / `refreshCookies()` 等可直接调用。
+> 登录实现(二维码/状态机/存储/续期)在独立包 [`@sakurachiyo0v0/bilibili-auth`](../../bilibili-auth/README.md):`qrcodeLogin()` / `AuthStore` / `refreshCookies()` 等可直接调用。
 
 ## 下载器配置
 
@@ -85,7 +85,7 @@ createBilibiliClient({
     filterPcdn: true,        // 过滤 pcdn/mcdn 劣质链接
     timeoutSeconds: 10,      // 请求超时
   },
-  merge: true,               // 用 @amechan/ffmpeg 合并音视频
+  merge: true,               // 用 @sakurachiyo0v0/ffmpeg 合并音视频
 });
 ```
 
@@ -202,7 +202,7 @@ createBilibiliClient()
 ├─ Parser 接口 → VideoParser(第一版)/ 其他类型(第二版)
 ├─ StreamResolver → DASH/MP4 取流 + 清晰度/编码选择
 ├─ Downloader → CDN 探测 + 并发分块下载 + 重试/断点续传/限速
-└─ Merger → 调 @amechan/ffmpeg 合并 mp4
+└─ Merger → 调 @sakurachiyo0v0/ffmpeg 合并 mp4
 ```
 
 新增内容类型 = 实现一个 `Parser` 并在 `client.ts` 注册,下载/合并流程完全复用。
@@ -210,7 +210,7 @@ createBilibiliClient()
 ## 验证命令
 
 ```powershell
-pnpm --filter @amechan/bilibili typecheck
-pnpm --filter @amechan/bilibili test
-pnpm --filter @amechan/bilibili build
+pnpm --filter @sakurachiyo0v0/bilibili typecheck
+pnpm --filter @sakurachiyo0v0/bilibili test
+pnpm --filter @sakurachiyo0v0/bilibili build
 ```

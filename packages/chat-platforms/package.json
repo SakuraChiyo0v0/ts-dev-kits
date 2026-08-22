@@ -1,8 +1,11 @@
 {
-  "name": "@amechan/chat-platforms",
+  "name": "@sakurachiyo0v0/chat-platforms",
   "version": "0.1.0",
   "description": "Provider-neutral chat platform SDK (Feishu first) with unified message model and adapter registry",
   "license": "UNLICENSED",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
+  },
   "type": "module",
   "sideEffects": false,
   "engines": {

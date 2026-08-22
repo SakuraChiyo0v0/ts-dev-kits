@@ -1,6 +1,6 @@
 node_modules/
 dist/
-# 仅 @amechan/cli-utils 与 @amechan/chat-platforms 提交 dist（git 依赖安装需要构建产物）
+# 仅 @sakurachiyo0v0/cli-utils 与 @sakurachiyo0v0/chat-platforms 提交 dist（git 依赖安装需要构建产物）
 !packages/cli-utils/dist/
 !packages/cli-utils/dist/**
 !packages/chat-platforms/dist/

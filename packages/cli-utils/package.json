@@ -1,8 +1,11 @@
 {
-  "name": "@amechan/cli-utils",
+  "name": "@sakurachiyo0v0/cli-utils",
   "version": "0.1.0",
-  "description": "Shared CLI helpers for @amechan SDK command-line tools",
+  "description": "Shared CLI helpers for @sakurachiyo0v0 SDK command-line tools",
   "license": "UNLICENSED",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
+  },
   "type": "module",
   "sideEffects": false,
   "engines": {

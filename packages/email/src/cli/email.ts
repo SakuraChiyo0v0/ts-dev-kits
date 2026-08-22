@@ -9,7 +9,7 @@ import {
   parseArgs,
   printHelp,
   requireString,
-} from "@amechan/cli-utils";
+} from "@sakurachiyo0v0/cli-utils";
 import { createEmailClient, smtpProvider } from "../index.js";
 
 const USAGE = "Usage: amechan-email <command> [options]";

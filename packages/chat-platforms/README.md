@@ -1,4 +1,4 @@
-# @amechan/chat-platforms
+# @sakurachiyo0v0/chat-platforms
 
 统一聊天平台接入 SDK（第一版：飞书）。核心设计参考 [AstrBot](https://github.com/Soulter/AstrBot) 与 [hermes-agent](https://github.com/NousResearch/hermes-agent) 的平台适配架构：**平台差异在适配器内消化，上层只面对统一消息模型**。新增平台 = 实现一个适配器 + 注册，核心零改动。
 
@@ -19,7 +19,7 @@
 `ChatCard` 是平台无关的交互卡片抽象：正文 markdown + 按钮/下拉菜单。发送时 `ChatMessageOutbound.card` 携带，飞书适配器自动用 CardKit（schema 2.0）创建并发送。
 
 ```ts
-import { ChatPlatformClient, feishuProvider } from "@amechan/chat-platforms";
+import { ChatPlatformClient, feishuProvider } from "@sakurachiyo0v0/chat-platforms";
 
 const client = new ChatPlatformClient();
 // 卡片按钮点击回调（card.action.trigger 归一化）
@@ -71,7 +71,7 @@ await client.send(
 `ChatResponsePolicy` 控制"哪些消息值得响应"，在 `ChatPlatformClient.add(adapter, policy)` 时注入，收到消息先过策略再回调：
 
 ```ts
-import { ChatPlatformClient, feishuProvider, defaultPolicy } from "@amechan/chat-platforms";
+import { ChatPlatformClient, feishuProvider, defaultPolicy } from "@sakurachiyo0v0/chat-platforms";
 
 const policy = {
   ...defaultPolicy(),
@@ -118,7 +118,7 @@ await client.add(feishuProvider({ appId, appSecret }), policy);
 同一 pnpm workspace 内：
 
 ```powershell
-pnpm add @amechan/chat-platforms@workspace:*
+pnpm add @sakurachiyo0v0/chat-platforms@workspace:*
 ```
 
 从私有 GitHub monorepo 安装（需在消费项目 `pnpm-workspace.yaml` 授权构建脚本）：
@@ -145,7 +145,7 @@ import {
   ChatPlatformClient,
   feishuProvider,
   registerFeishuPlatform,
-} from "@amechan/chat-platforms";
+} from "@sakurachiyo0v0/chat-platforms";
 
 // 方式一：直接创建适配器
 const client = new ChatPlatformClient();
@@ -176,7 +176,7 @@ webhook 模式下，你需要在自己的 HTTP 服务里接收飞书回调，并
 
 ```ts
 import http from "node:http";
-import { feishuProvider } from "@amechan/chat-platforms";
+import { feishuProvider } from "@sakurachiyo0v0/chat-platforms";
 
 const adapter = feishuProvider({ appId, appSecret, transport: "webhook", encryptKey });
 await adapter.connect({ onMessage: (m) => console.log(m) });
@@ -234,7 +234,7 @@ http
 ## 验证
 
 ```powershell
-pnpm --filter @amechan/chat-platforms typecheck  # 类型检查
-pnpm --filter @amechan/chat-platforms test       # 单测
-pnpm --filter @amechan/chat-platforms build      # 构建 ESM + CJS + d.ts
+pnpm --filter @sakurachiyo0v0/chat-platforms typecheck  # 类型检查
+pnpm --filter @sakurachiyo0v0/chat-platforms test       # 单测
+pnpm --filter @sakurachiyo0v0/chat-platforms build      # 构建 ESM + CJS + d.ts
 ```

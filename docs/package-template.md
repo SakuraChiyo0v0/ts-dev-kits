@@ -32,7 +32,7 @@ packages/<name>/
 
 | 字段 | 说明 |
 | --- | --- |
-| `name` | `@amechan/<name>`,沿用 `@amechan` scope |
+| `name` | `@sakurachiyo0v0/<name>`,沿用 `@sakurachiyo0v0` scope |
 | `version` | 语义化版本,`0.x.y` 起步 |
 | `description` | 一句话说明包用途 |
 | `license` | 未发布公共包用 `UNLICENSED` |
@@ -90,7 +90,7 @@ Vitest 测试。真实协议路径优先(如本地 `smtp-server` 起一个仅测
 ```json
 // packages/<name>/package.json
 "dependencies": {
-  "@amechan/email": "workspace:*"
+  "@sakurachiyo0v0/email": "workspace:*"
 }
 ```
 
@@ -104,9 +104,9 @@ Vitest 测试。真实协议路径优先(如本地 `smtp-server` 起一个仅测
 
 ### 构建顺序
 
-pnpm 按依赖解析的是构建产物:`@amechan/<name>` 的 `exports` 默认指向 `dist`。因此:
+pnpm 按依赖解析的是构建产物:`@sakurachiyo0v0/<name>` 的 `exports` 默认指向 `dist`。因此:
 
-- 被依赖的包要先 `build`,依赖方再运行。开发时可用 `pnpm --filter @amechan/<name> build` 先构建依赖,或依赖方通过 `tsx`/vitest 直接跑源码(此时 import 的是依赖包构建产物)。
+- 被依赖的包要先 `build`,依赖方再运行。开发时可用 `pnpm --filter @sakurachiyo0v0/<name> build` 先构建依赖,或依赖方通过 `tsx`/vitest 直接跑源码(此时 import 的是依赖包构建产物)。
 - 保持"只发 `dist` + README"的约定,不要用 `exports` 额外暴露 `./src/*`,否则每个消费方都要绑定源码布局。
 - 仓库根 `build` 脚本逐包执行时注意先后:可在根 `package.json` 的 `build` 里按依赖顺序排列 `pnpm --filter` 调用。
 
@@ -117,13 +117,13 @@ pnpm 按依赖解析的是构建产物:`@amechan/<name>` 的 `exports` 默认指
 1. `pnpm-workspace.yaml` 已包含 `packages/*`,新包自动进入 workspace。
 2. 运行 `pnpm install`,把新包写入 `pnpm-lock.yaml`。
 3. 根 `package.json` 的 `typecheck` / `test` 用 `pnpm -r --if-present` 递归执行,新包无需改根脚本。
-4. `build` 只对根列出的包执行:如需纳入根 `build`,在根 `package.json` 的 `build` 脚本里追加 `pnpm --filter @amechan/<name> build`。
+4. `build` 只对根列出的包执行:如需纳入根 `build`,在根 `package.json` 的 `build` 脚本里追加 `pnpm --filter @sakurachiyo0v0/<name> build`。
 
 ## 新包验证清单
 
 - [ ] `pnpm install` 后 lockfile 含新包
-- [ ] `pnpm --filter @amechan/<name> typecheck` 通过
-- [ ] `pnpm --filter @amechan/<name> test` 通过
-- [ ] `pnpm --filter @amechan/<name> build` 产出 `dist/index.js`、`dist/index.cjs`、`dist/index.d.ts`
+- [ ] `pnpm --filter @sakurachiyo0v0/<name> typecheck` 通过
+- [ ] `pnpm --filter @sakurachiyo0v0/<name> test` 通过
+- [ ] `pnpm --filter @sakurachiyo0v0/<name> build` 产出 `dist/index.js`、`dist/index.cjs`、`dist/index.d.ts`
 - [ ] `pnpm check` 全仓通过
 - [ ] 在 `docs/packages-index.md` 总览表追加一行并补详情

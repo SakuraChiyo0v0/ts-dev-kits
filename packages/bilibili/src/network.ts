@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { parseCookieString } from "@amechan/bilibili-auth";
+import { parseCookieString } from "@sakurachiyo0v0/bilibili-auth";
 import { BilibiliError, checkApiResponse, toBilibiliError } from "./errors.js";
 
 /** B 站 WBI 签名 mixinKeyEncTab(与 Bili23-Downloader 一致)。 */

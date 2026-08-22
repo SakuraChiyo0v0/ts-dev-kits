@@ -10,8 +10,8 @@ import {
   parseArgs,
   printHelp,
   requireString,
-} from "@amechan/cli-utils";
-import { AuthStore, qrcodeLogin } from "@amechan/bilibili-auth";
+} from "@sakurachiyo0v0/cli-utils";
+import { AuthStore, qrcodeLogin } from "@sakurachiyo0v0/bilibili-auth";
 import { createBilibiliClient } from "../index.js";
 
 const USAGE = "Usage: amechan-bilibili <command> [options]";

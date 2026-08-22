@@ -10,7 +10,7 @@ import {
   parseArgs,
   printHelp,
   requireString,
-} from "@amechan/cli-utils";
+} from "@sakurachiyo0v0/cli-utils";
 import { createFfmpegClient } from "../index.js";
 
 const ffmpeg = createFfmpegClient();

@@ -6,8 +6,8 @@
 
 | 名称 | 用途 | 状态 |
 | --- | --- | --- |
-| `@amechan/email` | 与供应商解耦的 Node.js 邮件 SDK | SMTP 适配器可用 |
-| `@amechan/ffmpeg` | FFmpeg/ffprobe 进程封装与媒体处理函数 | 可用 |
+| `@sakurachiyo0v0/email` | 与供应商解耦的 Node.js 邮件 SDK | SMTP 适配器可用 |
+| `@sakurachiyo0v0/ffmpeg` | FFmpeg/ffprobe 进程封装与媒体处理函数 | 可用 |
 
 ## 开始使用
 
@@ -21,20 +21,20 @@ pnpm check
 常用命令：
 
 ```powershell
-pnpm --filter @amechan/email test
-pnpm --filter @amechan/email build
-pnpm --filter @amechan/ffmpeg test
-pnpm --filter @amechan/ffmpeg build
+pnpm --filter @sakurachiyo0v0/email test
+pnpm --filter @sakurachiyo0v0/email build
+pnpm --filter @sakurachiyo0v0/ffmpeg test
+pnpm --filter @sakurachiyo0v0/ffmpeg build
 pnpm verify:email-package
 pnpm verify:email-git-package
 ```
 
-## 使用 `@amechan/email`
+## 使用 `@sakurachiyo0v0/email`
 
 在本 monorepo 的其他 workspace 包中：
 
 ```powershell
-pnpm add @amechan/email@workspace:*
+pnpm add @sakurachiyo0v0/email@workspace:*
 ```
 
 在另一台已获得私有仓库访问权限的电脑上，先为 Git 依赖的构建脚本添加精确授权：
@@ -42,7 +42,7 @@ pnpm add @amechan/email@workspace:*
 ```yaml
 # 消费项目的 pnpm-workspace.yaml
 allowBuilds:
-  '@amechan/email@git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git': true
+  '@sakurachiyo0v0/email@git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git': true
 ```
 
 然后安装 monorepo 子目录：

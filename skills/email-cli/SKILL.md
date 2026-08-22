@@ -8,7 +8,7 @@
 amechan-email help    # 查看命令
 ```
 
-未安装:`npm i -g @amechan/email`。
+未安装:`npm i -g @sakurachiyo0v0/email`。
 
 ## 命令速查
 

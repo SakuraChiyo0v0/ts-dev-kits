@@ -1,11 +1,11 @@
-# @amechan/bilibili-auth
+# @sakurachiyo0v0/bilibili-auth
 
 B 站扫码登录模块:本地窗口展示二维码 → 手机 App 扫码 → 自动收集 cookie 与 refresh_token → 持久化 + 自动续期。与视频解析/下载解耦,可独立使用。
 
 ## 安装
 
 ```powershell
-pnpm add @amechan/bilibili-auth@workspace:*
+pnpm add @sakurachiyo0v0/bilibili-auth@workspace:*
 # 或
 pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/bilibili-auth"
 ```
@@ -13,7 +13,7 @@ pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/b
 ## 快速开始
 
 ```ts
-import { qrcodeLogin, AuthStore } from "@amechan/bilibili-auth";
+import { qrcodeLogin, AuthStore } from "@sakurachiyo0v0/bilibili-auth";
 
 // 1. 弹窗扫码(系统浏览器打开本地页面,手机 App 扫码确认)
 const { cookies, refreshToken } = await qrcodeLogin();
@@ -78,12 +78,12 @@ cookie 字符串解析为对象。
 
 `NETWORK` / `API_ERROR` / `AUTH_EXPIRED` / `LOGIN_REQUIRED` / `UNKNOWN`
 
-## 与 @amechan/bilibili 的关系
+## 与 @sakurachiyo0v0/bilibili 的关系
 
 `createBilibiliClient({ authPath })` 未传 cookie 时自动用 `AuthStore` 加载登录态;API 返回 -101 时自动 `refreshCookies` 续期并重试一次。CLI 命令 `amechan-bilibili login|status|logout` 也由本包支撑。
 
 ## 验证
 
 ```powershell
-pnpm --filter @amechan/bilibili-auth typecheck && test && build
+pnpm --filter @sakurachiyo0v0/bilibili-auth typecheck && test && build
 ```

@@ -1,18 +1,18 @@
-# `@amechan/bilibili` 扫码登录模块设计
+# `@sakurachiyo0v0/bilibili` 扫码登录模块设计
 
 状态:用户已批准
 日期:2026-08-13
 
 ## 1. 当前问题与目标
 
-`@amechan/bilibili` 当前只支持手动传入 cookie(`createBilibiliClient({ cookie })`、CLI `--cookie` / `BILI_COOKIE` 环境变量),没有任何登录流程:
+`@sakurachiyo0v0/bilibili` 当前只支持手动传入 cookie(`createBilibiliClient({ cookie })`、CLI `--cookie` / `BILI_COOKIE` 环境变量),没有任何登录流程:
 
 - 没有登录入口,用户必须先手动从浏览器复制 cookie;
 - cookie 不落盘、不管理,过期(约 1-3 个月)后要重新手动复制;
 - 匿名请求容易被 B 站风控(实测本环境出口返回 -412/-400/404),登录态 cookie 是稳定解法;
 - 高画质(1080P+)必须登录。
 
-本次目标:为 `@amechan/bilibili` 增加完整的扫码登录模块。
+本次目标:为 `@sakurachiyo0v0/bilibili` 增加完整的扫码登录模块。
 
 - 弹出窗口(本地 HTTP 页面 + 系统默认浏览器)展示二维码,用户用手机 B 站 App 扫码;
 - 自动收集登录 Set-Cookie(SESSDATA / bili_jct / DedeUserID)与 refresh_token;
@@ -199,5 +199,5 @@ amechan-bilibili status   [--auth-path <path>]                  # 显示是否�
 
 ## 9. 依赖
 
-- `qrcode`(纯 JS 二维码生成,零原生依赖)新增为 `@amechan/bilibili` 的运行时依赖;
+- `qrcode`(纯 JS 二维码生成,零原生依赖)新增为 `@sakurachiyo0v0/bilibili` 的运行时依赖;
 - 不新增其它运行时依赖;`qrcode` 的类型包按需 `@types/qrcode`(devDependency)。

@@ -9,7 +9,7 @@ amechan-ffmpeg help    # 查看所有命令
 which amechan-ffmpeg   # 确认已安装
 ```
 
-未安装时:`npm i -g @amechan/ffmpeg`(或 `pnpm add -g @amechan/ffmpeg`)。需系统已装 ffmpeg。
+未安装时:`npm i -g @sakurachiyo0v0/ffmpeg`(或 `pnpm add -g @sakurachiyo0v0/ffmpeg`)。需系统已装 ffmpeg。
 
 ## 命令速查
 

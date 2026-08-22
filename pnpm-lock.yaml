@@ -32,13 +32,13 @@ importers:
 
   packages/bilibili:
     dependencies:
-      '@amechan/bilibili-auth':
+      '@sakurachiyo0v0/bilibili-auth':
         specifier: workspace:*
         version: link:../bilibili-auth
-      '@amechan/cli-utils':
+      '@sakurachiyo0v0/cli-utils':
         specifier: workspace:*
         version: link:../cli-utils
-      '@amechan/ffmpeg':
+      '@sakurachiyo0v0/ffmpeg':
         specifier: workspace:*
         version: link:../ffmpeg
     devDependencies:
@@ -119,7 +119,7 @@ importers:
 
   packages/email:
     dependencies:
-      '@amechan/cli-utils':
+      '@sakurachiyo0v0/cli-utils':
         specifier: workspace:*
         version: link:../cli-utils
       nodemailer:
@@ -144,7 +144,7 @@ importers:
 
   packages/ffmpeg:
     dependencies:
-      '@amechan/cli-utils':
+      '@sakurachiyo0v0/cli-utils':
         specifier: workspace:*
         version: link:../cli-utils
     devDependencies:

@@ -1,4 +1,4 @@
-# `@amechan/email` 邮件 SDK 设计
+# `@sakurachiyo0v0/email` 邮件 SDK 设计
 
 状态：用户已批准
 日期：2026-08-03
@@ -7,7 +7,7 @@
 
 当前仓库尚无可复用的邮件发送能力。不同项目如果各自直接调用 Nodemailer，容易重复处理 SMTP 配置、收件人格式、附件、错误分类和敏感信息保护；未来改用 Resend、SendGrid 或 AWS SES 时，上层代码也会被具体供应商绑定。
 
-本次目标是在 `ts-dev-kits` monorepo 中创建 `@amechan/email`：
+本次目标是在 `ts-dev-kits` monorepo 中创建 `@sakurachiyo0v0/email`：
 
 - 第一版通过通用 SMTP 真实发送邮件；
 - 对业务代码提供与供应商无关的调用接口；
@@ -19,7 +19,7 @@
 
 | 当前情况 | 完成后 |
 | --- | --- |
-| 每个项目自行配置 SMTP 和 Nodemailer | 项目统一调用 `@amechan/email` |
+| 每个项目自行配置 SMTP 和 Nodemailer | 项目统一调用 `@sakurachiyo0v0/email` |
 | 错误结构和敏感信息处理不一致 | SDK 返回统一、脱敏的错误 |
 | 没有独立验证方式 | 可通过自动化测试和本地 HTML 演示验证 |
 | 更换邮件服务商需要修改业务代码 | 新服务商通过 `EmailProvider` 适配器接入 |
@@ -77,14 +77,14 @@ ts-dev-kits/
 └─ tsconfig.base.json
 ```
 
-`examples/email-demo` 是私有 workspace 包，不对外发布。它通过 `workspace:*` 使用 `@amechan/email`，也承担代表性集成验证。
+`examples/email-demo` 是私有 workspace 包，不对外发布。它通过 `workspace:*` 使用 `@sakurachiyo0v0/email`，也承担代表性集成验证。
 
 ## 5. SDK 公共接口
 
 典型调用方式：
 
 ```ts
-import { createEmailClient, smtpProvider } from "@amechan/email";
+import { createEmailClient, smtpProvider } from "@sakurachiyo0v0/email";
 
 const email = createEmailClient({
   provider: smtpProvider({
@@ -187,7 +187,7 @@ SDK 使用统一的 `EmailError`，错误类别包括：
 
 ## 8. 构建与分发
 
-- 包名为 `@amechan/email`；
+- 包名为 `@sakurachiyo0v0/email`；
 - 输出 ESM、CommonJS 和 TypeScript 声明；
 - 仅发布构建产物、README 和许可证所需文件；
 - 本地开发使用 pnpm workspace 或目录依赖；
@@ -236,7 +236,7 @@ GitHub 仓库为私有的 `SakuraChiyo0v0/ts-dev-kits`。提交、推送和发�
 
 ## 11. 验收条件
 
-- Node.js 项目可以导入 `@amechan/email`，完成连接验证和 SMTP 发送；
+- Node.js 项目可以导入 `@sakurachiyo0v0/email`，完成连接验证和 SMTP 发送；
 - 上层调用只依赖统一接口，不依赖 Nodemailer 类型；
 - 常用消息字段和附件可以通过自动化测试发送到本地 SMTP 服务器；
 - 所有公开错误和演示 API 响应不包含 SMTP 密码；

@@ -1,4 +1,4 @@
-# @amechan/email
+# @sakurachiyo0v0/email
 
 面向 Node.js 服务端的邮件发送 SDK。当前内置通用 SMTP 适配器，公共接口与具体服务商解耦，后续可以增加 Resend、SendGrid、AWS SES 等适配器。
 
@@ -12,7 +12,7 @@
 ### 同一 pnpm workspace
 
 ```powershell
-pnpm add @amechan/email@workspace:*
+pnpm add @sakurachiyo0v0/email@workspace:*
 ```
 
 ### 从本地目录使用
@@ -20,7 +20,7 @@ pnpm add @amechan/email@workspace:*
 先在 `ts-dev-kits` 中构建包：
 
 ```powershell
-pnpm --filter @amechan/email build
+pnpm --filter @sakurachiyo0v0/email build
 ```
 
 再在消费项目中添加本地依赖：
@@ -35,7 +35,7 @@ pnpm 11 默认禁止未经审核的 Git 依赖运行构建脚本。先在消费�
 
 ```yaml
 allowBuilds:
-  '@amechan/email@git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git': true
+  '@sakurachiyo0v0/email@git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git': true
 ```
 
 然后添加 monorepo 中的包目录：
@@ -49,7 +49,7 @@ pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/e
 ```json
 {
   "dependencies": {
-    "@amechan/email": "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#<commit-sha>&path:/packages/email"
+    "@sakurachiyo0v0/email": "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#<commit-sha>&path:/packages/email"
   }
 }
 ```
@@ -61,7 +61,7 @@ import {
   createEmailClient,
   smtpProvider,
   type EmailError,
-} from "@amechan/email";
+} from "@sakurachiyo0v0/email";
 
 const client = createEmailClient({
   provider: smtpProvider({
@@ -84,7 +84,7 @@ try {
     replyTo: "support@example.com",
     subject: "SDK 测试邮件",
     text: "纯文本内容",
-    html: "<h1>HTML 内容</h1><p>来自 @amechan/email</p>",
+    html: "<h1>HTML 内容</h1><p>来自 @sakurachiyo0v0/email</p>",
     attachments: [
       {
         filename: "hello.txt",
@@ -153,7 +153,7 @@ SDK 会过滤常见 SMTP 异常中的用户名和密码，但调用方仍不应�
 实现 `EmailProvider` 即可接入其他邮件服务：
 
 ```ts
-import type { EmailProvider } from "@amechan/email";
+import type { EmailProvider } from "@sakurachiyo0v0/email";
 
 const provider: EmailProvider = {
   name: "custom",

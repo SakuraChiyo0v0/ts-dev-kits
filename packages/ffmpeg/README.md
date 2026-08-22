@@ -1,4 +1,4 @@
-# @amechan/ffmpeg
+# @sakurachiyo0v0/ffmpeg
 
 面向 Node.js 服务端的 FFmpeg/ffprobe 进程封装 SDK。底层提供任意参数的进程运行器,上层提供常用的媒体处理函数:读取元数据、转码、提取音频、截图、生成缩略图,并支持进度事件。
 
@@ -12,7 +12,7 @@
 ### 同一 pnpm workspace
 
 ```powershell
-pnpm add @amechan/ffmpeg@workspace:*
+pnpm add @sakurachiyo0v0/ffmpeg@workspace:*
 ```
 
 ### 从私有 GitHub monorepo 使用
@@ -21,7 +21,7 @@ pnpm add @amechan/ffmpeg@workspace:*
 
 ```yaml
 allowBuilds:
-  '@amechan/ffmpeg@git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git': true
+  '@sakurachiyo0v0/ffmpeg@git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git': true
 ```
 
 然后添加 monorepo 中的包目录:
@@ -33,7 +33,7 @@ pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/f
 ## 快速开始
 
 ```ts
-import { createFfmpegClient } from "@amechan/ffmpeg";
+import { createFfmpegClient } from "@sakurachiyo0v0/ffmpeg";
 
 const ffmpeg = createFfmpegClient();
 
@@ -193,7 +193,7 @@ await ffmpeg.compressImage({ input: "in.jpg", output: "compressed.jpg", width: 1
 ## 验证命令
 
 ```powershell
-pnpm --filter @amechan/ffmpeg typecheck
-pnpm --filter @amechan/ffmpeg test
-pnpm --filter @amechan/ffmpeg build
+pnpm --filter @sakurachiyo0v0/ffmpeg typecheck
+pnpm --filter @sakurachiyo0v0/ffmpeg test
+pnpm --filter @sakurachiyo0v0/ffmpeg build
 ```

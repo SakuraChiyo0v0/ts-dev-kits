@@ -27,11 +27,11 @@ const runPnpm = (args, cwd) =>
     stdio: "inherit",
   });
 
-runPnpm(["--filter", "@amechan/email", "build"], repo);
+runPnpm(["--filter", "@sakurachiyo0v0/email", "build"], repo);
 runPnpm(
   [
     "--filter",
-    "@amechan/email",
+    "@sakurachiyo0v0/email",
     "pack",
     "--pack-destination",
     packDirectory,
@@ -59,11 +59,11 @@ runPnpm(["add", tarball], consumerDirectory);
 
 writeFileSync(
   join(consumerDirectory, "esm.mjs"),
-  'import { createEmailClient } from "@amechan/email";\nconsole.log(typeof createEmailClient);\n',
+  'import { createEmailClient } from "@sakurachiyo0v0/email";\nconsole.log(typeof createEmailClient);\n',
 );
 writeFileSync(
   join(consumerDirectory, "cjs.cjs"),
-  'const { createEmailClient } = require("@amechan/email");\nconsole.log(typeof createEmailClient);\n',
+  'const { createEmailClient } = require("@sakurachiyo0v0/email");\nconsole.log(typeof createEmailClient);\n',
 );
 
 execFileSync(process.execPath, ["esm.mjs"], {

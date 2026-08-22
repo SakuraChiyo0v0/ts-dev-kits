@@ -1,8 +1,11 @@
 {
-  "name": "@amechan/email",
+  "name": "@sakurachiyo0v0/email",
   "version": "0.1.0",
   "description": "Provider-neutral email SDK with SMTP support",
   "license": "UNLICENSED",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
+  },
   "type": "module",
   "sideEffects": false,
   "engines": {
@@ -32,7 +35,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@amechan/cli-utils": "workspace:*",
+    "@sakurachiyo0v0/cli-utils": "workspace:*",
     "nodemailer": "^9.0.3"
   },
   "devDependencies": {

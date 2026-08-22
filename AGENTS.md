@@ -6,7 +6,7 @@
 
 个人 TypeScript 开发工具 monorepo,用 pnpm workspace 组织。私有 GitHub 仓库 `SakuraChiyo0v0/ts-dev-kits`,暂不发布到公共 npm registry。
 
-- `packages/*` — 可复用依赖包(`@amechan/<name>`;当前有 `cli-utils`、`bilibili-auth`、`email`、`ffmpeg`、`bilibili`、`chat-platforms`、`lol`)
+- `packages/*` — 可复用依赖包(`@sakurachiyo0v0/<name>`;当前有 `cli-utils`、`bilibili-auth`、`email`、`ffmpeg`、`bilibili`、`chat-platforms`、`lol`)
 - `docs/` — 设计文档、规范、包索引与模板
 - `scripts/` — 仓库级验证脚本
 
@@ -20,10 +20,10 @@ pnpm check                # typecheck + test + build 全仓验证
 pnpm typecheck            # 递归类型检查
 pnpm test                 # 递归运行测试
 pnpm build                # 构建全部包(email + ffmpeg)
-pnpm --filter @amechan/email test    # 单包测试
-pnpm --filter @amechan/email build   # 单包构建
-pnpm --filter @amechan/ffmpeg test   # ffmpeg 包测试
-pnpm --filter @amechan/ffmpeg build  # ffmpeg 包构建
+pnpm --filter @sakurachiyo0v0/email test    # 单包测试
+pnpm --filter @sakurachiyo0v0/email build   # 单包构建
+pnpm --filter @sakurachiyo0v0/ffmpeg test   # ffmpeg 包测试
+pnpm --filter @sakurachiyo0v0/ffmpeg build  # ffmpeg 包构建
 pnpm verify:email-package            # pack 后从临时消费项目验证导入
 pnpm verify:email-git-package        # git 子目录依赖方式验证安装
 ```
@@ -38,7 +38,7 @@ pnpm verify:email-git-package        # git 子目录依赖方式验证安装
 ### 包与构建
 
 - 新依赖包按 `docs/package-template.md` 的结构创建;现有包清单见 `docs/packages-index.md`。
-- 包名统一 `@amechan/<name>`,license `UNLICENSED`,不发布公共 registry。
+- 包名统一 `@sakurachiyo0v0/<name>`,license `UNLICENSED`,不发布公共 registry。
 - 构建产出 ESM + CJS + `.d.ts`(`dist/`)。保持"只发 dist + README"约定,不要用 `exports` 暴露 `./src/*`。
 - 包间依赖用 `workspace:*`(见模板「包间依赖」节)。依赖图保持单向无环,被依赖包先 build。
 

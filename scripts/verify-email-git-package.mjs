@@ -62,11 +62,11 @@ const gitUrl = pathToFileURL(fixtureRepository).href.replace(/^file:/u, "git+fil
 const packageUrl = `${gitUrl}#path:/packages/email`;
 writeFileSync(
   join(consumerDirectory, "pnpm-workspace.yaml"),
-  `allowBuilds:\n  '${`@amechan/email@${gitUrl}`}': true\n`,
+  `allowBuilds:\n  '${`@sakurachiyo0v0/email@${gitUrl}`}': true\n`,
 );
 runPnpm(["add", packageUrl], consumerDirectory);
 writeFileSync(
   join(consumerDirectory, "verify.mjs"),
-  'import { smtpProvider } from "@amechan/email";\nconsole.log(typeof smtpProvider);\n',
+  'import { smtpProvider } from "@sakurachiyo0v0/email";\nconsole.log(typeof smtpProvider);\n',
 );
 run(process.execPath, ["verify.mjs"], consumerDirectory);

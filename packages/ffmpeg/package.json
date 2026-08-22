@@ -1,8 +1,11 @@
 {
-  "name": "@amechan/ffmpeg",
+  "name": "@sakurachiyo0v0/ffmpeg",
   "version": "0.1.0",
   "description": "FFmpeg/ffprobe process wrapper with progress events and high-level media helpers",
   "license": "UNLICENSED",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
+  },
   "type": "module",
   "sideEffects": false,
   "engines": {
@@ -32,7 +35,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@amechan/cli-utils": "workspace:*"
+    "@sakurachiyo0v0/cli-utils": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^26.1.2",

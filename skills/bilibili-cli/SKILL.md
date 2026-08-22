@@ -8,7 +8,7 @@
 amechan-bilibili help    # 查看命令
 ```
 
-未安装:`npm i -g @amechan/bilibili`(需系统已装 ffmpeg 用于合并)。
+未安装:`npm i -g @sakurachiyo0v0/bilibili`(需系统已装 ffmpeg 用于合并)。
 
 ## 命令速查
 

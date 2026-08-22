@@ -1,8 +1,11 @@
 {
-  "name": "@amechan/bilibili",
+  "name": "@sakurachiyo0v0/bilibili",
   "version": "0.1.0",
   "description": "Bilibili video download SDK with pluggable parsers, configurable downloader and ffmpeg merge",
   "license": "UNLICENSED",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
+  },
   "type": "module",
   "sideEffects": false,
   "engines": {
@@ -32,9 +35,9 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@amechan/bilibili-auth": "workspace:*",
-    "@amechan/cli-utils": "workspace:*",
-    "@amechan/ffmpeg": "workspace:*"
+    "@sakurachiyo0v0/bilibili-auth": "workspace:*",
+    "@sakurachiyo0v0/cli-utils": "workspace:*",
+    "@sakurachiyo0v0/ffmpeg": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^26.1.2",

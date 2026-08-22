@@ -171,6 +171,6 @@ export interface BilibiliClientOptions {
   baseUrl?: string;
   /** 下载器配置。 */
   download?: DownloadConfig;
-  /** 是否合并音视频(需 @amechan/ffmpeg),默认 true。 */
+  /** 是否合并音视频(需 @sakurachiyo0v0/ffmpeg),默认 true。 */
   merge?: boolean;
 }
