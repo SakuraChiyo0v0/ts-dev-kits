@@ -192,8 +192,8 @@ describe("feishu mention gating", () => {
       }),
     );
     expect(received).toHaveLength(1);
-    expect(received[0].source.type).toBe("group");
-    expect(received[0].source.mentionedBot).toBeUndefined();
+    expect(received[0]!.source.type).toBe("group");
+    expect(received[0]!.source.mentionedBot).toBeUndefined();
   });
 
   it("group message @all → mentionedBot", async () => {
@@ -209,12 +209,12 @@ describe("feishu mention gating", () => {
       },
     });
     expect(received).toHaveLength(1);
-    expect(received[0].source.mentionedBot).toBe(true);
+    expect(received[0]!.source.mentionedBot).toBe(true);
   });
 
   it("private message → no mention gating", async () => {
     const received = await receive(messageEvent());
-    expect(received[0].source.type).toBe("private");
-    expect(received[0].source.mentionedBot).toBeUndefined();
+    expect(received[0]!.source.type).toBe("private");
+    expect(received[0]!.source.mentionedBot).toBeUndefined();
   });
 });

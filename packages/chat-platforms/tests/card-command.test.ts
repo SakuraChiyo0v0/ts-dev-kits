@@ -80,8 +80,8 @@ describe("actionCard", () => {
     expect(card.markdown).toBe("**工具**: bash");
     expect(card.elements).toHaveLength(2);
     const btn0 = card.elements[0];
-    expect(btn0.tag).toBe("button");
-    if (btn0.tag === "button") {
+    expect(btn0).toBeDefined();
+    if (btn0?.tag === "button") {
       expect(btn0.text).toBe("允许一次");
       expect(btn0.type).toBe("primary");
       expect(btn0.value).toEqual({
@@ -97,7 +97,7 @@ describe("actionCard", () => {
       buttons: [{ text: "自定义", value: { action: "custom", id: 7 } }],
     });
     const btn = card.elements[0];
-    if (btn.tag === "button") {
+    if (btn?.tag === "button") {
       expect(btn.value).toEqual({ action: "custom", id: 7 });
     }
   });

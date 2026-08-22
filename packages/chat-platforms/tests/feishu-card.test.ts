@@ -58,7 +58,9 @@ describe("feishuProvider 卡片回调", () => {
     const actions: unknown[] = [];
     await adapter.connect({
       onMessage: async () => undefined,
-      onCardAction: async (a) => actions.push(a),
+      onCardAction: async (a) => {
+        actions.push(a);
+      },
     });
 
     const body = JSON.stringify({
@@ -91,7 +93,9 @@ describe("feishuProvider 卡片回调", () => {
     const actions: unknown[] = [];
     await adapter.connect({
       onMessage: async () => undefined,
-      onCardAction: async (a) => actions.push(a),
+      onCardAction: async (a) => {
+        actions.push(a);
+      },
     });
 
     const body = JSON.stringify({
@@ -116,7 +120,9 @@ describe("feishuProvider 卡片回调", () => {
     const actions: unknown[] = [];
     await adapter.connect({
       onMessage: async () => undefined,
-      onCardAction: async (a) => actions.push(a),
+      onCardAction: async (a) => {
+        actions.push(a);
+      },
     });
     const body = JSON.stringify({
       schema: "2.0",
