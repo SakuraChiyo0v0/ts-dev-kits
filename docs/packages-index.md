@@ -164,14 +164,15 @@ B 站视频下载 SDK。解析视频信息、获取播放流、可配置下载�
 
 **核心接口：**
 
-- `createBilibiliClient({ cookie?, download?, merge? })` — 创建客户端
+- `createBilibiliClient({ cookie?, authPath?, download?, merge? })` — 创建客户端;未传 cookie 时自动从登录态存储加载
 - `client.parse(url)` — 解析 B 站链接,返回 `MediaItem[]`(第一版支持投稿视频/BV/av,其余类型第二版)
 - `client.getStreams(item, { quality?, codec? })` — 获取 DASH/MP4 播放流,支持清晰度与编码选择
 - `client.download(item, { outputDir, quality?, onProgress? })` — 下载并合并,返回文件路径
 - 下载器可配置:并发数/分块大小/重试/限速/断点续传/CDN 过滤
-- `BilibiliError` — 统一错误码:`NETWORK` / `API_ERROR` / `INVALID_URL` / `LOGIN_REQUIRED` / `DOWNLOAD_FAILED` / `MERGE_FAILED` / `UNSUPPORTED_TYPE`
+- **扫码登录**:`amechan-bilibili login` 弹窗扫码,自动收集 cookie 持久化(`%APPDATA%` 等平台配置目录,权限 600);`status` / `logout` 管理登录态;cookie 过期用 refresh_token 自动续期
+- `BilibiliError` — 统一错误码:`NETWORK` / `API_ERROR` / `INVALID_URL` / `LOGIN_REQUIRED` / `AUTH_EXPIRED` / `DOWNLOAD_FAILED` / `MERGE_FAILED` / `UNSUPPORTED_TYPE`
 
-**WBI 签名内置**,自动处理 img_key/sub_key 获取与签名;高画质需传入登录 Cookie。
+**WBI 签名内置**,自动处理 img_key/sub_key 获取与签名;高画质需登录(扫码登录或传入 Cookie)。
 
 **安装方式：**
 

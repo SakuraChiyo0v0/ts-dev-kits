@@ -2,6 +2,7 @@ import { createFfmpegClient } from "@amechan/ffmpeg";
 import { BilibiliError } from "./errors.js";
 import { ApiSession } from "./network.js";
 import { downloadStream } from "./download.js";
+import { AuthStore, refreshCookies, type AuthData } from "./auth/index.js";
 import { VideoParser } from "./parsers/video.js";
 import { BangumiParser } from "./parsers/bangumi.js";
 import { CheeseParser } from "./parsers/cheese.js";
@@ -46,11 +47,37 @@ export class BilibiliClient {
     Pick<BilibiliClientOptions, "download">;
 
   constructor(options: BilibiliClientOptions = {}) {
+    // 显式 cookie 优先;未传时从登录态存储自动加载。
+    let cookie = options.cookie;
+    let authStore: AuthStore | undefined;
+    let authData: AuthData | null = null;
+    if (cookie === undefined) {
+      authStore = new AuthStore(options.authPath);
+      authData = authStore.loadSync();
+      cookie = authData?.cookies;
+    }
     this.#session = new ApiSession({
-      ...(options.cookie !== undefined ? { cookie: options.cookie } : {}),
+      ...(cookie !== undefined ? { cookie } : {}),
       ...(options.userAgent !== undefined ? { userAgent: options.userAgent } : {}),
       ...(options.baseUrl !== undefined ? { baseUrl: options.baseUrl } : {}),
     });
+    if (authStore !== undefined && authData !== null) {
+      // 登录态失效(-101)时自动续期一次并重试。
+      const store = authStore;
+      this.#session.onAuthFailure = async () => {
+        const current = authData;
+        if (current === null) return false;
+        try {
+          const refreshed = await refreshCookies(current);
+          this.#session.setCookie(refreshed.cookies);
+          await store.save(refreshed);
+          authData = refreshed;
+          return true;
+        } catch {
+          return false;
+        }
+      };
+    }
     this.#parsers = new Map();
     this.#registerParser(new VideoParser(this.#session));
     this.#registerParser(new BangumiParser(this.#session));

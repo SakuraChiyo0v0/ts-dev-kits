@@ -3,6 +3,7 @@ export type BilibiliErrorCode =
   | "API_ERROR"
   | "NOT_FOUND"
   | "LOGIN_REQUIRED"
+  | "AUTH_EXPIRED"
   | "INVALID_URL"
   | "DOWNLOAD_FAILED"
   | "MERGE_FAILED"

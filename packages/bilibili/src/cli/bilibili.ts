@@ -11,11 +11,14 @@ import {
   printHelp,
   requireString,
 } from "@amechan/cli-utils";
-import { createBilibiliClient } from "../index.js";
+import { AuthStore, createBilibiliClient, qrcodeLogin } from "../index.js";
 
 const USAGE = "Usage: amechan-bilibili <command> [options]";
 
 const COMMANDS = [
+  { name: "login", desc: "Scan QR code to log in (opens browser window)" },
+  { name: "logout", desc: "Clear stored login" },
+  { name: "status", desc: "Show login status" },
   { name: "parse", desc: "Parse a bilibili URL into media items" },
   { name: "streams", desc: "Get play streams for a media item" },
   { name: "download", desc: "Download a media item (with merge)" },
@@ -25,6 +28,9 @@ const COMMANDS = [
 const OPTIONS = [
   { flag: "--url <url>", desc: "Bilibili URL to parse" },
   { flag: "--cookie <cookie>", desc: "Login cookie (SESSDATA=...; bili_jct=...)" },
+  { flag: "--auth-path <path>", desc: "Auth store file path (default: platform user config dir)" },
+  { flag: "--no-browser", desc: "Do not open browser window (print QR url only)" },
+  { flag: "--timeout <sec>", desc: "Login timeout in seconds (default 180)" },
   { flag: "--output-dir <dir>", desc: "Output directory" },
   { flag: "--quality <n>", desc: "Target quality (80=1080P, 64=720P)" },
   { flag: "--codec <n>", desc: "Video codec (7=AVC, 12=HEVC, 13=AV1)" },
@@ -35,8 +41,10 @@ const OPTIONS = [
 
 function makeClient(args: ReturnType<typeof parseArgs>) {
   const cookie = getString(args, "cookie") ?? process.env.BILI_COOKIE;
+  const authPath = getString(args, "auth-path") ?? process.env.BILI_AUTH_PATH;
   return createBilibiliClient({
     ...(cookie !== undefined ? { cookie } : {}),
+    ...(authPath !== undefined ? { authPath } : {}),
     download: {
       ...(getNumber(args, "concurrency") !== undefined ? { concurrency: getNumber(args, "concurrency")! } : {}),
     },
@@ -58,6 +66,52 @@ async function main(): Promise<void> {
     case "-h":
       printHelp(USAGE, COMMANDS, OPTIONS);
       return;
+
+    case "login": {
+      const authPath = getString(args, "auth-path") ?? process.env.BILI_AUTH_PATH;
+      const store = new AuthStore(authPath);
+      const noBrowser = getBool(args, "no-browser");
+      const timeoutSec = getNumber(args, "timeout");
+      outputText(noBrowser ? "登录:打印二维码地址,请手动打开扫码" : "登录:正在打开浏览器窗口,请用哔哩哔哩 App 扫码...");
+      const result = await qrcodeLogin({
+        autoOpenBrowser: !noBrowser,
+        ...(timeoutSec !== undefined ? { timeoutMs: timeoutSec * 1000 } : {}),
+      });
+      const savedAt = new Date().toISOString();
+      await store.save({
+        cookies: result.cookies,
+        refreshToken: result.refreshToken,
+        savedAt,
+      });
+      outputJson({ ok: true, authPath: store.path, savedAt });
+      return;
+    }
+
+    case "logout": {
+      const authPath = getString(args, "auth-path") ?? process.env.BILI_AUTH_PATH;
+      const store = new AuthStore(authPath);
+      await store.clear();
+      outputJson({ ok: true, authPath: store.path });
+      return;
+    }
+
+    case "status": {
+      const authPath = getString(args, "auth-path") ?? process.env.BILI_AUTH_PATH;
+      const store = new AuthStore(authPath);
+      const data = await store.load();
+      if (data === null) {
+        outputJson({ ok: true, loggedIn: false, authPath: store.path });
+        return;
+      }
+      outputJson({
+        ok: true,
+        loggedIn: true,
+        authPath: store.path,
+        savedAt: data.savedAt,
+        ...(data.expiresAt !== undefined ? { expiresAt: data.expiresAt } : {}),
+      });
+      return;
+    }
 
     case "parse": {
       const url = requireString(args, "url", "bilibili URL");

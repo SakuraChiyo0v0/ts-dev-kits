@@ -163,6 +163,8 @@ export interface DownloadProgress {
 export interface BilibiliClientOptions {
   /** 登录 Cookie(可选,高画质需要)。如 "SESSDATA=...; bili_jct=..."。 */
   cookie?: string;
+  /** 登录态存储路径;未显式传 cookie 时自动从该存储加载(默认平台用户配置目录)。 */
+  authPath?: string;
   /** 自定义 User-Agent。 */
   userAgent?: string;
   /** API 根地址(测试用,默认官方)。 */

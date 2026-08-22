@@ -91,16 +91,23 @@ export class WbiSigner {
 /** API 会话:统一管理请求头/cookie/签名。 */
 export class ApiSession {
   readonly wbi: WbiSigner;
-  readonly cookie: string;
+  cookie: string;
   readonly userAgent: string;
   /** API 根地址,默认 https://api.bilibili.com(测试可覆盖)。 */
   readonly baseUrl: string;
+  /** 登录态失效(-101)时的回调:返回 true 表示已刷新 cookie,调用方应重试一次。 */
+  onAuthFailure?: () => Promise<boolean>;
 
   constructor(options: { cookie?: string; userAgent?: string; baseUrl?: string } = {}) {
     this.cookie = options.cookie ?? "";
     this.userAgent = options.userAgent ?? USER_AGENT;
     this.baseUrl = (options.baseUrl ?? "https://api.bilibili.com").replace(/\/+$/u, "");
     this.wbi = new WbiSigner(this);
+  }
+
+  /** 更新 cookie(登录/续期后调用)。 */
+  setCookie(cookie: string): void {
+    this.cookie = cookie;
   }
 
   /** 请求头。 */
@@ -145,15 +152,7 @@ export class ApiSession {
   ): Promise<T> {
     const signedQuery = await this.wbi.sign(params);
     const fullUrl = `${url}?${signedQuery}`;
-    let body: unknown;
-    try {
-      const response = await fetch(fullUrl, { headers: this.headers() });
-      const text = await response.text();
-      body = JSON.parse(text) as unknown;
-    } catch (error) {
-      throw toBilibiliError(error);
-    }
-    const record = checkApiResponse(body, url);
+    const record = await this.#checkedJson(fullUrl);
     return record.data as T;
   }
 
@@ -165,17 +164,41 @@ export class ApiSession {
     const query = new URLSearchParams(
       Object.fromEntries(Object.entries(params).map(([key, value]) => [key, String(value)])),
     ).toString();
-    const fullUrl = `${url}?${query}`;
-    let body: unknown;
+    const fullUrl = query === "" ? url : `${url}?${query}`;
+    const record = await this.#checkedJson(fullUrl);
+    return record.data as T;
+  }
+
+  /** fetch + JSON 解析,网络错误归一为 BilibiliError。 */
+  async #fetchJson(fullUrl: string): Promise<unknown> {
     try {
       const response = await fetch(fullUrl, { headers: this.headers() });
       const text = await response.text();
-      body = JSON.parse(text) as unknown;
+      return JSON.parse(text) as unknown;
     } catch (error) {
       throw toBilibiliError(error);
     }
-    const record = checkApiResponse(body, url);
-    return record.data as T;
+  }
+
+  /** 校验 API 响应;遇到登录态失效(-101)且有续期回调时,刷新后重试一次。 */
+  async #checkedJson(fullUrl: string): Promise<Record<string, unknown>> {
+    const attempt = async (): Promise<Record<string, unknown>> =>
+      checkApiResponse(await this.#fetchJson(fullUrl), fullUrl);
+    try {
+      return await attempt();
+    } catch (error) {
+      if (
+        error instanceof BilibiliError &&
+        error.apiCode === -101 &&
+        this.onAuthFailure !== undefined
+      ) {
+        const refreshed = await this.onAuthFailure();
+        if (refreshed) {
+          return attempt();
+        }
+      }
+      throw error;
+    }
   }
 }
 
