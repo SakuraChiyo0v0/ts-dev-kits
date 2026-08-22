@@ -22,7 +22,9 @@ League of Legends 英雄联盟客户端本地能力 SDK。封装 **LCU API**（L
 >
 > 参数可从「任务管理器 → 详细信息 → 右键列头勾选『命令行』」中 `LeagueClientUx.exe` 一行提取。
 >
-> 💡 **国服账号名（Riot ID）**：国服新版客户端下 `getCurrent()` 返回的 `displayName` 可能为空，召唤师名在 `gameName`（ID 后缀在 `tagLine`，如 `Twistzz#47939`）。取显示名建议 `gameName || displayName`。
+> 💡 **国服账号名（Riot ID）**：国服新版客户端下 `getCurrent()` 返回的 `displayName` 可能为空，召唤师名在 `gameName`（ID 后缀在 `tagLine`，如 `Twistzz#47939`）。取显示名建议 `gameName || displayName`。按名字搜索需带完整 Riot ID：`searchByRiotId(gameName, tagLine)`，纯 `gameName` 查询返回空数组。
+>
+> 💡 **赛后数据的时间线限制（实测）**：`getGameDetail()` 返回的 `participants[].timeline` 中 `creepsPerMinDeltas` 等每分钟曲线字段在新版客户端为**空对象**，且 LCU 无独立 timeline 端点（`/lol-match-history/v1/games/{id}/timeline` 返回 404）——分钟级数据在国服 LCU 渠道拿不到；`timeline.lane` / `role` 仍可用。其余赛后字段（118 项 stats、符文全量、ban/龙/塔团队数据等）完整可用。
 
 ## 安装
 
