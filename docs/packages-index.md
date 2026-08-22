@@ -13,8 +13,8 @@
 | `@amechan/email` | 0.1.0 | 与供应商解耦的 Node.js 邮件 SDK | 可用（SMTP 适配器） | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/email` |
 | `@amechan/ffmpeg` | 0.1.0 | FFmpeg/ffprobe 进程封装 + 媒体处理高层函数 | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/ffmpeg` |
 | `@amechan/bilibili` | 0.1.0 | B 站视频下载 SDK(解析/取流/下载/ffmpeg 合并) | 可用(投稿视频) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/bilibili` |
+| `@amechan/bilibili-auth` | 0.1.0 | B 站扫码登录(二维码弹窗/登录态存储/refresh_token 续期) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/bilibili-auth` |
 | `@amechan/chat-platforms` | 0.1.0 | 统一聊天平台接入 SDK(消息模型/适配器注册表,当前飞书) | 可用(飞书, websocket/webhook) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/chat-platforms` |
-| `@amechan/lol` | 0.1.0 | 英雄联盟 LCU 本地能力 SDK(召唤师/战绩/段位/对局流程/游戏数据/事件) | 可用(查询+对局感知, 国服 SGP) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/lol` |
 
 ## 包详情
 
@@ -164,15 +164,14 @@ B 站视频下载 SDK。解析视频信息、获取播放流、可配置下载�
 
 **核心接口：**
 
-- `createBilibiliClient({ cookie?, authPath?, download?, merge? })` — 创建客户端;未传 cookie 时自动从登录态存储加载
+- `createBilibiliClient({ cookie?, authPath?, download?, merge? })` — 创建客户端;未传 cookie 时自动从登录态存储加载(`authPath` 来自 `@amechan/bilibili-auth`)
 - `client.parse(url)` — 解析 B 站链接,返回 `MediaItem[]`(第一版支持投稿视频/BV/av,其余类型第二版)
 - `client.getStreams(item, { quality?, codec? })` — 获取 DASH/MP4 播放流,支持清晰度与编码选择
 - `client.download(item, { outputDir, quality?, onProgress? })` — 下载并合并,返回文件路径
 - 下载器可配置:并发数/分块大小/重试/限速/断点续传/CDN 过滤
-- **扫码登录**:`amechan-bilibili login` 弹窗扫码,自动收集 cookie 持久化(`%APPDATA%` 等平台配置目录,权限 600);`status` / `logout` 管理登录态;cookie 过期用 refresh_token 自动续期
-- `BilibiliError` — 统一错误码:`NETWORK` / `API_ERROR` / `INVALID_URL` / `LOGIN_REQUIRED` / `AUTH_EXPIRED` / `DOWNLOAD_FAILED` / `MERGE_FAILED` / `UNSUPPORTED_TYPE`
+- `BilibiliError` — 统一错误码:`NETWORK` / `API_ERROR` / `INVALID_URL` / `LOGIN_REQUIRED` / `DOWNLOAD_FAILED` / `MERGE_FAILED` / `UNSUPPORTED_TYPE`
 
-**WBI 签名内置**,自动处理 img_key/sub_key 获取与签名;高画质需登录(扫码登录或传入 Cookie)。
+**WBI 签名内置**,自动处理 img_key/sub_key 获取与签名;高画质需登录,扫码登录见 [`@amechan/bilibili-auth`](#amechanbilibili-auth)。
 
 **安装方式：**
 
@@ -205,6 +204,39 @@ pnpm --filter @amechan/bilibili build  # 构建 ESM + CJS + d.ts
 ```
 
 **更多细节：** [`packages/bilibili/README.md`](../packages/bilibili/README.md)
+
+### `@amechan/bilibili-auth`
+
+B 站扫码登录模块,与视频解析/下载解耦的独立包。核心流程:本地 HTTP 页面 + 系统浏览器弹窗展示二维码 → 手机 App 扫码确认 → 自动收集 Set-Cookie 与 refresh_token → 持久化到平台用户配置目录(权限 600)→ 后续用 refresh_token 自动续期,无需重复扫码。
+
+**适用环境：** Node.js 20+,桌面环境(需要打开浏览器);无头环境可用 `autoOpenBrowser: false` 仅打印扫码链接。
+
+**核心接口：**
+
+- `qrcodeLogin({ autoOpenBrowser?, timeoutMs?, fetchImpl?, onStatus? })` — 执行扫码登录,返回 `{ cookies, refreshToken }`
+- `AuthStore` — 登录态持久化:`save()` / `load()` / `loadSync()` / `clear()`,默认路径 `<配置根>/amechan/bilibili/auth.json`
+- `defaultAuthPath()` / `resolveConfigRoot()` — 平台配置目录解析(Windows `%APPDATA%` / macOS `~/Library/Application Support` / Linux `$XDG_CONFIG_HOME`,支持 `AMECHAN_CONFIG_HOME` 覆盖)
+- `refreshCookies(data, fetchImpl?)` — 用 refresh_token 换新 cookie 并合并返回
+- `BilibiliAuthError` — 错误码:`NETWORK` / `API_ERROR` / `AUTH_EXPIRED` / `LOGIN_REQUIRED` / `UNKNOWN`
+
+`@amechan/bilibili` 的 `createBilibiliClient` 未传 cookie 时自动用 `AuthStore` 加载登录态,API 失效(-101)时自动 `refreshCookies` 续期并重试一次。
+
+**安装方式：**
+
+```powershell
+pnpm add @amechan/bilibili-auth@workspace:*
+# 或
+pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/bilibili-auth"
+```
+
+**在仓库内的验证方式：**
+
+```powershell
+pnpm --filter @amechan/bilibili-auth test   # mock passport 验证登录状态机/存储/续期
+pnpm --filter @amechan/bilibili-auth build  # 构建 ESM + CJS + d.ts
+```
+
+**更多细节：** [`packages/bilibili-auth/README.md`](../packages/bilibili-auth/README.md)
 
 ### `@amechan/chat-platforms`
 
@@ -263,58 +295,3 @@ pnpm --filter @amechan/chat-platforms build  # 构建 ESM + CJS + d.ts
 
 **更多细节：** [`packages/chat-platforms/README.md`](../packages/chat-platforms/README.md)
 
-### `@amechan/lol`
-
-英雄联盟（LoL）客户端本地能力 SDK。封装 LCU API（League Client Update，客户端暴露的本机 HTTP/WebSocket 接口），提供召唤师、战绩、段位、对局流程、选人、游戏数据等能力，供本机 Node 进程（Electron 主进程 / CLI / 本地 Web 后端）直接使用。代码完全自研（无 Seraphine 代码复制，规避 GPLv3），参考 LCU 官方文档与开源项目 [Seraphine](https://github.com/Zzaphkiel/Seraphine) 的设计思路。
-
-**适用环境：** Node.js 20+，Windows 本机 + 运行中的英雄联盟客户端；LCU 只存在于本机客户端运行期间，**不能做成云端 SaaS**。
-
-**核心接口：**
-
-- `createLolClient({ connection?, concurrency?, timeoutMs? })` — 自动发现本机 LCU 并连接（也可显式指定连接参数）
-- `client.summoner` — `getCurrent()` / `getByName()` / `getByPuuid()` / `getProfile()`
-- `client.matchHistory` — `getMatches(puuid, {begIndex, endIndex})` / `getMatchesViaSgp()` / `getGameDetail(gameId)`
-- `client.ranked` — `getStats(puuid)` / `getStatsViaSgp(puuid)`
-- `client.gameflow` — `getPhase()` / `getSession()` / `getReadyCheck()` / `acceptReadyCheck()` / `dodge()` / `reconnect()` / `playAgain()` / `spectate()`
-- `client.gameData` — 静态数据（英雄/物品/符文/召唤师技能/队列）与 `fetchAsset()` 资源获取
-- `client.events` — WebSocket 事件订阅：`onGameflowPhase` / `onChampSelect` / `onCurrentSummoner` / `onSgpToken` / 通用 `subscribe()`
-- `client.sgp` — 腾讯国服 SGP 通道（检测到国服服务器自动启用，非国服为 `undefined`）
-- `LolError` — 统一错误码 `CLIENT_NOT_RUNNING` / `DISCOVERY_FAILED` / `CONNECTION` / `NOT_FOUND` / `RATE_LIMIT` / `AUTH` / `TIMEOUT` / `UNKNOWN`，消息脱敏
-
-**关键机制：** tasklist + PowerShell CIM 进程发现；undici 忽略自签名证书 + BasicAuth；信号量限流 + GET 指数退避重试；WebSocket 断线自动重连；国服 SGP Bearer 通道。
-
-**安装方式：**
-
-同一 pnpm workspace 内：
-
-```powershell
-pnpm add @amechan/lol@workspace:*
-```
-
-从私有 GitHub monorepo 安装（需在消费项目 `pnpm-workspace.yaml` 中授权 `@amechan/lol` 构建脚本）：
-
-```powershell
-pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/lol"
-```
-
-**API 示例：**
-
-```ts
-import { createLolClient } from "@amechan/lol";
-
-const client = await createLolClient();
-const me = await client.summoner.getCurrent();
-const games = await client.matchHistory.getMatches(me.puuid, { begIndex: 0, endIndex: 19 });
-client.events.onGameflowPhase((phase) => console.log("阶段:", phase));
-await client.close();
-```
-
-**在仓库内的验证方式：**
-
-```powershell
-pnpm --filter @amechan/lol typecheck   # 类型检查
-pnpm --filter @amechan/lol test        # 单测（本地 mock LCU 服务器，走真实 HTTP/WS 协议路径）
-pnpm --filter @amechan/lol build       # 构建 ESM + CJS + d.ts
-```
-
-**更多细节：** [`packages/lol/README.md`](../packages/lol/README.md)；设计文档 [`docs/superpowers/specs/2026-08-22-lol-sdk-design.md`](superpowers/specs/2026-08-22-lol-sdk-design.md)

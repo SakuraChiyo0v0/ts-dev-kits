@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { parseCookieString, parseUrl } from "../src/index.js";
+import { parseCookieString } from "@amechan/bilibili-auth";
+import { parseUrl } from "../src/index.js";
 
 describe("parseUrl", () => {
   it("parses BV video URL", () => {

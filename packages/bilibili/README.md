@@ -65,23 +65,11 @@ amechan-bilibili status    # 查看登录状态(不打印 cookie)
 amechan-bilibili logout    # 清除登录态
 ```
 
-无头环境可用 `--no-browser`(仅打印二维码地址)与 `--timeout <sec>`(默认 180 秒)。登录后 cookie 与 refresh_token 自动保存到平台用户配置目录:
+无头环境可用 `--no-browser`(仅打印扫码链接)与 `--timeout <sec>`(默认 180 秒)。登录后 `parse` / `streams` / `download` 自动使用存储的 cookie(高画质无需再传 `--cookie`);cookie 过期时自动用 refresh_token 续期。
 
-| 平台 | 路径 |
-| --- | --- |
-| Windows | `%APPDATA%\amechan\bilibili\auth.json` |
-| macOS | `~/Library/Application Support/amechan/bilibili/auth.json` |
-| Linux | `$XDG_CONFIG_HOME/amechan/bilibili/auth.json` |
+SDK 侧,`createBilibiliClient` 未传 `cookie` 时自动从登录态存储加载(显式 `cookie` 优先),可用 `authPath` 指定存储文件。
 
-文件权限 600,可用 `--auth-path` / `BILI_AUTH_PATH` 指定其它位置。登录后 `parse` / `streams` / `download` 自动使用存储的 cookie(高画质无需再传 `--cookie`);cookie 过期时自动用 refresh_token 续期,无需重新扫码。
-
-SDK 侧,`createBilibiliClient` 未传 `cookie` 时自动从登录态存储加载(显式 `cookie` 优先),可用 `authPath` 指定存储文件:
-
-```ts
-const bili = createBilibiliClient({ authPath: "./auth.json" }); // 无 cookie 时自动加载
-```
-
-高级用法:包导出 `qrcodeLogin()` / `refreshCookies()` / `AuthStore` 可直接调用。
+> 登录实现(二维码/状态机/存储/续期)在独立包 [`@amechan/bilibili-auth`](../../bilibili-auth/README.md):`qrcodeLogin()` / `AuthStore` / `refreshCookies()` 等可直接调用。
 
 ## 下载器配置
 

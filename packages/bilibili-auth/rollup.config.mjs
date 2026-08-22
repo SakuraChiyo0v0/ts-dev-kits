@@ -1,7 +1,6 @@
 export default {
   input: ".build/index.js",
-  external: (id) =>
-    id === "qrcode" || id === "@amechan/ffmpeg" || id === "@amechan/bilibili-auth" || id.startsWith("node:"),
+  external: (id) => id === "qrcode" || id.startsWith("node:"),
   output: [
     {
       file: "dist/index.js",

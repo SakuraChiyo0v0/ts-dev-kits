@@ -8,21 +8,7 @@ export {
 export {
   ApiSession,
   WbiSigner,
-  parseCookieString,
 } from "./network.js";
-export {
-  AuthStore,
-  defaultAuthPath,
-  openBrowserDefault,
-  qrcodeLogin,
-  refreshCookies,
-  resolveConfigRoot,
-  type AuthData,
-  type LoginOptions,
-  type LoginResult,
-  type LoginState,
-  type LoginStatus,
-} from "./auth/index.js";
 export { downloadStream, filterPcdnUrls, resolveDownloadUrl } from "./download.js";
 export { VideoParser } from "./parsers/video.js";
 export { BangumiParser } from "./parsers/bangumi.js";

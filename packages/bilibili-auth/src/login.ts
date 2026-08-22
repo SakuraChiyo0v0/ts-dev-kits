@@ -9,7 +9,7 @@ import { spawn } from "node:child_process";
 import { createServer, type Server } from "node:http";
 import { randomBytes } from "node:crypto";
 import QRCode from "qrcode";
-import { BilibiliError } from "../errors.js";
+import { BilibiliAuthError } from "./errors.js";
 
 const GENERATE_URL = "https://passport.bilibili.com/x/passport-login/web/qrcode/generate";
 const POLL_URL = "https://passport.bilibili.com/x/passport-login/web/qrcode/poll";
@@ -85,12 +85,12 @@ async function generateQrcode(fetchImpl: typeof fetch): Promise<GenerateResponse
       },
     });
   } catch (error) {
-    throw new BilibiliError("NETWORK", "生成登录二维码失败", { cause: error });
+    throw new BilibiliAuthError("NETWORK", "生成登录二维码失败", { cause: error });
   }
   const body = (await response.json()) as Record<string, unknown>;
   const code = Number(body.code ?? -1);
   if (code !== 0) {
-    throw new BilibiliError("API_ERROR", `生成登录二维码失败(code=${code})`, {
+    throw new BilibiliAuthError("API_ERROR", `生成登录二维码失败(code=${code})`, {
       apiCode: code,
       cause: body,
     });
@@ -99,7 +99,7 @@ async function generateQrcode(fetchImpl: typeof fetch): Promise<GenerateResponse
   const qrcodeKey = typeof data.qrcode_key === "string" ? data.qrcode_key : "";
   const url = typeof data.url === "string" ? data.url : "";
   if (qrcodeKey === "" || url === "") {
-    throw new BilibiliError("API_ERROR", "生成登录二维码响应缺少 qrcode_key", { cause: body });
+    throw new BilibiliAuthError("API_ERROR", "生成登录二维码响应缺少 qrcode_key", { cause: body });
   }
   return { qrcode_key: qrcodeKey, url };
 }
@@ -127,13 +127,13 @@ async function pollQrcode(qrcodeKey: string, fetchImpl: typeof fetch): Promise<P
       },
     );
   } catch (error) {
-    throw new BilibiliError("NETWORK", "轮询登录状态失败", { cause: error });
+    throw new BilibiliAuthError("NETWORK", "轮询登录状态失败", { cause: error });
   }
   const body = (await response.json()) as Record<string, unknown>;
   // 接口层错误(body.code !== 0):如风控 -412,直接失败。
   const bodyCode = Number(body.code ?? -1);
   if (bodyCode !== 0) {
-    throw new BilibiliError("API_ERROR", `轮询登录状态失败(code=${bodyCode})`, {
+    throw new BilibiliAuthError("API_ERROR", `轮询登录状态失败(code=${bodyCode})`, {
       apiCode: bodyCode,
       cause: body,
     });
@@ -154,7 +154,7 @@ async function pollQrcode(qrcodeKey: string, fetchImpl: typeof fetch): Promise<P
     const cookies = pairs.join("; ");
     const refreshToken = typeof data.refresh_token === "string" ? data.refresh_token : "";
     if (cookies === "" || refreshToken === "") {
-      throw new BilibiliError("API_ERROR", "登录成功但响应缺少 cookie 或 refresh_token", {
+      throw new BilibiliAuthError("API_ERROR", "登录成功但响应缺少 cookie 或 refresh_token", {
         cause: body,
       });
     }
@@ -279,7 +279,7 @@ export async function qrcodeLogin(options: LoginOptions = {}): Promise<LoginResu
       for (;;) {
         if (Date.now() >= deadline) {
           emit({ state: "timeout", message: "登录超时,请重试" });
-          throw new BilibiliError("LOGIN_REQUIRED", "登录超时,请重新执行 login");
+          throw new BilibiliAuthError("LOGIN_REQUIRED", "登录超时,请重新执行 login");
         }
         const outcome = await pollQrcode(qrcodeKey, fetchImpl);
         if (outcome.code === 0) {
@@ -302,7 +302,7 @@ export async function qrcodeLogin(options: LoginOptions = {}): Promise<LoginResu
       }
     }
     emit({ state: "failed", message: "二维码多次过期,请重试" });
-    throw new BilibiliError("LOGIN_REQUIRED", "二维码多次过期,请重新执行 login");
+    throw new BilibiliAuthError("LOGIN_REQUIRED", "二维码多次过期,请重新执行 login");
   } finally {
     server.closeAllConnections?.();
     await new Promise<void>((resolve) => server.close(() => resolve()));

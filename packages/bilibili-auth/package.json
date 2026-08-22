@@ -1,7 +1,7 @@
 {
-  "name": "@amechan/bilibili",
+  "name": "@amechan/bilibili-auth",
   "version": "0.1.0",
-  "description": "Bilibili video download SDK with pluggable parsers, configurable downloader and ffmpeg merge",
+  "description": "Bilibili QR-code login: browser window, cookie collection and refresh-token renewal",
   "license": "UNLICENSED",
   "type": "module",
   "sideEffects": false,
@@ -18,26 +18,22 @@
       "require": "./dist/index.cjs"
     }
   },
-  "bin": {
-    "amechan-bilibili": "./dist/cli/bilibili.js"
-  },
   "files": [
     "dist",
     "README.md"
   ],
   "scripts": {
-    "build": "node scripts/clean.mjs && tsc --project tsconfig.bundle.json && rollup --config rollup.config.mjs && tsc --project tsconfig.build.json && tsc --project tsconfig.cli.json && node scripts/clean.mjs --intermediate-only",
+    "build": "node scripts/clean.mjs && tsc --project tsconfig.bundle.json && rollup --config rollup.config.mjs && tsc --project tsconfig.build.json && node scripts/clean.mjs --intermediate-only",
     "prepare": "npm run build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
-    "@amechan/bilibili-auth": "workspace:*",
-    "@amechan/cli-utils": "workspace:*",
-    "@amechan/ffmpeg": "workspace:*"
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
     "@types/node": "^26.1.2",
+    "@types/qrcode": "^1.5.6",
     "rollup": "^4.62.4",
     "tslib": "^2.8.1",
     "typescript": "^7.0.2",

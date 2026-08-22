@@ -4,9 +4,9 @@
 
 ## 仓库是什么
 
-个人 TypeScript 开发工具 monorepo,用 pnpm workspace 组织。当前核心产物是邮件 SDK。私有 GitHub 仓库 `SakuraChiyo0v0/ts-dev-kits`,暂不发布到公共 npm registry。
+个人 TypeScript 开发工具 monorepo,用 pnpm workspace 组织。私有 GitHub 仓库 `SakuraChiyo0v0/ts-dev-kits`,暂不发布到公共 npm registry。
 
-- `packages/*` — 可复用依赖包(`@amechan/<name>`,当前有 `email`、`ffmpeg`)
+- `packages/*` — 可复用依赖包(`@amechan/<name>`;当前有 `cli-utils`、`bilibili-auth`、`email`、`ffmpeg`、`bilibili`、`chat-platforms`、`lol`)
 - `docs/` — 设计文档、规范、包索引与模板
 - `scripts/` — 仓库级验证脚本
 

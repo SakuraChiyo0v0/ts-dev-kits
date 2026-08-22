@@ -7,7 +7,7 @@
                     "node":  "\u003e=20"
                 },
     "scripts":  {
-                    "build":  "pnpm --filter @amechan/cli-utils build \u0026\u0026 pnpm --filter @amechan/email build \u0026\u0026 pnpm --filter @amechan/ffmpeg build \u0026\u0026 pnpm --filter @amechan/bilibili build \u0026\u0026 pnpm --filter @amechan/chat-platforms build",
+                    "build":  "pnpm --filter @amechan/cli-utils build \u0026\u0026 pnpm --filter @amechan/bilibili-auth build \u0026\u0026 pnpm --filter @amechan/email build \u0026\u0026 pnpm --filter @amechan/ffmpeg build \u0026\u0026 pnpm --filter @amechan/bilibili build \u0026\u0026 pnpm --filter @amechan/chat-platforms build",
                     "typecheck":  "pnpm -r --if-present typecheck",
                     "test":  "pnpm -r --if-present test",
                     "check":  "pnpm typecheck \u0026\u0026 pnpm test \u0026\u0026 pnpm build",

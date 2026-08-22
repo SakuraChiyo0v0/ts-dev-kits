@@ -87,7 +87,7 @@ export class AuthStore {
       if (code === "ENOENT") {
         return null;
       }
-      console.warn(`[bilibili] 读取登录态失败(${this.#path}):`, error);
+      console.warn(`[bilibili-auth] 读取登录态失败(${this.#path}):`, error);
       return null;
     }
     return parseAuthData(text, this.#path);
@@ -103,7 +103,7 @@ export class AuthStore {
       if (code === "ENOENT") {
         return null;
       }
-      console.warn(`[bilibili] 读取登录态失败(${this.#path}):`, error);
+      console.warn(`[bilibili-auth] 读取登录态失败(${this.#path}):`, error);
       return null;
     }
     return parseAuthData(text, this.#path);
@@ -145,7 +145,7 @@ function parseAuthData(text: string, filePath: string): AuthData | null {
       typeof parsed.refreshToken !== "string" ||
       parsed.refreshToken === ""
     ) {
-      console.warn(`[bilibili] 登录态文件损坏(${filePath}),视为未登录`);
+      console.warn(`[bilibili-auth] 登录态文件损坏(${filePath}),视为未登录`);
       return null;
     }
     return {
@@ -160,7 +160,7 @@ function parseAuthData(text: string, filePath: string): AuthData | null {
         : {}),
     };
   } catch {
-    console.warn(`[bilibili] 登录态文件损坏(${filePath}),视为未登录`);
+    console.warn(`[bilibili-auth] 登录态文件损坏(${filePath}),视为未登录`);
     return null;
   }
 }

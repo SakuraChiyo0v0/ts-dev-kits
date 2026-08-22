@@ -2,13 +2,13 @@
  * 登录态续期 —— 用 refresh_token 换新 cookie,无需重新扫码。
  * 接口:POST passport.bilibili.com/x/passport-login/web/cookie/refresh
  */
-import { BilibiliError } from "../errors.js";
-import { parseCookieString } from "../network.js";
+import { BilibiliAuthError } from "./errors.js";
+import { parseCookieString } from "./cookie.js";
 import type { AuthData } from "./store.js";
 
 const REFRESH_URL = "https://passport.bilibili.com/x/passport-login/web/cookie/refresh";
 
-/** 用 refresh_token 换新 cookie,返回更新后的登录态。失败抛 BilibiliError。 */
+/** 用 refresh_token 换新 cookie,返回更新后的登录态。失败抛 BilibiliAuthError。 */
 export async function refreshCookies(
   data: AuthData,
   fetchImpl: typeof fetch = fetch,
@@ -16,7 +16,7 @@ export async function refreshCookies(
   const cookies = parseCookieString(data.cookies);
   const csrf = cookies.bili_jct;
   if (csrf === undefined || csrf === "") {
-    throw new BilibiliError(
+    throw new BilibiliAuthError(
       "AUTH_EXPIRED",
       "登录态缺少 bili_jct,无法续期,请重新 login",
     );
@@ -40,7 +40,7 @@ export async function refreshCookies(
       }),
     });
   } catch (error) {
-    throw new BilibiliError("NETWORK", "续期请求失败", { cause: error });
+    throw new BilibiliAuthError("NETWORK", "续期请求失败", { cause: error });
   }
 
   const text = await response.text();
@@ -48,14 +48,14 @@ export async function refreshCookies(
   try {
     body = JSON.parse(text) as unknown;
   } catch {
-    throw new BilibiliError("API_ERROR", "续期接口返回了非 JSON 响应", { cause: text });
+    throw new BilibiliAuthError("API_ERROR", "续期接口返回了非 JSON 响应", { cause: text });
   }
 
   const record = (typeof body === "object" && body !== null ? body : {}) as Record<string, unknown>;
   const code = Number(record.code ?? -1);
   if (code !== 0) {
     // -101 / -400:refresh_token 失效,需要重新扫码。
-    throw new BilibiliError(
+    throw new BilibiliAuthError(
       "AUTH_EXPIRED",
       `登录态已失效(code=${code}),请重新执行 login`,
       { apiCode: code, cause: body },
@@ -65,7 +65,7 @@ export async function refreshCookies(
   const dataRecord = (record.data ?? {}) as Record<string, unknown>;
   const newRefreshToken = typeof dataRecord.refresh_token === "string" ? dataRecord.refresh_token : "";
   if (newRefreshToken === "") {
-    throw new BilibiliError("API_ERROR", "续期响应缺少 refresh_token", { cause: body });
+    throw new BilibiliAuthError("API_ERROR", "续期响应缺少 refresh_token", { cause: body });
   }
 
   // 合并新 Set-Cookie(覆盖旧值)。

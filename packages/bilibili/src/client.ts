@@ -1,8 +1,8 @@
 import { createFfmpegClient } from "@amechan/ffmpeg";
+import { AuthStore, refreshCookies, type AuthData } from "@amechan/bilibili-auth";
 import { BilibiliError } from "./errors.js";
 import { ApiSession } from "./network.js";
 import { downloadStream } from "./download.js";
-import { AuthStore, refreshCookies, type AuthData } from "./auth/index.js";
 import { VideoParser } from "./parsers/video.js";
 import { BangumiParser } from "./parsers/bangumi.js";
 import { CheeseParser } from "./parsers/cheese.js";

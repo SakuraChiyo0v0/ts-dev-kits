@@ -11,7 +11,8 @@ import {
   printHelp,
   requireString,
 } from "@amechan/cli-utils";
-import { AuthStore, createBilibiliClient, qrcodeLogin } from "../index.js";
+import { AuthStore, qrcodeLogin } from "@amechan/bilibili-auth";
+import { createBilibiliClient } from "../index.js";
 
 const USAGE = "Usage: amechan-bilibili <command> [options]";
 
