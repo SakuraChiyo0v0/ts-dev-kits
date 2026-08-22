@@ -12,9 +12,9 @@
 | --- | --- | --- | --- | --- |
 | `@amechan/email` | 0.1.0 | 与供应商解耦的 Node.js 邮件 SDK | 可用（SMTP 适配器） | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/email` |
 | `@amechan/ffmpeg` | 0.1.0 | FFmpeg/ffprobe 进程封装 + 媒体处理高层函数 | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/ffmpeg` |
-| `@amechan/llm` | 0.1.0 | OpenAI 兼容多提供商 LLM 客户端(OpenAI/Anthropic/Gemini/Azure) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/llm` |
 | `@amechan/bilibili` | 0.1.0 | B 站视频下载 SDK(解析/取流/下载/ffmpeg 合并) | 可用(投稿视频) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/bilibili` |
 | `@amechan/chat-platforms` | 0.1.0 | 统一聊天平台接入 SDK(消息模型/适配器注册表,当前飞书) | 可用(飞书, websocket/webhook) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/chat-platforms` |
+| `@amechan/lol` | 0.1.0 | 英雄联盟 LCU 本地能力 SDK(召唤师/战绩/段位/对局流程/游戏数据/事件) | 可用(查询+对局感知, 国服 SGP) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/lol` |
 
 ## 包详情
 
@@ -156,61 +156,6 @@ pnpm --filter @amechan/ffmpeg build  # 构建 ESM + CJS + d.ts
 
 **更多细节：** [`packages/ffmpeg/README.md`](../packages/ffmpeg/README.md)
 
-### `@amechan/llm`
-
-OpenAI 兼容的多提供商 LLM 客户端。统一接口调用主流模型提供商,内置格式转换、流式输出、工具调用与错误归一化,附带轻量 OpenAI 兼容 HTTP 代理。
-
-**适用环境：** Node.js 20+,使用各提供商时需对应的 API Key。
-
-**核心接口：**
-
-- `createLlmClient({ adapter })` — 创建客户端
-- `openaiAdapter({ apiKey, baseUrl?, ... })` / `anthropicAdapter({ apiKey })` / `geminiAdapter({ apiKey })` / `azureAdapter({ apiKey, baseUrl, deployment })` — 各家适配器
-- `client.chat(request)` — 非流式补全,返回 OpenAI 兼容响应
-- `client.chatStream(request, onChunk)` — 流式补全,逐块回调
-- `createLlmProxy({ adapter, defaultModel? })` — 起 OpenAI 兼容 HTTP 服务
-- `LlmError` — 统一错误类型,错误码 `AUTHENTICATION` / `RATE_LIMIT` / `TIMEOUT` / `INVALID_REQUEST` / `MODEL_NOT_FOUND` / `OVERLOADED` / `NETWORK` / `UNKNOWN`
-
-**请求形态：** OpenAI 兼容(`model` + `messages`,支持 `temperature` / `maxTokens` / `tools` / `toolChoice` / 多模态图片 / 流式),响应归一为 OpenAI 格式。
-
-**安装方式：**
-
-同一 pnpm workspace 内：
-
-```powershell
-pnpm add @amechan/llm@workspace:*
-```
-
-从私有 GitHub monorepo 安装(需先在消费项目 `pnpm-workspace.yaml` 中授权构建脚本,见包内 README)：
-
-```powershell
-pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/llm"
-```
-
-**API 示例：**
-
-```ts
-import { createLlmClient, openaiAdapter } from "@amechan/llm";
-
-const client = createLlmClient({
-  adapter: openaiAdapter({ apiKey: process.env.OPENAI_API_KEY! }),
-});
-const result = await client.chat({
-  model: "gpt-4o",
-  messages: [{ role: "user", content: "你好" }],
-});
-console.log(result.choices[0]?.message.content);
-```
-
-**在仓库内的验证方式：**
-
-```powershell
-pnpm --filter @amechan/llm test   # mock 服务器验证四家适配器转换/错误/流式/代理
-pnpm --filter @amechan/llm build  # 构建 ESM + CJS + d.ts
-```
-
-**更多细节：** [`packages/llm/README.md`](../packages/llm/README.md)
-
 ### `@amechan/bilibili`
 
 B 站视频下载 SDK。解析视频信息、获取播放流、可配置下载器下载,并用 `@amechan/ffmpeg` 合并音视频。核心逻辑参考开源项目 [Bili23-Downloader](https://github.com/ScottSloan/Bili23-Downloader)。
@@ -316,3 +261,59 @@ pnpm --filter @amechan/chat-platforms build  # 构建 ESM + CJS + d.ts
 ```
 
 **更多细节：** [`packages/chat-platforms/README.md`](../packages/chat-platforms/README.md)
+
+### `@amechan/lol`
+
+英雄联盟（LoL）客户端本地能力 SDK。封装 LCU API（League Client Update，客户端暴露的本机 HTTP/WebSocket 接口），提供召唤师、战绩、段位、对局流程、选人、游戏数据等能力，供本机 Node 进程（Electron 主进程 / CLI / 本地 Web 后端）直接使用。代码完全自研（无 Seraphine 代码复制，规避 GPLv3），参考 LCU 官方文档与开源项目 [Seraphine](https://github.com/Zzaphkiel/Seraphine) 的设计思路。
+
+**适用环境：** Node.js 20+，Windows 本机 + 运行中的英雄联盟客户端；LCU 只存在于本机客户端运行期间，**不能做成云端 SaaS**。
+
+**核心接口：**
+
+- `createLolClient({ connection?, concurrency?, timeoutMs? })` — 自动发现本机 LCU 并连接（也可显式指定连接参数）
+- `client.summoner` — `getCurrent()` / `getByName()` / `getByPuuid()` / `getProfile()`
+- `client.matchHistory` — `getMatches(puuid, {begIndex, endIndex})` / `getMatchesViaSgp()` / `getGameDetail(gameId)`
+- `client.ranked` — `getStats(puuid)` / `getStatsViaSgp(puuid)`
+- `client.gameflow` — `getPhase()` / `getSession()` / `getReadyCheck()` / `acceptReadyCheck()` / `dodge()` / `reconnect()` / `playAgain()` / `spectate()`
+- `client.gameData` — 静态数据（英雄/物品/符文/召唤师技能/队列）与 `fetchAsset()` 资源获取
+- `client.events` — WebSocket 事件订阅：`onGameflowPhase` / `onChampSelect` / `onCurrentSummoner` / `onSgpToken` / 通用 `subscribe()`
+- `client.sgp` — 腾讯国服 SGP 通道（检测到国服服务器自动启用，非国服为 `undefined`）
+- `LolError` — 统一错误码 `CLIENT_NOT_RUNNING` / `DISCOVERY_FAILED` / `CONNECTION` / `NOT_FOUND` / `RATE_LIMIT` / `AUTH` / `TIMEOUT` / `UNKNOWN`，消息脱敏
+
+**关键机制：** tasklist + PowerShell CIM 进程发现；undici 忽略自签名证书 + BasicAuth；信号量限流 + GET 指数退避重试；WebSocket 断线自动重连；国服 SGP Bearer 通道。
+
+**安装方式：**
+
+同一 pnpm workspace 内：
+
+```powershell
+pnpm add @amechan/lol@workspace:*
+```
+
+从私有 GitHub monorepo 安装（需在消费项目 `pnpm-workspace.yaml` 中授权 `@amechan/lol` 构建脚本）：
+
+```powershell
+pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/lol"
+```
+
+**API 示例：**
+
+```ts
+import { createLolClient } from "@amechan/lol";
+
+const client = await createLolClient();
+const me = await client.summoner.getCurrent();
+const games = await client.matchHistory.getMatches(me.puuid, { begIndex: 0, endIndex: 19 });
+client.events.onGameflowPhase((phase) => console.log("阶段:", phase));
+await client.close();
+```
+
+**在仓库内的验证方式：**
+
+```powershell
+pnpm --filter @amechan/lol typecheck   # 类型检查
+pnpm --filter @amechan/lol test        # 单测（本地 mock LCU 服务器，走真实 HTTP/WS 协议路径）
+pnpm --filter @amechan/lol build       # 构建 ESM + CJS + d.ts
+```
+
+**更多细节：** [`packages/lol/README.md`](../packages/lol/README.md)；设计文档 [`docs/superpowers/specs/2026-08-22-lol-sdk-design.md`](superpowers/specs/2026-08-22-lol-sdk-design.md)
