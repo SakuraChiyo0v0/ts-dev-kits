@@ -325,6 +325,7 @@ pnpm --filter @sakurachiyo0v0/chat-platforms build  # 构建 ESM + CJS + d.ts
 - `client.liveClient` — 游戏内实时数据（端口 2999，明文只读）：`getAllGameData()` / `getPlayerList()` / `getActivePlayer()` / `getEventData()` 等；独立工厂 `createLiveClient()`
 - `parsers` — 纯函数解析层：`parseMatchSummary` / `parseMatchesSummary` / `getRecentChampions` / `getTeammates` / `parseRankSummary`（LCU）/ `parseRankSummaryFromSgp` / `formatDuration` / `formatTimestamp`
 - `client.sgp` — 腾讯国服 SGP 通道（检测到国服服务器自动启用，非国服为 `undefined`）
+- `client.championNames` — 英雄名映射（id → 中文名）：内置全量表离线可用，运行时自动从 CommunityDragon latest 通道更新（出新英雄自动生效），不依赖 LCU 连接；独立类 `ChampionNamesService`（可自定义数据源/缓存 TTL）
 - `LolError` — 统一错误码 `CLIENT_NOT_RUNNING` / `DISCOVERY_FAILED` / `CONNECTION` / `NOT_FOUND` / `RATE_LIMIT` / `AUTH` / `TIMEOUT` / `UNKNOWN`，消息脱敏
 
 **关键机制：** tasklist + PowerShell CIM 进程发现；undici 忽略自签名证书 + BasicAuth；信号量限流 + GET 指数退避重试；WebSocket 断线自动重连；国服 SGP Bearer 通道。
