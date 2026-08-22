@@ -23,12 +23,20 @@ export class SummonerApi {
     });
   }
 
-  /** 按游戏内名字搜索（同大区） */
+  /** 按游戏内名字搜索（LCU v1，旧 summonerName；Riot ID 用户请用 searchByRiotId） */
   getByName(name: string): Promise<Summoner> {
     return this.transport.request<Summoner>({
       method: "GET",
-      path: "/lol-summoner/v1/summoners",
-      params: { name },
+      path: `/lol-summoner/v1/summoners/name/${encodeURIComponent(name)}`,
+    });
+  }
+
+  /** 按 Riot ID（gameName）搜索（LCU v2，POST 批量查询；返回匹配数组） */
+  searchByRiotId(gameName: string): Promise<Summoner[]> {
+    return this.transport.request<Summoner[]>({
+      method: "POST",
+      path: "/lol-summoner/v2/summoners/names",
+      json: [gameName],
     });
   }
 

@@ -31,6 +31,28 @@ function lastRequest() {
   return req;
 }
 
+describe("summoner", () => {
+  it("searches by name via v1 path", async () => {
+    const client = await startClient();
+    server!.route("GET", "/lol-summoner/v1/summoners/name/%E4%B8%A8%E5%BA%B7%E6%9C%89%E4%B8%BA%E4%B8%A8", () => ({
+      body: { name: "丨康有为丨", puuid: "p1" },
+    }));
+    const s = await client.summoner.getByName("丨康有为丨");
+    expect(s.puuid).toBe("p1");
+    await client.close();
+  });
+
+  it("searches by Riot ID via v2 POST", async () => {
+    const client = await startClient();
+    await client.summoner.searchByRiotId("丨康有为丨");
+    const req = lastRequest();
+    expect(req.method).toBe("POST");
+    expect(req.path).toBe("/lol-summoner/v2/summoners/names");
+    expect(req.body).toEqual(["丨康有为丨"]);
+    await client.close();
+  });
+});
+
 describe("champSelect", () => {
   it("picks a champion with PATCH body", async () => {
     const client = await startClient();
