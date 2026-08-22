@@ -1,0 +1,42 @@
+{
+  "name": "@sakurachiyo0v0/lol",
+  "version": "0.1.0",
+  "description": "League of Legends LCU local capability SDK (summoner/match history/ranked/gameflow/champ select)",
+  "license": "UNLICENSED",
+  "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "node scripts/clean.mjs && tsc --project tsconfig.bundle.json && rollup --config rollup.config.mjs && tsc --project tsconfig.build.json && node scripts/clean.mjs --intermediate-only",
+    "prepare": "npm run build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "undici": "^7.0.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.2",
+    "@types/ws": "^8.5.12",
+    "rollup": "^4.62.4",
+    "tslib": "^2.8.1",
+    "typescript": "^7.0.2"
+  }
+}
