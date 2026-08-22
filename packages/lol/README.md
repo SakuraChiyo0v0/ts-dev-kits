@@ -84,7 +84,7 @@ await client.close();
 | `client.profile` | `setBackground(skinId)` / `setBackgroundAugments(contentId)` / `setProfileIcon(iconId)` / `setRankShown(queue, tier, division)` / `removeTokens()` / `removePrestigeCrest()` | 生涯/个性化设置 |
 | `client.chat` | `getMe()` / `setStatus(message)` / `setAvailability(a)` / `getConversations()` / `sendMessage(convId, body)` / `sendFriendRequest(name)` / `sendNotification({title, content})` | 聊天/社交 |
 | `client.events` | `onGameflowPhase(cb)` / `onChampSelect(cb)` / `onCurrentSummoner(cb)` / `onSgpToken(cb)` / `subscribe(eventName, cb)` | WebSocket 事件订阅 |
-| `client.liveClient` | `getAllGameData()` / `getPlayerList()` / `getActivePlayer()` / `getActivePlayerName()` / `getGameStats()` / `getEventData()` / `getScores()` / `getItems()` / `getAbilities()` / `getRunes()` / `getPlayerXxx(name)` | 游戏内 Live Client Data（端口 2999，只读，风险极低） |
+| `client.liveClient` | `getAllGameData()` / `getPlayerList()` / `getActivePlayer()` / `getActivePlayerName()` / `getGameStats()` / `getEventData()` / `getScores()` / `getItems()` / `getAbilities()` / `getRunes()` / `getPlayerXxx(name)` | 游戏内 Live Client Data（端口 2999，只读；⚠️ **国服客户端实测不可用**：端口由游戏进程监听但 `/liveclientdata` 无响应，疑似国服/反作弊限制；海外客户端可用性未验证，该 API 近期仍有社区项目在使用） |
 | `client.sgp` | `getMatches()` / `getRankedStats()` / `getSummonerByPuuid()` / `getSpectatorInfo()` | 腾讯国服 SGP 通道（非国服为 `undefined`） |
 
 **parsers 解析层**（纯函数，无 IO，把 raw JSON 转友好结构）：
