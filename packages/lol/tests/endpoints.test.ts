@@ -51,6 +51,13 @@ describe("summoner", () => {
     expect(req.body).toEqual(["丨康有为丨"]);
     await client.close();
   });
+
+  it("searches by Riot ID with tagLine (required on current client)", async () => {
+    const client = await startClient();
+    await client.summoner.searchByRiotId("丨康有为丨", "63354");
+    expect(lastRequest().body).toEqual(["丨康有为丨#63354"]);
+    await client.close();
+  });
 });
 
 describe("champSelect", () => {

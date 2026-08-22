@@ -31,12 +31,17 @@ export class SummonerApi {
     });
   }
 
-  /** 按 Riot ID（gameName）搜索（LCU v2，POST 批量查询；返回匹配数组） */
-  searchByRiotId(gameName: string): Promise<Summoner[]> {
+  /**
+   * 按 Riot ID 搜索（LCU v2，POST 批量查询；返回匹配数组）。
+   * ⚠️ 当前客户端必须带 tagLine 才能命中（如 searchByRiotId("丨康有为丨", "63354")），
+   * 纯 gameName 查询返回空数组。
+   */
+  searchByRiotId(gameName: string, tagLine?: string): Promise<Summoner[]> {
+    const id = tagLine !== undefined ? `${gameName}#${tagLine}` : gameName;
     return this.transport.request<Summoner[]>({
       method: "POST",
       path: "/lol-summoner/v2/summoners/names",
-      json: [gameName],
+      json: [id],
     });
   }
 
