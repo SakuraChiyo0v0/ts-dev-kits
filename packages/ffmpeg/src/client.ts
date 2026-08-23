@@ -26,6 +26,7 @@ import type {
   ToGifOptions,
   TranscodeOptions,
   WatermarkOptions,
+  WriteTagsOptions,
 } from "./types.js";
 
 /** 把 ffprobe JSON 输出规范化为 ProbeResult。 */
@@ -634,6 +635,46 @@ export function createFfmpegClient(options: FfmpegOptions = {}): FfmpegClient {
     return runner.run(args, runOptions(options));
   }
 
+  // ---------- 标签 ----------
+
+  async function writeTags(options: WriteTagsOptions): Promise<RunResult> {
+    requireInput(options.input, "input");
+    requireInput(options.output, "output");
+    const metadata: string[] = [];
+    if (options.title !== undefined) {
+      metadata.push(`title=${options.title}`);
+    }
+    if (options.artist !== undefined) {
+      metadata.push(`artist=${options.artist}`);
+    }
+    if (options.album !== undefined) {
+      metadata.push(`album=${options.album}`);
+    }
+    const cover = options.cover;
+    const args = [
+      "-i", options.input,
+      ...(cover !== undefined ? ["-i", cover] : []),
+      ...metadata.flatMap((value) => ["-metadata", value]),
+      ...(cover !== undefined
+        ? [
+            "-map", "0:a:0",
+            "-map", "1:v:0",
+            "-c:a", "copy",
+            "-c:v", "mjpeg",
+            "-disposition:v", "attached_pic",
+          ]
+        : ["-map", "0:a:0", "-c:a", "copy"]),
+      ...(cover !== undefined && /\.mp3$/iu.test(options.output)
+        ? ["-id3v2_version", "3"]
+        : []),
+      "-progress", "pipe:1",
+      "-nostats",
+      ...yArgs(options.overwrite),
+      options.output,
+    ];
+    return runner.run(args, runOptions(options));
+  }
+
   // ---------- 原生命令 ----------
 
   async function runCommand(
@@ -687,5 +728,6 @@ export function createFfmpegClient(options: FfmpegOptions = {}): FfmpegClient {
     convertImage,
     compositeImage,
     compressImage,
+    writeTags,
   };
 }

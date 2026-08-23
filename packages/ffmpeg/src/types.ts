@@ -269,6 +269,20 @@ export interface CompressImageOptions extends RunControls {
   quality?: number;
 }
 
+/** 音频标签写入选项(mp3 写 ID3v2,flac 写 Vorbis comment,可选内嵌封面)。 */
+export interface WriteTagsOptions extends RunControls {
+  input: string;
+  output: string;
+  /** 标题。 */
+  title?: string;
+  /** 歌手。 */
+  artist?: string;
+  /** 专辑。 */
+  album?: string;
+  /** 封面图片路径;内嵌为 attached_pic。 */
+  cover?: string;
+}
+
 /** 解析出的 SDK 客户端。 */
 export interface FfmpegClient {
   readonly ffmpegPath: string;
@@ -331,4 +345,6 @@ export interface FfmpegClient {
   compositeImage(options: CompositeImageOptions): Promise<RunResult>;
   /** 图片:压缩。 */
   compressImage(options: CompressImageOptions): Promise<RunResult>;
+  /** 音频:写入标签(标题/歌手/专辑/封面),stream copy 不重编码。 */
+  writeTags(options: WriteTagsOptions): Promise<RunResult>;
 }

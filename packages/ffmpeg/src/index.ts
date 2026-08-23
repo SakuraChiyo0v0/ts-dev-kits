@@ -29,4 +29,5 @@ export type {
   ToGifOptions,
   TranscodeOptions,
   WatermarkOptions,
+  WriteTagsOptions,
 } from "./types.js";

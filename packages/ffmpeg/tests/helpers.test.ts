@@ -268,6 +268,52 @@ describe("audio helpers", () => {
     const info = await ffmpeg.probe(output);
     expect(info.duration).toBeGreaterThan(3.5);
   });
+
+  it("writes tags to an mp3 without re-encoding", async () => {
+    const ctx = await makeFixtures();
+    trackCleanup(ctx.directory);
+    const input = join(ctx.directory, "tag-in.mp3");
+    const output = join(ctx.directory, "tag-out.mp3");
+
+    await ffmpeg.toMp3({ input: ctx.audio, output: input, overwrite: true });
+    const result = await ffmpeg.writeTags({
+      input,
+      output,
+      title: "测试标题",
+      artist: "测试歌手",
+      album: "测试专辑",
+      overwrite: true,
+    });
+
+    expect(result.exitCode).toBe(0);
+    const info = await ffmpeg.probe(output);
+    expect(info.audioStream?.codecName).toBe("mp3");
+    // 写标签不重编码,时长保持不变。
+    expect(info.duration).toBeGreaterThan(1);
+  });
+
+  it("writes tags with embedded cover to mp3", async () => {
+    const ctx = await makeFixtures();
+    trackCleanup(ctx.directory);
+    const input = join(ctx.directory, "cover-in.mp3");
+    const output = join(ctx.directory, "cover-out.mp3");
+
+    await ffmpeg.toMp3({ input: ctx.audio, output: input, overwrite: true });
+    const result = await ffmpeg.writeTags({
+      input,
+      output,
+      title: "带封面",
+      cover: ctx.image,
+      overwrite: true,
+    });
+
+    expect(result.exitCode).toBe(0);
+    const info = await ffmpeg.probe(output);
+    expect(info.audioStream?.codecName).toBe("mp3");
+    // 封面作为附加图片流(mjpeg)。
+    const coverStream = info.streams.find((stream) => stream.codecName === "mjpeg");
+    expect(coverStream).toBeDefined();
+  });
 });
 
 describe("image helpers", () => {
