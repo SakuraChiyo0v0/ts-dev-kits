@@ -57,6 +57,7 @@ export { NewsApi, type GetNewsOptions } from "./api/news.js";
 export {
   StoreApi,
   type GetAppDetailsOptions,
+  type GetAppReviewsOptions,
   type StoreLocaleOptions,
 } from "./api/store.js";
 export {
@@ -79,11 +80,15 @@ export {
   type GetTradeHistoryOptions,
   type GetTradeOffersOptions,
 } from "./api/trade.js";
+export { RedeemApi } from "./api/redeem.js";
 export type {
   AchievementPercentage,
   ActivityFeedResult,
   AppDetailsResult,
   AppListEntry,
+  AppReview,
+  AppReviewAuthor,
+  AppReviewsResult,
   BadgeEntry,
   BadgeQuest,
   BadgesResult,
@@ -122,6 +127,7 @@ export type {
   ProfileComment,
   RecentlyPlayedGame,
   RecentlyPlayedResult,
+  RedeemResult,
   SchemaAchievement,
   SchemaStat,
   ServerInfo,

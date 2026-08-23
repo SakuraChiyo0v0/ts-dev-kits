@@ -667,3 +667,56 @@ export interface ItemDef {
 export interface ItemDefsResult {
   items: ItemDef[];
 }
+
+/** 商店评测(appreviews,公开;filter 可用 recent/updated/all)。 */
+export interface AppReviewAuthor {
+  steamid: string;
+  num_games_owned: number;
+  num_reviews: number;
+  playtime_forever: number;
+  playtime_at_review: number;
+  last_played: number;
+}
+
+export interface AppReview {
+  recommendationid: string;
+  author: AppReviewAuthor;
+  language: string;
+  review: string;
+  timestamp_created: number;
+  timestamp_updated: number;
+  voted_up: boolean;
+  votes_up: number;
+  votes_funny: number;
+  weighted_vote_score: number;
+  comment_count: number;
+  steam_purchase: boolean;
+  received_for_free: boolean;
+  written_during_early_access: boolean;
+}
+
+export interface AppReviewsResult {
+  success: number;
+  query_summary: {
+    num_reviews: number;
+    review_score: number;
+    review_score_desc: string;
+    total_positive: number;
+    total_negative: number;
+    total_reviews: number;
+  };
+  reviews: AppReview[];
+  cursor: string;
+}
+
+/** 激活码兑换结果(ePurchaseResult 码映射见 redeem.ts)。 */
+export interface RedeemResult {
+  /** 是否成功兑换。 */
+  success: boolean;
+  /** 结果码(ePurchaseResult;0/1 为成功语义)。 */
+  result: number;
+  /** 人话描述(失败时含原因)。 */
+  message: string;
+  /** 成功时兑换到的游戏/内容名(从 receipt line_items 提取)。 */
+  games?: string[];
+}

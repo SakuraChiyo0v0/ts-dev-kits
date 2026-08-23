@@ -116,6 +116,12 @@ export const SteamEndpoints = {
     appsInGenre: "/api/getappsingenre",
     /** 促销页,无需 key;slug 参数。 */
     salePage: "/api/salepage",
+    /** 商店评测,无需 key;appid 路径参数(json=1 返回 JSON)。 */
+    appReviews: (appid: number): string => `/appreviews/${appid}`,
+    /** 激活码兑换页(需登录 cookie;首次访问 302 + Set-Cookie 刷新会话)。 */
+    registerKeyPage: "/account/registerkey",
+    /** 激活码兑换提交(需登录 cookie + 页面 sessionID),返回 JSON。 */
+    registerKeyAjax: "/account/ajaxregisterkey/",
   },
   community: {
     /** 玩家库存,公开可读;私有需登录 cookie。 */

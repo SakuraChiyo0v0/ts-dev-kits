@@ -1,6 +1,6 @@
 # @sakurachiyo0v0/steam
 
-Steam SDK(查询向):官方 Web API(`api.steampowered.com`)+ Storefront(`store.steampowered.com`)+ 社区站点(`steamcommunity.com`)。**零写操作**——不提供市场买卖、交易创建、好友增删等任何写接口,合规红线固化。
+Steam SDK(查询向):官方 Web API(`api.steampowered.com`)+ Storefront(`store.steampowered.com`)+ 社区站点(`steamcommunity.com`)。**写操作仅激活码兑换一项**(`redeem`,用户拍板扩展红线);市场买卖、交易创建、好友增删等零写,合规红线固化。
 
 **适用环境:** Node.js 20+,运行在可信任的服务端进程。`steamcommunity.com` 在国内网络不可达,涉及社区主机(库存/市场/登录)的请求需配置 `proxy`。
 
@@ -159,11 +159,12 @@ await steam.close();
 | `client.library` | `getOwnedGames`(隐私语义)/ `isPlayingSharedGame` / `getRecentlyPlayedGames` / `getWishlist`(公开读,隐私标记) |
 | `client.stats` | `getSchemaForGame` / `getPlayerAchievements` / `getUserStatsForGame` / `getGlobalAchievementPercentages` / `getGlobalStats` / `getNumberOfCurrentPlayers` |
 | `client.news` | `getNewsForApp`(无需 key) |
-| `client.store` | `getAppDetails` / `getFeatured` / `getPackageDetails` / `getDlcForApp` / `search` / `getAppList` 等(无需 key,`cc`/`l` 本地化) |
+| `client.store` | `getAppDetails` / `getFeatured` / `getPackageDetails` / `getDlcForApp` / `search` / `getAppList` / `getAppReviews`(评测,公开)等(无需 key,`cc`/`l` 本地化) |
 | `client.inventory` | `getInventory`(公开读)/ `getOwnInventory`(需登录态)/ `getItemDefs`(publisher key) |
 | `client.market` | `getPriceOverview` / `search` / `getItemOrdersHistogram`(订单簿)/ `getPriceHistory` / `getMyListings`(需登录)/ `getMyHistory`(需登录),全部只读 |
 | `client.workshop` | `getPublishedFileDetails`(无需 key)/ `enumerateUserPublishedFiles` / `enumerateUserSubscribedFiles` |
 | `client.trade` | `getTradeOffers` / `getTradeOffer` / `getTradeHistory` / `getTradeUrl`(只读,零写操作) |
+| `client.redeem` | `redeemActivationKey`(**写操作**;全 SDK 唯一写能力,需登录态,经用户拍板扩展红线) |
 
 ## CLI(`amechan-steam`)
 
@@ -179,13 +180,16 @@ amechan-steam price 730 "AK-47 | Redline (Field-Tested)" --currency 23
 amechan-steam search "AK-47" --appid 730
 amechan-steam inventory "76561198006483290" 730 2
 amechan-steam my-listings                     # 我的挂单(需登录态)
+amechan-steam reviews 730 --language schinese # 商店评测(公开)
+amechan-steam watch 730 "AK-47 | Redline (Field-Tested)" --currency 23  # 价格监控:即时价+订单簿+历史
+amechan-steam redeem "AAAAA-BBBBB-CCCCC"      # 兑换激活码(写操作,需登录态)
 amechan-steam logout
 ```
 
 - 默认输出 JSON;`--proxy`/`AMECHAN_STEAM_PROXY` 配置代理(community 国内不可达)。
 - 环境变量:`AMECHAN_STEAM_AUTH_PATH` / `AMECHAN_STEAM_API_KEY` / `AMECHAN_STEAM_PUBLISHER_KEY` / `AMECHAN_STEAM_BASE_URLS`(JSON 覆盖四主机)。
 - 详细手册见 [`skills/steam-cli/SKILL.md`](../../skills/steam-cli/SKILL.md)。
-- **零写操作**:无市场买卖/交易创建/好友增删等任何写命令。
+- **写操作仅 `redeem` 激活码兑换一项**(用户拍板扩展红线);市场买卖/交易创建/好友增删等仍零写。
 
 ## 客户端选项
 

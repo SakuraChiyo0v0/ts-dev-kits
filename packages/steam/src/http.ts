@@ -34,6 +34,12 @@ export interface SteamRequestOptions {
   noCache?: boolean;
   /** 返回原始文本而非 JSON 解析结果(HTML 等场景)。 */
   rawText?: boolean;
+  /**
+   * 浏览器式会话刷新:跟随 3xx 重定向并吸收 Set-Cookie 更新会话 cookie
+   * (store / community 的 /account/* 等页面首次访问会 302 + Set-Cookie 刷新
+   * browserid 等,不吸收则无限重定向)。最多跟随 5 跳。
+   */
+  sessionRefresh?: boolean;
 }
 
 export interface SteamTransportOptions {
@@ -230,6 +236,14 @@ export class SteamHttpTransport {
 
     let attempt = 0;
     for (;;) {
+      // 会话刷新吸收 Set-Cookie 后重试,需用更新后的 cookie 重建请求头。
+      if (options.withCookies === true) {
+        if (this.#cookie !== undefined) {
+          headers.set("cookie", this.#cookie);
+        } else {
+          headers.delete("cookie");
+        }
+      }
       const timeoutMs = options.timeoutMs ?? this.#timeoutMs;
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -238,6 +252,7 @@ export class SteamHttpTransport {
         response = await this.#fetchImpl(url, {
           method,
           headers,
+          ...(options.sessionRefresh === true ? { redirect: "manual" as const } : {}),
           ...(options.json !== undefined ? { body: JSON.stringify(options.json) } : {}),
           ...(options.form !== undefined
             ? {
@@ -261,6 +276,15 @@ export class SteamHttpTransport {
       }
 
       this.#logger?.(`${method} ${options.host} ${options.path} -> ${response.status}`);
+
+      // 浏览器式会话刷新:3xx + Set-Cookie → 吸收进 cookie 后重试同 URL。
+      if (options.sessionRefresh === true && response.status >= 300 && response.status < 400) {
+        const absorbed = this.#absorbSetCookies(response.headers);
+        if (absorbed > 0 && attempt < 5) {
+          attempt += 1;
+          continue;
+        }
+      }
 
       if (response.status === 429 && attempt < this.#maxRetries) {
         const retryAfter = this.#retryAfterSeconds(response.headers);
@@ -313,6 +337,39 @@ export class SteamHttpTransport {
     if (options.withCookies === true && this.#cookie !== undefined) {
       headers.set("cookie", this.#cookie);
     }
+  }
+
+  /** 从响应头吸收 Set-Cookie(仅 name=value)进会话 cookie,返回吸收条数。 */
+  #absorbSetCookies(headers: Headers): number {
+    const setCookies: string[] =
+      typeof (headers as Headers & { getSetCookie?: () => string[] }).getSetCookie === "function"
+        ? (headers as Headers & { getSetCookie: () => string[] }).getSetCookie()
+        : (() => {
+            const value = headers.get("set-cookie");
+            return value !== null && value !== "" ? [value] : [];
+          })();
+    let absorbed = 0;
+    let base = this.#cookie;
+    for (const raw of setCookies) {
+      const nameValue = raw.split(";")[0]?.trim();
+      if (nameValue === undefined || nameValue === "" || !nameValue.includes("=")) {
+        continue;
+      }
+      const [name] = nameValue.split("=");
+      if (name === undefined || name === "") {
+        continue;
+      }
+      const kept = (base ?? "")
+        .split(";")
+        .map((part) => part.trim())
+        .filter((part) => part !== "" && !part.startsWith(`${name}=`));
+      base = [...kept, nameValue].join("; ");
+      absorbed += 1;
+    }
+    if (absorbed > 0) {
+      this.#cookie = base;
+    }
+    return absorbed;
   }
 
   #cacheKey(options: SteamRequestOptions, method: HttpMethod): string | undefined {

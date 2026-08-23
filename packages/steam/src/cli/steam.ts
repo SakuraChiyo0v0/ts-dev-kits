@@ -35,6 +35,9 @@ const COMMANDS = [
   { name: "search", desc: "市场搜索(<query>)" },
   { name: "inventory", desc: "玩家库存(<steamid|vanity|URL> <appid> [contextid])" },
   { name: "my-listings", desc: "我的市场挂单(需登录态)" },
+  { name: "reviews", desc: "商店评测(<appid>)" },
+  { name: "redeem", desc: "兑换激活码(<key>,写操作,需登录态)" },
+  { name: "watch", desc: "价格监控:即时价+订单簿+价格历史(<appid> <market_hash_name>)" },
 ];
 const OPTIONS = [
   { flag: "--account <name>", desc: "login 账号名" },
@@ -49,6 +52,8 @@ const OPTIONS = [
   { flag: "--count <n>", desc: "条数上限" },
   { flag: "--contextid <id>", desc: "库存 contextid(默认 2)" },
   { flag: "--language <lang>", desc: "本地化语言(如 schinese)" },
+  { flag: "--filter <recent|updated|all>", desc: "评测过滤(reviews,默认 recent)" },
+  { flag: "--interval <s>", desc: "watch 轮询间隔秒数(默认 30)" },
   { flag: "--json", desc: "输出 JSON(默认)" },
 ];
 
@@ -141,6 +146,15 @@ async function main(argv: string[]): Promise<void> {
       break;
     case "my-listings":
       await runMyListings(context);
+      break;
+    case "reviews":
+      await runReviews(context, args);
+      break;
+    case "redeem":
+      await runRedeem(context, args);
+      break;
+    case "watch":
+      await runWatch(context, args);
       break;
     default:
       outputError(`Unknown command: ${command}`);
@@ -362,6 +376,88 @@ async function runMyListings(context: CliContext): Promise<void> {
       ...(l.time_created !== undefined ? { time_created: l.time_created } : {}),
     })),
   });
+  await client.close();
+}
+
+async function runReviews(context: CliContext, args: ReturnType<typeof parseArgs>): Promise<void> {
+  const appid = Number(args.positionals[1]);
+  if (Number.isNaN(appid)) {
+    throw new Error("缺少参数,用法: amechan-steam reviews <appid>");
+  }
+  const client = buildClient(context);
+  const filter = getString(args, "filter");
+  const language = getString(args, "language");
+  const numPerPage = getNumber(args, "count");
+  const result = await client.store.getAppReviews(appid, {
+    ...(filter === "recent" || filter === "updated" || filter === "all" ? { filter } : {}),
+    ...(language !== undefined ? { language } : {}),
+    ...(numPerPage !== undefined ? { numPerPage } : {}),
+  });
+  outputJson({
+    success: result.success,
+    summary: result.query_summary,
+    cursor: result.cursor,
+    reviews: result.reviews.map((r) => ({
+      author: r.author.steamid,
+      language: r.language,
+      votedUp: r.voted_up,
+      votesUp: r.votes_up,
+      timestampCreated: r.timestamp_created,
+      text: r.review.slice(0, 300),
+    })),
+  });
+  await client.close();
+}
+
+async function runRedeem(context: CliContext, args: ReturnType<typeof parseArgs>): Promise<void> {
+  const key = args.positionals[1];
+  if (key === undefined) {
+    throw new Error("缺少参数,用法: amechan-steam redeem <activation_key>");
+  }
+  const client = buildClient(context);
+  const result = await client.redeem.redeemActivationKey(key);
+  outputJson(result);
+  await client.close();
+}
+
+/** 价格监控:即时价 + 订单簿 + 价格历史;--count>1 时按 --interval 轮询即时价。 */
+async function runWatch(context: CliContext, args: ReturnType<typeof parseArgs>): Promise<void> {
+  const appid = Number(args.positionals[1]);
+  const marketHashName = args.positionals[2];
+  if (Number.isNaN(appid) || marketHashName === undefined) {
+    throw new Error("缺少参数,用法: amechan-steam watch <appid> <market_hash_name>");
+  }
+  const client = buildClient(context);
+  const currency = getNumber(args, "currency", 1) ?? 1;
+  const count = getNumber(args, "count", 1) ?? 1;
+  const intervalSeconds = getNumber(args, "interval", 30) ?? 30;
+
+  const price = await client.market.getPriceOverview(appid, marketHashName, { currency });
+  const orders = await client.market.getItemOrdersHistogram(appid, marketHashName, { currency });
+  const history = await client.market.getPriceHistory(appid, marketHashName);
+  const latest = history.prices.length > 0 ? history.prices[history.prices.length - 1] : undefined;
+  outputJson({
+    marketHashName,
+    price,
+    orderBook: {
+      lowestSell: orders.lowest_sell_order,
+      highestBuy: orders.highest_buy_order,
+      sellCount: orders.sell_order_count,
+      buyCount: orders.buy_order_count,
+    },
+    priceHistoryPoints: history.prices.length,
+    ...(latest !== undefined ? { latestPrice: latest[1], latestVolume: latest[2] } : {}),
+  });
+
+  // 轮询模式:持续输出即时价快照。
+  for (let i = 1; i < count; i += 1) {
+    await new Promise((resolvePromise) => setTimeout(resolvePromise, intervalSeconds * 1000));
+    const snapshot = await client.market.getPriceOverview(appid, marketHashName, {
+      currency,
+      noCache: true,
+    });
+    outputJson({ tick: i, at: new Date().toISOString(), ...snapshot });
+  }
   await client.close();
 }
 

@@ -16,6 +16,7 @@ import { InventoryApi } from "./api/inventory.js";
 import { MarketApi } from "./api/market.js";
 import { WorkshopApi } from "./api/workshop.js";
 import { TradeApi } from "./api/trade.js";
+import { RedeemApi } from "./api/redeem.js";
 import { AuthApi } from "./auth/auth-api.js";
 
 export interface SteamClient {
@@ -45,6 +46,8 @@ export interface SteamClient {
   readonly workshop: WorkshopApi;
   /** 交易报价与历史(只读)。 */
   readonly trade: TradeApi;
+  /** 激活码兑换(写操作;全 SDK 唯一写能力,需登录态)。 */
+  readonly redeem: RedeemApi;
   /** 连通性探针(ISteamWebAPIUtil/GetServerInfo,无需 key)。 */
   probe(): Promise<ServerInfo>;
   /** 动态枚举全部 Steam Web API 接口(需 key)。 */
@@ -85,6 +88,7 @@ export function createSteamClient(options: SteamClientOptions = {}): SteamClient
   const ownSteamId = (): string | undefined => auth.status().steamid;
   const inventory = new InventoryApi(transport, ownSteamId);
   const trade = new TradeApi(transport, ownSteamId);
+  const redeem = new RedeemApi(transport);
 
   const client: SteamClient = {
     get hasApiKey() {
@@ -106,6 +110,7 @@ export function createSteamClient(options: SteamClientOptions = {}): SteamClient
     market,
     workshop,
     trade,
+    redeem,
     async probe() {
       // GetServerInfo/v1 真实响应为顶层 { servertime, servertimestring },无 response 包装。
       const result = await transport.request<ServerInfo>({

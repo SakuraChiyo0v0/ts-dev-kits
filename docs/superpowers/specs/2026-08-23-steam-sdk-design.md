@@ -13,7 +13,7 @@
   - P2 登录态(四种登录方式 + 私密资料 / 好友 / 徽章 / 愿望单读 / 创意工坊订阅)
   - P3 登录后只读深水区(自己多 App 库存 / 订单簿 / 价格历史 / 我的挂单与成交历史 / 交易报价只读 / 动态流与评论读)
   - P5 收尾(README / packages-index / CLI / skill / 版本 / 发布验证)
-- **合规边界:整个 SDK 零写操作**(不提供市场买卖、交易创建/接受、好友增删、愿望单写等任何写接口)。
+- **合规边界:默认零写操作;唯一例外为 `redeem` 激活码兑换**(用户拍板扩展红线,2026-08-24)。市场买卖、交易创建/接受、好友增删、愿望单写等仍一律不提供。
 
 ## 2. 用户可见的前后变化
 
@@ -155,8 +155,9 @@ interface SteamClientOptions {
 - [x] P1:公开查询域全部方法可用(含本地化与隐私空结果语义)✅
 - [x] P2:四种登录方式 + 持久化/刷新/登出可用,登录后私密能力可用 ✅(密码+邮箱码/TOTP/设备确认、QR、cookie 导入、checkSession/refreshCookies/logout,好友/等级/徽章/群组/近期游戏/愿望单读/创意工坊;v0.3.0)
 - [x] P3:登录后只读深水区全部可用 ✅(订单簿 itemordershistogram / 价格历史 pricehistory / 我的挂单 mylistings / 成交历史 myhistory / 自己库存 getOwnInventory / 物品定义 GetItemDefs(publisher key)/ 交易报价与历史只读 GetTradeOffers|GetTradeOffer|GetTradeHistory / 交易链接 / 动态流与评论读;v0.4.0)
-- [x] 测试全绿(含错误分支);无任何写操作接口 ✅(107/107;零写接口,合规红线固化)
-- [x] README + packages-index 更新;CLI 已同步 skill ✅(`amechan-steam` 11 命令,`check-skill-staleness` 校验通过)
+- [x] 测试全绿(含错误分支);零写接口 + 唯一写例外 redeem ✅(113/113;激活码兑换经用户拍板扩展红线,2026-08-24)
+- [x] 新能力:商店评测 getAppReviews(公开)+ 价格监控 CLI watch + 激活码兑换 redeem(真实协议:store /account/registerkey 302+Set-Cookie 会话刷新 → ajaxregisterkey JSON,ePurchaseResult 码映射)✅(v0.5.0,2026-08-24)
+- [x] README + packages-index 更新;CLI 已同步 skill ✅(`amechan-steam` 14 命令,`check-skill-staleness` 校验通过)
 - [ ] `pnpm check` 通过;用户确认后提交推送,CI 发布成功,消费验证通过(提交/推送/发布需用户授权)
 
 ## 11. 待办映射(能力清单 → 阶段)

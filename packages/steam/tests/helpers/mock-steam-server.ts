@@ -661,6 +661,7 @@ export async function startMockSteamServer(): Promise<MockSteamServer> {
   const store = createServer(async (req: IncomingMessage, res: ServerResponse) => {
     const url = new URL(req.url ?? "/", "http://localhost");
     count(url.pathname);
+    const bodyText = await readBody(req);
     switch (url.pathname) {
       case "/api/appdetails":
         send(res, 200, {
@@ -709,6 +710,155 @@ export async function startMockSteamServer(): Promise<MockSteamServer> {
       case "/api/salepage":
         send(res, 200, { success: true, name: "Sale" });
         return;
+      case "/api/appreviews":
+      case "/appreviews/440":
+        send(res, 200, {
+          success: 1,
+          query_summary: {
+            num_reviews: 2,
+            review_score: 9,
+            review_score_desc: "Overwhelmingly Positive",
+            total_positive: 2,
+            total_negative: 0,
+            total_reviews: 2,
+          },
+          reviews: [
+            {
+              recommendationid: "r1",
+              author: {
+                steamid: "76561198006483292",
+                num_games_owned: 10,
+                num_reviews: 3,
+                playtime_forever: 500,
+                playtime_at_review: 100,
+                last_played: 1700000000,
+              },
+              language: "schinese",
+              review: "好玩",
+              timestamp_created: 1700000000,
+              timestamp_updated: 1700000000,
+              voted_up: true,
+              votes_up: 5,
+              votes_funny: 1,
+              weighted_vote_score: 0.8,
+              comment_count: 2,
+              steam_purchase: true,
+              received_for_free: false,
+              written_during_early_access: false,
+            },
+            {
+              recommendationid: "r2",
+              author: {
+                steamid: "76561198006483293",
+                num_games_owned: 20,
+                num_reviews: 5,
+                playtime_forever: 1000,
+                playtime_at_review: 300,
+                last_played: 1700000100,
+              },
+              language: "english",
+              review: "great",
+              timestamp_created: 1700000100,
+              timestamp_updated: 1700000100,
+              voted_up: true,
+              votes_up: 8,
+              votes_funny: 0,
+              weighted_vote_score: 0.9,
+              comment_count: 1,
+              steam_purchase: true,
+              received_for_free: false,
+              written_during_early_access: false,
+            },
+          ],
+          cursor: "AoIIP34DCw==",
+        });
+        return;
+      case "/account/registerkey": {
+        if (req.method === "POST") {
+          // 兑换提交由 ajaxregisterkey 处理;这里只服务 GET 页面。
+          send(res, 404, { error: "not found" });
+          return;
+        }
+        const cookie = req.headers.cookie ?? "";
+        if (!cookie.includes("browserid")) {
+          // 模拟真实 store 会话刷新:首访 302 + Set-Cookie(browserid)。
+          res.writeHead(302, {
+            location: "/account/registerkey",
+            "set-cookie": "browserid=123456; Path=/; Secure",
+          });
+          res.end();
+          return;
+        }
+        if (!cookie.includes("steamLoginSecure")) {
+          res.writeHead(302, { location: "/login/" });
+          res.end();
+          return;
+        }
+        res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+        res.end('<html><body><script type="text/javascript">sessionID = "mocksession123";</script></body></html>');
+        return;
+      }
+      case "/account/ajaxregisterkey/": {
+        const cookie = req.headers.cookie ?? "";
+        if (!cookie.includes("steamLoginSecure")) {
+          send(res, 401, { error: "login required" });
+          return;
+        }
+        const params = new URLSearchParams(bodyText);
+        const productKey = params.get("product_key") ?? "";
+        if (productKey === "GOOD-KEY-1234") {
+          send(res, 200, {
+            success: 1,
+            purchase_receipt_info: {
+              transactionid: "123",
+              packageid: 440,
+              purchase_status: 1,
+              result_detail: 1,
+              transaction_time: 1700000000,
+              payment_method: 1,
+              base_price: "0",
+              total_discount: "0",
+              tax: "0",
+              shipping: "0",
+              currency_code: 23,
+              country_code: "CN",
+              error_headline: "",
+              error_string: "",
+              error_link_text: "",
+              error_link_url: "",
+              error_appid: 0,
+              line_items: [{ line_item_description: "Team Fortress 2" }],
+            },
+          });
+          return;
+        }
+        send(res, 200, {
+          success: 2,
+          purchase_result_details: 14,
+          purchase_receipt_info: {
+            transactionid: "18446744073709551615",
+            packageid: 4294967295,
+            purchase_status: 2,
+            result_detail: 14,
+            transaction_time: 1700000000,
+            payment_method: 1,
+            base_price: "0",
+            total_discount: "0",
+            tax: "0",
+            shipping: "0",
+            currency_code: 0,
+            country_code: "",
+            error_headline: "",
+            error_string: "",
+            error_link_text: "",
+            error_link_url: "",
+            error_appid: 0,
+            line_items: [],
+          },
+          rwgrsn: -2,
+        });
+        return;
+      }
       default:
         send(res, 404, { error: "not found" });
     }

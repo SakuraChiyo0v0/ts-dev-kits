@@ -20,7 +20,7 @@
 | `@sakurachiyo0v0/netease-music` | 0.1.0 | 网易云音乐下载 SDK(weapi 加密/二维码登录/权限感知品质/试听拦截) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/netease-music` |
 | `@sakurachiyo0v0/booth` | 0.1.0 | BOOTH(booth.pm)领取/购买 SDK:登录态管理/商品解析/免费领取/付费下单/文件下载 | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/booth` |
 | `@sakurachiyo0v0/vrchat` | 0.2.0 | VRChat 官方 REST API SDK(认证/用户/世界/头像/实例/好友/通知/收藏/群组/文件/权限/系统/经济/审核) | 可用(全功能覆盖) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/vrchat` |
-| `@sakurachiyo0v0/steam` | 0.4.0 | Steam SDK(查询向):Web API/Storefront/Community 三套接口,登录态支持,零写操作 | 开发中(P0-P3 已交付) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/steam` |
+| `@sakurachiyo0v0/steam` | 0.4.2 | Steam SDK(查询向):Web API/Storefront/Community 三套接口,登录态支持,写操作仅激活码兑换一项 | 开发中(P0-P3 + 评测/价格监控/兑换已交付) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/steam` |
 | `@sakurachiyo0v0/dsh-sdk-tools` | 0.2.0 | DSH host 插件:把 bilibili/netease-music/ffmpeg/email/lol/vrchat 包装成 agent 工具,经 Agent 预设按需暴露 | 可用 | `pnpm add @sakurachiyo0v0/dsh-sdk-tools`(GitHub Packages) |
 
 ## 包详情
@@ -578,7 +578,7 @@ pnpm --filter @sakurachiyo0v0/vrchat build       # 构建 ESM + CJS + d.ts + CLI
 
 ### `@sakurachiyo0v0/steam`
 
-Steam SDK(查询向):官方 Web API(`api.steampowered.com`)+ Storefront(`store.steampowered.com`)+ 社区站点(`steamcommunity.com`)。**零写操作**——不提供市场买卖、交易创建、好友增删等任何写接口。设计文档 [`docs/superpowers/specs/2026-08-23-steam-sdk-design.md`](superpowers/specs/2026-08-23-steam-sdk-design.md);调研报告 [`docs/steam-api-research.md`](steam-api-research.md)。
+Steam SDK(查询向):官方 Web API(`api.steampowered.com`)+ Storefront(`store.steampowered.com`)+ 社区站点(`steamcommunity.com`)。**写操作仅激活码兑换一项**(`redeem`,用户拍板扩展红线);市场买卖、交易创建、好友增删等仍零写。设计文档 [`docs/superpowers/specs/2026-08-23-steam-sdk-design.md`](superpowers/specs/2026-08-23-steam-sdk-design.md);调研报告 [`docs/steam-api-research.md`](steam-api-research.md)。
 
 **适用环境:** Node.js 20+,服务端进程。`steamcommunity.com` 国内网络不可达,社区相关请求需配置 `proxy`(undici ProxyAgent)。
 
@@ -592,15 +592,16 @@ Steam SDK(查询向):官方 Web API(`api.steampowered.com`)+ Storefront(`store.s
 - `client.library` — 游戏库(`GetOwnedGames` 隐私空结果 → `privacyRestricted` 标记)/ 家庭共享 / 近期游戏 / 愿望单(公开读,隐私标记)
 - `client.stats` — 成就/统计定义、玩家成就与统计、全局成就/统计、在线人数
 - `client.news` — 游戏新闻(无需 key)
-- `client.store` — appdetails / featured / packagedetails / dlcforapp / 商店搜索 / GetAppList 等(无需 key,`cc`/`l` 本地化)
+- `client.store` — appdetails / featured / packagedetails / dlcforapp / 商店搜索 / GetAppList / 商店评测 `getAppReviews` 等(无需 key,`cc`/`l` 本地化)
 - `client.inventory` — 公开库存(`/inventory/:steamid/:appid/:contextid`,默认不缓存)/ 自己库存(需登录态)/ `GetItemDefs` 物品定义(publisher key)
 - `client.market` — 单件即时价 `priceoverview` / 市场搜索 `search/render` / 订单簿 `itemordershistogram` / 价格历史 `pricehistory` / 我的挂单 `mylistings` / 成交历史 `myhistory`(后两者需登录态;全部只读)
 - `client.workshop` — `GetPublishedFileDetails`(POST form,无需 key)/ `EnumerateUserPublishedFiles` / `EnumerateUserSubscribedFiles`
 - `client.trade`(只读)— 交易报价 `GetTradeOffers` / 单笔报价 `GetTradeOffer` / 交易历史 `GetTradeHistory`(需 key)/ 交易链接解析(需登录态);零写操作
+- `client.redeem` — 激活码兑换 `redeemActivationKey`(**写操作**;store 页面协议:registerkey 302+Set-Cookie 会话刷新 → ajaxregisterkey JSON,ePurchaseResult 码映射;全 SDK 唯一写能力,需登录态)
 - `SteamError` — 错误码 `NETWORK`/`TIMEOUT`/`RATE_LIMIT`/`AUTH_EXPIRED`/`LOGIN_REQUIRED`/`FORBIDDEN`/`NOT_FOUND`/`INVALID_URL`/`INVALID_CREDENTIALS`/`TWO_FACTOR_REQUIRED`/`TWO_FACTOR_FAILED`/`CONFIGURATION`/`UNKNOWN`,消息脱敏
 - SteamID 工具:`parseSteamId` / `steamId64ToAccountId` / `accountIdToSteamId64` / `steamId64ToSteamId2|3` / `accountIdToSteamId2|3`(BigInt 精确运算,steamID64 超出 JS Number 安全范围)
 - 登录协议自研(RSA 密码加密 → IAuthenticationService 全流程 → finalizelogin web cookie),零第三方登录依赖
-- `amechan-steam` CLI:`login`(密码/QR/cookie 导入)/ `status` / `logout` / `user` / `owned-games` / `achievements` / `price` / `search` / `inventory` / `my-listings`,JSON 输出,零写操作;skill 手册 [`skills/steam-cli/SKILL.md`](../skills/steam-cli/SKILL.md)
+- `amechan-steam` CLI:`login`(密码/QR/cookie 导入)/ `status` / `logout` / `user` / `owned-games` / `achievements` / `price` / `search` / `inventory` / `my-listings` / `reviews` / `redeem` / `watch`,JSON 输出;写操作仅 `redeem`;skill 手册 [`skills/steam-cli/SKILL.md`](../skills/steam-cli/SKILL.md)
 
 **剩余(P5):** 用户确认后提交推送 → CI 发布 → `pnpm verify:published @sakurachiyo0v0/steam` 消费验证。
 
