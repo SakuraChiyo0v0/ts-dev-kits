@@ -7,6 +7,7 @@ export type BilibiliErrorCode =
   | "INVALID_URL"
   | "DOWNLOAD_FAILED"
   | "MERGE_FAILED"
+  | "DISK_FULL"
   | "UNSUPPORTED_TYPE"
   | "UNKNOWN";
 

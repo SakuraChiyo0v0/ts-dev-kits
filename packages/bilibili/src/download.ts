@@ -208,7 +208,9 @@ async function downloadSingle(
         signal: AbortSignal.timeout(config.timeoutSeconds * 1000),
       });
       if (!response.ok) {
-        throw new BilibiliError("DOWNLOAD_FAILED", `HTTP ${response.status}`);
+        // 403 常见于登录失效或风控;其余状态码如实透传,便于上层区分原因。
+        const code = response.status === 403 ? "LOGIN_REQUIRED" : "DOWNLOAD_FAILED";
+        throw new BilibiliError(code, `HTTP ${response.status}`);
       }
       if (!response.body) {
         throw new BilibiliError("DOWNLOAD_FAILED", "No response body");
@@ -239,14 +241,41 @@ async function downloadSingle(
       return downloaded;
     } catch (error) {
       if (attempt >= config.retries) {
-        throw new BilibiliError("DOWNLOAD_FAILED", `Download failed after ${config.retries + 1} attempts`, {
-          cause: error,
-        });
+        throw classifyDownloadError(error, config.retries + 1);
       }
       await new Promise((resolve) => setTimeout(resolve, Math.min(2 ** attempt * 500, 8000)));
     }
   }
   throw new BilibiliError("DOWNLOAD_FAILED", "Download failed");
+}
+
+/** 把下载过程中的底层错误归类为可诊断的错误码(网络/超时/登录/未知)。 */
+export function classifyDownloadError(error: unknown, attempts: number): BilibiliError {
+  // 已是我们抛出的带明确 code 的错误(如 HTTP 403 → LOGIN_REQUIRED),原样透传。
+  if (error instanceof BilibiliError) {
+    return error;
+  }
+  const raw = error instanceof Error ? error : new Error(String(error));
+  const name = raw.name;
+  const message = raw.message;
+  // fetch 网络失败:TypeError("fetch failed") / AbortError(超时)。
+  if (name === "TimeoutError" || name === "AbortError") {
+    return new BilibiliError("NETWORK", `Download timed out after ${attempts} attempts`, {
+      cause: raw,
+    });
+  }
+  if (name === "TypeError" || /fetch|network|ECONN|ENOTFOUND|EAI_AGAIN/iu.test(message)) {
+    return new BilibiliError("NETWORK", `Network error during download: ${message}`, {
+      cause: raw,
+    });
+  }
+  // 磁盘空间不足等文件系统错误。
+  if (name === "Error" && /ENOSPC|磁盘|space/i.test(message)) {
+    return new BilibiliError("DISK_FULL", `Insufficient disk space: ${message}`, { cause: raw });
+  }
+  return new BilibiliError("DOWNLOAD_FAILED", `Download failed after ${attempts} attempts`, {
+    cause: raw,
+  });
 }
 
 /** 并发分块下载。 */
@@ -291,7 +320,11 @@ async function downloadChunked(
         });
         if (!response.ok) {
           if (PERMANENT_STATUS.has(response.status)) {
-            throw new BilibiliError("DOWNLOAD_FAILED", `HTTP ${response.status}`);
+            // 403 常见于登录失效或风控;其余状态码如实透传。
+            throw new BilibiliError(
+              response.status === 403 ? "LOGIN_REQUIRED" : "DOWNLOAD_FAILED",
+              `HTTP ${response.status}`,
+            );
           }
           if (!RETRYABLE_STATUS.has(response.status) && response.status < 500) {
             throw new BilibiliError("DOWNLOAD_FAILED", `HTTP ${response.status}`);
@@ -318,7 +351,7 @@ async function downloadChunked(
         break;
       } catch (error) {
         if (attempt >= config.retries) {
-          throw new BilibiliError("DOWNLOAD_FAILED", `Chunk ${chunkIndex + 1} failed`, { cause: error });
+          throw classifyDownloadError(error, config.retries + 1);
         }
         await new Promise((resolve) => setTimeout(resolve, Math.min(2 ** attempt * 500, 8000)));
       }

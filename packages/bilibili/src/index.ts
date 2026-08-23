@@ -10,7 +10,12 @@ export {
   WbiSigner,
 } from "./network.js";
 export { bilibiliQrAdapter, parseCookieString, type BilibiliCredentials } from "./auth/index.js";
-export { downloadStream, filterPcdnUrls, resolveDownloadUrl } from "./download.js";
+export {
+  downloadStream,
+  filterPcdnUrls,
+  resolveDownloadUrl,
+  classifyDownloadError,
+} from "./download.js";
 export { VideoParser } from "./parsers/video.js";
 export { BangumiParser } from "./parsers/bangumi.js";
 export { CheeseParser } from "./parsers/cheese.js";

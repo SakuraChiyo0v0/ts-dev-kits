@@ -77,7 +77,7 @@ export function applyBilibiliTools(ctx: Context, config: BilibiliConfig): void {
 
   ctx.tools.register(defineTool({
     name: "bilibili_download",
-    description: "下载一个 B 站视频/音频到本地。可先用 bilibili_parse 确认链接;未登录时高画质会失败并提示先扫码登录。下载是长操作,可通过取消中断。",
+    description: "下载一个 B 站视频/音频到本地。可先用 bilibili_parse 确认链接;登录态自动从本地 auth.json 加载,高画质(≥1080P)需登录。下载是长操作,可通过取消中断。",
     parameters: {
       url: {
         type: "string",
@@ -110,6 +110,10 @@ export function applyBilibiliTools(ctx: Context, config: BilibiliConfig): void {
     async execute(args, exec) {
       try {
         const client = createBilibiliClient();
+        // 高画质未登录时提前给出明确提示,避免下载环节才报笼统错误。
+        if (args.quality !== undefined && args.quality >= 80 && !client.isLoggedIn) {
+          throw new Error("高画质(≥1080P)下载需要登录:请先完成 B 站扫码登录后重试");
+        }
         const items = await client.parse(args.url);
         const first = items[0];
         if (first === undefined) {

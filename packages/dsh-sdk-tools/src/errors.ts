@@ -32,6 +32,7 @@ const ERROR_MESSAGE: Readonly<Record<string, string>> = {
   INVALID_URL: "无法解析该链接,请确认链接格式正确且为受支持的平台(B 站 / 网易云音乐)",
   DOWNLOAD_FAILED: "下载失败,请检查网络或磁盘空间后重试",
   MERGE_FAILED: "音视频合并失败,请确认已安装 ffmpeg",
+  DISK_FULL: "磁盘空间不足,请清理磁盘空间后重试",
   UNSUPPORTED_TYPE: "该链接类型暂不支持",
   // lol
   CLIENT_NOT_RUNNING: "英雄联盟客户端未运行,请先启动游戏客户端",
@@ -39,6 +40,18 @@ const ERROR_MESSAGE: Readonly<Record<string, string>> = {
   RATE_LIMIT: "请求过于频繁,请稍后重试",
   AUTH: "连接客户端认证失败",
 };
+
+/**
+ * 需要附加底层细节的错误码:映射文案太笼统,附上 SDK 抛出的 message
+ * (已脱敏,可能含 HTTP 状态码 / 网络原因 / 磁盘原因),便于区分
+ * 登录失效、网络故障、磁盘不足等不同根因。
+ */
+const DETAIL_CODES: ReadonlySet<string> = new Set([
+  "DOWNLOAD_FAILED",
+  "MERGE_FAILED",
+  "NETWORK",
+  "DISK_FULL",
+]);
 
 /**
  * 把任意抛出的值转成一条模型可读、已脱敏的错误说明。
@@ -50,7 +63,12 @@ export function describeError(error: unknown): string {
     const code = (error as { code?: unknown }).code;
     if (typeof code === "string") {
       const known = ERROR_MESSAGE[code];
-      if (known !== undefined) return known;
+      if (known !== undefined) {
+        if (DETAIL_CODES.has(code) && error.message.length > 0) {
+          return `${known}(${error.message})`;
+        }
+        return known;
+      }
       return `${error.message} (${code})`;
     }
     return error.message;
