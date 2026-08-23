@@ -1090,6 +1090,12 @@ export async function startMockSteamServer(): Promise<MockSteamServer> {
         send(res, 403, { success: false });
         return;
       }
+      if (wishlistMatch[1] === "76561198006483293") {
+        // 模拟 community 对私密/被风控愿望单返回通用 HTML 页(而非 JSON)。
+        res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+        res.end("<!DOCTYPE html><html><body><a href=\"/login\">Sign In</a></body></html>");
+        return;
+      }
       send(res, 200, {
         "440": { name: "Team Fortress 2", capsule: "x", type: "game" },
         "570": { name: "Dota 2", capsule: "y", type: "game" },

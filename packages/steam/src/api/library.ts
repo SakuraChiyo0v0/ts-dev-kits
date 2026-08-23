@@ -109,15 +109,18 @@ export class LibraryApi {
     return { totalCount: body.response.total_count, games: body.response.games ?? [] };
   }
 
-  /** 愿望单(community wishlistdata,公开读,无需 key);未公开 → 空 + privacyRestricted。 */
+  /** 愿望单(community wishlistdata,公开读,无需 key);未公开/不可读 → 空 + privacyRestricted。 */
   async getWishlist(steamid: SteamIdInput): Promise<WishlistResult> {
     const id64 = await resolveToSteamId64(steamid, this.transport);
-    let entries: Record<string, WishlistEntry>;
+    let text: string;
     try {
-      entries = await this.transport.request<Record<string, WishlistEntry>>({
+      // 用原始文本自行解析:community 对私密/被风控的愿望单返回通用 HTML 页面
+      // (而非 JSON),若直接按 Record 解析会把 HTML 逐字符拆成垃圾条目。
+      text = await this.transport.request<string>({
         host: "community",
         path: SteamEndpoints.community.wishlist(id64),
         noCache: true,
+        rawText: true,
       });
     } catch (error) {
       if (error instanceof SteamError && error.code === "FORBIDDEN") {
@@ -125,6 +128,19 @@ export class LibraryApi {
       }
       throw error;
     }
-    return { entries, privacyRestricted: false };
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(text) as unknown;
+    } catch {
+      return { entries: {}, privacyRestricted: true };
+    }
+    if (
+      typeof parsed !== "object" ||
+      parsed === null ||
+      Array.isArray(parsed)
+    ) {
+      return { entries: {}, privacyRestricted: true };
+    }
+    return { entries: parsed as Record<string, WishlistEntry>, privacyRestricted: false };
   }
 }

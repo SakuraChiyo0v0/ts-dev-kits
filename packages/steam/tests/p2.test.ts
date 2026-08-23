@@ -80,6 +80,12 @@ describe("P2 只读查询", () => {
       expect(result.entries).toEqual({});
       expect(result.privacyRestricted).toBe(true);
     });
+
+    it("getWishlist community 返回 HTML 通用页(隐私/风控)→ privacyRestricted:true,不产生垃圾条目", async () => {
+      const result = await client.library.getWishlist("76561198006483293");
+      expect(result.entries).toEqual({});
+      expect(result.privacyRestricted).toBe(true);
+    });
   });
 
   describe("workshop", () => {
