@@ -56,7 +56,7 @@ console.log("\n=== ESM 导入验证 ===\n");
 writeFileSync(
   join(work, "esm.mjs"),
   `import * as mod from ${JSON.stringify(pkgName)};\n` +
-    `console.log("ESM OK: 导出 ${Object.keys(mod).length} 个符号:", Object.keys(mod).slice(0, 8).join(", "));\n`,
+    "console.log(`ESM OK: 导出 ${Object.keys(mod).length} 个符号:`, Object.keys(mod).slice(0, 8).join(\", \"));\n",
 );
 execFileSync(process.execPath, ["esm.mjs"], { cwd: work, stdio: "inherit" });
 
