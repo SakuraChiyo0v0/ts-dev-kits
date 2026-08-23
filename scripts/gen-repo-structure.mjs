@@ -63,6 +63,13 @@ const COLORS = {
 };
 const FALLBACK_COLORS = ['#38bdf8', '#a78bfa', '#34d399', '#fbbf24', '#f472b6', '#22d3ee', '#60a5fa', '#f87171', '#fb923c', '#e879f9'];
 
+/**
+ * 展示层覆盖表(0=基础层,1=SDK 层,2=领域 SDK,3=DSH 聚合)。
+ * 自动分层按"内部依赖深度"计算;需要按语义归位时在此固定层号。
+ * 例:lol 没有内部依赖(拓扑深度 0),但属于领域 SDK,固定到第 2 层。
+ */
+const LAYER_OVERRIDES = { 'lol': 2 };
+
 const found = [];
 for (const e of readdirSync(PKG_DIR, { withFileTypes: true })) {
   if (!e.isDirectory()) continue;
@@ -108,7 +115,8 @@ function buildGraphData(packages) {
     if (inProgress.has(id)) return 0; // 防御环
     inProgress.add(id);
     const ds = packages.find((p) => p.id === id)?.deps.filter((d) => idSet.has(d)) || [];
-    depth[id] = ds.length ? 1 + Math.max(...ds.map(calc)) : 0;
+    const fromDeps = ds.length ? 1 + Math.max(...ds.map(calc)) : 0;
+    depth[id] = Math.max(LAYER_OVERRIDES[id] ?? -1, fromDeps);
     inProgress.delete(id);
     return depth[id];
   };
