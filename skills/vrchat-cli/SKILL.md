@@ -11,7 +11,7 @@
 | 世界 | `worlds` | get / search / favorites / recent / active / add-tags / remove-tags / publish |
 | 头像 | `avatars` | get / search / owned / favorites / licensed / styles / select |
 | 实例 | `instances` | get / short-name / recent |
-| 好友 | `friends` | list / add / remove |
+| 好友 | `friends` | list / online / add / remove |
 | 通知 | `notifications` | list / get / accept / hide / see / reply / clear |
 | 收藏 | `favorites` | list / add / remove / groups / by-group |
 | 群组 | `groups` | get / search / members / member / remove-member / add-role / remove-role / roles / role-templates / instances / permissions / requests / approve / bans / ban / unban / join / leave / announcement / announce |
@@ -110,6 +110,7 @@ amechan-vrchat instances recent                # 最近访问的实例(--n --off
 
 ```bash
 amechan-vrchat friends list                    # 好友列表(--n --offset)
+amechan-vrchat friends online                  # 在线好友(含所在世界名)
 amechan-vrchat friends add <userId>            # 发送好友请求
 amechan-vrchat friends remove <userId>         # 删除好友
 ```

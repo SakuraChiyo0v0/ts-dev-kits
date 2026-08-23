@@ -85,7 +85,7 @@ createVrchatClient(options?: VrchatClientOptions): Promise<VrchatClient>
 | `worlds` | 世界域:`getById()` / `search()` / `listFavorites()` / `listRecent()` / `listActive()` / `getInstances()` / `getMetadata()` / `addTags()` / `removeTags()` / `publish()` / `update()` / `delete()` |
 | `avatars` | 头像域:`getById()` / `search()` / `listOwned()` / `listFavorites()` / `listLicensed()` / `getStyles()` / `selectCurrent()` / `selectFallback()` |
 | `instances` | 实例域:`getById()` / `getByShortName()` / `getShortName()` / `create()` / `listRecent()` |
-| `friends` | 好友域:`list()` / `sendRequest()` / `delete()` |
+| `friends` | 好友域:`list()` / `online()`(在线好友,含世界名) / `sendRequest()` / `delete()` |
 | `notifications` | 通知域:`list()` / `getById()` / `accept()` / `hide()` / `markSeen()` / `reply()` / `clear()` |
 | `favorites` | 收藏域:`list()` / `add()` / `remove()` / `getByGroup()` / `listGroups()` / `createGroup()` / `deleteGroup()` |
 | `groups` | 群组域:`getById()` / `search()` / `create()` / `update()` / `delete()` / `listMembers()` / `getMember()` / `removeMember()` / `addRoleToMember()` / `removeRoleFromMember()` / `listRoles()` / `listRoleTemplates()` / `listInstances()` / `listPermissions()` / `createRole()` / `deleteRole()` / `listRequests()` / `approveRequest()` / `listBans()` / `banMember()` / `unbanMember()` / `join()` / `leave()` / `getAnnouncement()` / `setAnnouncement()` |

@@ -34,6 +34,28 @@ export class FriendsApi {
     });
   }
 
+  /**
+   * 获取在线好友。新版 VRChat API 已移除 presence 字段,在线状态以
+   * location 是否处于世界实例(非 offline/private)判断。
+   */
+  async online(): Promise<Friend[]> {
+    const friends = await this.list({ n: 100 });
+    return friends.filter((friend) => {
+      const loc = friend.location;
+      return loc !== undefined && loc !== "" && loc !== "offline" && loc !== "private";
+    });
+  }
+
+  /** 从好友的 location 解析世界 id(便于展示世界名)。 */
+  static worldIdOf(friend: Friend): string | undefined {
+    const loc = friend.location;
+    if (loc === undefined || loc === "" || loc === "offline" || loc === "private") {
+      return undefined;
+    }
+    const sep = loc.indexOf(":");
+    return sep > 0 ? loc.slice(0, sep) : undefined;
+  }
+
   /** 发送好友请求(对方会收到 friendRequest 通知)。 */
   async sendRequest(userId: string): Promise<{ success: { message: string } }> {
     return this.#transport.request<{ success: { message: string } }>({

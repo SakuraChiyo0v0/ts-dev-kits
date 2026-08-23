@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/vrchat",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "VRChat official REST API SDK (auth/users/worlds/avatars/instances/friends/notifications/favorites/groups/files/permissions/system/economy/moderation)",
   "license": "UNLICENSED",
   "type": "module",

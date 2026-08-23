@@ -124,7 +124,27 @@ const MOCK_INSTANCE = {
   ownerId: "usr_aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
 };
 
-const MOCK_FRIENDS = [MOCK_USER];
+const MOCK_FRIENDS = [
+  MOCK_USER,
+  {
+    id: "usr_cccccccc-0000-0000-0000-000000000000",
+    username: "online_friend",
+    displayName: "在线好友",
+    friendKey: "",
+    isFriend: true,
+    // 在线:位于世界实例(真实 API:location 为世界实例位置,无 presence 字段)
+    location: "wrld_00000000-0000-0000-0000-000000000000:12345~region(jp)",
+    worldId: "wrld_00000000-0000-0000-0000-000000000000",
+  },
+  {
+    id: "usr_dddddddd-0000-0000-0000-000000000000",
+    username: "offline_friend",
+    displayName: "离线好友",
+    friendKey: "",
+    isFriend: true,
+    location: "offline",
+  },
+];
 
 const MOCK_NOTIFICATIONS = [
   {

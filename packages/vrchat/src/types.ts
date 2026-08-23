@@ -174,6 +174,10 @@ export interface Instance {
 /** 好友列表项(即 LimitedUser 的扩展)。 */
 export interface Friend extends LimitedUser {
   isFriend: true;
+  /** 当前所在实例位置(如 wrld_xxx:12345~region(jp));offline / private 表示离线。新版 API 无 presence 字段,用此判断在线。 */
+  location?: string;
+  /** 当前所在世界 id。 */
+  worldId?: string;
 }
 
 // ---- 通知 ----

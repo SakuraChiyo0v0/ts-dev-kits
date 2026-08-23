@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createVrchatClient } from "../src/index.js";
+import { FriendsApi } from "../src/endpoints/friends.js";
 import { MockVrchatServer } from "./helpers/mock-vrchat-server.js";
 
 let server: MockVrchatServer | undefined;
@@ -172,6 +173,19 @@ describe("avatars", () => {
     const styles = await client.avatars.getStyles();
     expect(styles.length).toBeGreaterThan(0);
     expect(styles[0]!.name).toBe("Stylized");
+    await client.close();
+  });
+});
+
+describe("friends", () => {
+  it("online 在线好友过滤", async () => {
+    const client = await authedClient();
+    const online = await client.friends.online();
+    expect(online.length).toBe(1);
+    expect(online[0]!.displayName).toBe("在线好友");
+    // worldIdOf 解析
+    const wid = FriendsApi.worldIdOf(online[0]!);
+    expect(wid).toBe("wrld_00000000-0000-0000-0000-000000000000");
     await client.close();
   });
 });

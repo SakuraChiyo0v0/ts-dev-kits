@@ -18,6 +18,7 @@ import {
   parseArgs,
 } from "@sakurachiyo0v0/cli-utils";
 import { createVrchatClient } from "../client.js";
+import { FriendsApi } from "../endpoints/friends.js";
 import { VrchatError } from "../errors.js";
 
 const USAGE = "amechan-vrchat <command> [options]";
@@ -30,7 +31,7 @@ const COMMANDS = [
   { name: "worlds", desc: "世界查询与发布(get/search/favorites/recent/active/add-tags/remove-tags/publish)" },
   { name: "avatars", desc: "头像查询与选择(get/search/owned/favorites/licensed/styles/select)" },
   { name: "instances", desc: "实例查询(get/recent)" },
-  { name: "friends", desc: "好友管理(list/add/remove)" },
+  { name: "friends", desc: "好友管理(list/online/add/remove)" },
   { name: "notifications", desc: "通知管理(list/get/accept/hide/see/reply/clear)" },
   { name: "favorites", desc: "收藏管理(list/add/remove/groups/by-group)" },
   { name: "groups", desc: "群组管理(get/search/members/member/roles/role-templates/instances/permissions/requests/approve/bans/ban/unban/join/leave/announcement/announce)" },
@@ -81,6 +82,7 @@ const INSTANCES_COMMANDS = [
 ];
 const FRIENDS_COMMANDS = [
   { name: "list", desc: "好友列表(--n --offset)" },
+  { name: "online", desc: "在线好友(含所在世界名)" },
   { name: "add <userId>", desc: "发送好友请求" },
   { name: "remove <userId>", desc: "删除好友" },
 ];
@@ -609,6 +611,45 @@ async function runFriends(context: CliContext, args: ReturnType<typeof parseArgs
       case "list": {
         const list = await client.friends.list(pageParams(args));
         outputJson({ count: list.length, friends: list.map(pickUser) });
+        return;
+      }
+      case "online": {
+        const list = await client.friends.online();
+        // 解析在线好友所在世界名(并发受限,世界 id 去重)
+        const worldIds = [
+          ...new Set(
+            list
+              .map((f) => FriendsApi.worldIdOf(f))
+              .filter((id): id is string => id !== undefined),
+          ),
+        ];
+        const names = new Map<string, string>();
+        let i = 0;
+        async function worker(): Promise<void> {
+          while (true) {
+            const idx = i++;
+            const id = worldIds[idx];
+            if (id === undefined) return;
+            try {
+              const world = await client.worlds.getById(id);
+              names.set(id, world.name);
+            } catch {
+              names.set(id, id);
+            }
+          }
+        }
+        await Promise.all(Array.from({ length: Math.min(6, worldIds.length) }, () => worker()));
+        const friends = list.map((f) => {
+          const wid = FriendsApi.worldIdOf(f);
+          return {
+            id: f.id,
+            displayName: f.displayName,
+            location: f.location,
+            worldId: wid,
+            ...(wid !== undefined ? { worldName: names.get(wid) ?? wid } : {}),
+          };
+        });
+        outputJson({ count: friends.length, friends });
         return;
       }
       case "add": {
