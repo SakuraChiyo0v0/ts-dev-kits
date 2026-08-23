@@ -1,6 +1,6 @@
 /**
  * @sakurachiyo0v0/dsh-sdk-tools — DSH host 插件:把 ts-dev-kits 功能包
- * (bilibili / netease-music / ffmpeg / email / lol)包装成 agent 工具。
+ * (bilibili / netease-music / ffmpeg / email / lol / vrchat)包装成 agent 工具。
  *
  * 通过 Agent 预设使用:预设的 agent.cordis.yml 声明本插件行后,工具注册
  * 落在该预设的 scope 层,只有选中该预设的会话才看得到;不选 = 完全不注册。

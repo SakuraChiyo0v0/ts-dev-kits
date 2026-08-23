@@ -1,6 +1,7 @@
 # ts-dev-kits 功能包预设
-# 挂载 dsh-sdk-tools 插件:选中本预设的会话拥有 bilibili / 网易云 / ffmpeg / lol 工具。
+# 挂载 dsh-sdk-tools 插件:选中本预设的会话拥有 bilibili / 网易云 / ffmpeg / lol / vrchat 工具。
 # email 默认关(需先配置 smtp 再手动开启,见下方注释)。
+# vrchat 默认关(需本机已保存 VRChat 登录态 auth.json 才有查询意义)。
 - name: "@sakurachiyo0v0/dsh-sdk-tools"
   config:
     bilibili:
@@ -24,3 +25,5 @@
       #   from: "you@example.com"
     lol:
       enabled: true
+    vrchat:
+      enabled: false

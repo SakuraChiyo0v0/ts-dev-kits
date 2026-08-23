@@ -5,6 +5,7 @@ import { applyNeteaseTools } from "./tools/netease.js";
 import { applyFfmpegTools } from "./tools/ffmpeg.js";
 import { applyEmailTools } from "./tools/email.js";
 import { applyLolTools } from "./tools/lol.js";
+import { applyVrchatTools } from "./tools/vrchat.js";
 
 /**
  * 按 config 的 enabled 开关注册各功能包工具。
@@ -25,5 +26,8 @@ export function registerCapabilities(ctx: Context, config: ResolvedConfig): void
   }
   if (config.lol.enabled) {
     applyLolTools(ctx, config.lol);
+  }
+  if (config.vrchat.enabled) {
+    applyVrchatTools(ctx, config.vrchat);
   }
 }

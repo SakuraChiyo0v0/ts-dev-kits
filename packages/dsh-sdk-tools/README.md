@@ -1,11 +1,11 @@
 # @sakurachiyo0v0/dsh-sdk-tools
 
-DSH(DeepSeek Harness)host 插件:把本仓库功能包(bilibili / netease-music / ffmpeg / email / lol)包装成 agent 工具,通过 **Agent 预设**按需暴露——选中预设的会话才有这些工具,其余会话零污染、0 token 开销。
+DSH(DeepSeek Harness)host 插件:把本仓库功能包(bilibili / netease-music / ffmpeg / email / lol / vrchat)包装成 agent 工具,通过 **Agent 预设**按需暴露——选中预设的会话才有这些工具,其余会话零污染、0 token 开销。
 
 ## 适用环境
 
 - Node.js 20+,已安装 DSH(`@deepseek-ai/dsh`,当前对齐 `0.1.1-rc.2`);
-- 各功能包的真实前置条件依旧生效:bilibili/网易云需登录态(自动从 AuthStore 加载)、lol 需本机运行英雄联盟客户端、email 需配置 SMTP。
+- 各功能包的真实前置条件依旧生效:bilibili/网易云/vrchat 需登录态(自动从 AuthStore 加载)、lol 需本机运行英雄联盟客户端、email 需配置 SMTP。
 
 ## 工作原理
 
@@ -68,6 +68,7 @@ Copy-Item -Recurse <本仓库>/packages/dsh-sdk-tools/presets/ts-dev-kits "$env:
 | ffmpeg | `ffmpeg_probe` / `ffmpeg_transcode` / `ffmpeg_extract_audio` / `ffmpeg_thumbnail` | 开 |
 | email | `email_verify` / `email_send` | **关**(需配置 SMTP) |
 | lol | `lol_summoner` / `lol_match_history` / `lol_ranked` | 开 |
+| vrchat | `vrchat_whoami` / `vrchat_user` / `vrchat_worlds_search` | **关**(需本地 VRChat 登录态) |
 
 > 网易云账号/收藏/歌单类工具只操作**当前登录账号自己的收藏与歌单**(红心、增删歌、订阅/退订、创建/删除),不涉及他人内容;下载链路的权限预检与试听拦截硬规则仍由 SDK 强制。
 
@@ -82,6 +83,7 @@ Copy-Item -Recurse <本仓库>/packages/dsh-sdk-tools/presets/ts-dev-kits "$env:
 | `ffmpeg.enabled` | `true` | — |
 | `email.enabled` / `smtp` | `false` / 无 | 配置 `smtp.host/port/secure/from`(可选 `user/pass`)后启用 |
 | `lol.enabled` | `true` | — |
+| `vrchat.enabled` | `false` | 需本机已保存 VRChat 登录态 auth.json(CLI `amechan-vrchat login` 生成) |
 
 **安全约定:** SMTP 密码等敏感配置只存在于 host 端预设 config,不进浏览器/WebView;工具返回与错误消息已脱敏(不包含 SMTP 密码 / cookie / 连接串)。
 
@@ -101,7 +103,7 @@ pnpm --filter @sakurachiyo0v0/dsh-sdk-tools test
 pnpm --filter @sakurachiyo0v0/dsh-sdk-tools build   # ESM + CJS + d.ts
 ```
 
-被依赖 SDK(ffmpeg、bilibili、netease-music、email、lol)需先 `build`(仓库根 `pnpm build` 已按依赖顺序处理)。
+被依赖 SDK(ffmpeg、bilibili、netease-music、email、lol、vrchat)需先 `build`(仓库根 `pnpm build` 已按依赖顺序处理)。
 
 ## 新增功能包工具
 

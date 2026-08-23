@@ -81,6 +81,16 @@ export interface LolConfig {
   enabled: boolean;
 }
 
+/** 插件配置输入(vrchat 包)。 */
+export interface VrchatConfigInput {
+  enabled?: boolean;
+}
+
+/** vrchat 包配置输出。 */
+export interface VrchatConfig {
+  enabled: boolean;
+}
+
 /** 插件配置输入(schemastery 校验前)。 */
 export interface Config {
   bilibili?: BilibiliConfigInput;
@@ -88,6 +98,7 @@ export interface Config {
   ffmpeg?: FfmpegConfigInput;
   email?: EmailConfigInput;
   lol?: LolConfigInput;
+  vrchat?: VrchatConfigInput;
 }
 
 /** 插件配置输出(schemastery 填充默认值后,apply 收到即此形状)。 */
@@ -97,6 +108,7 @@ export interface ResolvedConfig {
   ffmpeg: FfmpegConfig;
   email: EmailConfig;
   lol: LolConfig;
+  vrchat: VrchatConfig;
 }
 
 export const Config: z<Config> = z.object({
@@ -125,5 +137,8 @@ export const Config: z<Config> = z.object({
   }),
   lol: z.object({
     enabled: z.boolean().default(true),
+  }),
+  vrchat: z.object({
+    enabled: z.boolean().default(false),
   }),
 });

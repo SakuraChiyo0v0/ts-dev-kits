@@ -19,6 +19,8 @@ describe("Config schema", () => {
     // email 默认关:无 SMTP 配置时不暴露工具(嵌套 object 缺省回退,host 为空)
     expect(config.email.enabled).toBe(false);
     expect(config.email.smtp?.host).toBeFalsy();
+    // vrchat 默认关:需本地 VRChat 登录态才有查询意义
+    expect(config.vrchat.enabled).toBe(false);
   });
 
   it("keeps explicit per-package overrides", () => {
@@ -40,5 +42,10 @@ describe("Config schema", () => {
     expect(config.netease.level).toBe("lossless");
     expect(config.netease.outputDir).toBe("~/Downloads/netease");
     expect(config.netease.enabled).toBe(true);
+  });
+
+  it("vrchat can be enabled explicitly", () => {
+    const config = resolved({ vrchat: { enabled: true } });
+    expect(config.vrchat.enabled).toBe(true);
   });
 });

@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/dsh-sdk-tools",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "description": "DSH host plugin: expose ts-dev-kits SDK packages as agent tools via agent presets",
   "license": "UNLICENSED",
   "publishConfig": {
@@ -37,7 +37,8 @@
     "@sakurachiyo0v0/email": "workspace:*",
     "@sakurachiyo0v0/ffmpeg": "workspace:*",
     "@sakurachiyo0v0/lol": "workspace:*",
-    "@sakurachiyo0v0/netease-music": "workspace:*"
+    "@sakurachiyo0v0/netease-music": "workspace:*",
+    "@sakurachiyo0v0/vrchat": "workspace:*"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1-rc.1",
