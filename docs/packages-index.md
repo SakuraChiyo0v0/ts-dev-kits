@@ -19,6 +19,7 @@
 | `@sakurachiyo0v0/lol` | 0.1.0 | 英雄联盟 LCU 本地能力 SDK(召唤师/战绩/段位/对局流程/游戏数据/事件) | 可用(查询+对局感知, 国服 SGP) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/lol` |
 | `@sakurachiyo0v0/account` | 0.1.0 | 跨平台账号认证底座(登录态存储/扫码登录骨架/错误模型) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/account` |
 | `@sakurachiyo0v0/netease-music` | 0.1.0 | 网易云音乐下载 SDK(weapi 加密/二维码登录/权限感知品质/试听拦截) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/netease-music` |
+| `@sakurachiyo0v0/dsh-sdk-tools` | 0.1.0 | DSH host 插件:把 bilibili/netease-music/ffmpeg/email/lol 包装成 agent 工具,经 Agent 预设按需暴露 | 可用 | `pnpm add @sakurachiyo0v0/dsh-sdk-tools`(GitHub Packages) |
 
 ## 包详情
 
@@ -472,3 +473,45 @@ pnpm --filter @sakurachiyo0v0/netease-music build       # 构建 ESM + CJS + d.t
 ```
 
 **更多细节：** [`packages/netease-music/README.md`](../packages/netease-music/README.md)
+
+### `@sakurachiyo0v0/dsh-sdk-tools`
+
+DSH(DeepSeek Harness)host 插件,把本仓库功能包包装成 agent 工具,通过 **Agent 预设**按需暴露——选中 `ts-dev-kits` 预设的会话才拥有这些工具,其余会话零污染、0 token 开销。设计文档 [`docs/superpowers/specs/2026-08-23-dsh-sdk-tools-design.md`](superpowers/specs/2026-08-23-dsh-sdk-tools-design.md)。
+
+**适用环境：** Node.js 20+ 且已安装 DSH(`@deepseek-ai/dsh`,对齐 `0.1.1-rc.2`);各功能包真实前置条件依旧生效(lol 需本机客户端、email 需配置 SMTP、bilibili/网易云需登录态)。
+
+**机制：** 插件不设 `dsh.bundle`,是普通 profile 依赖;工具由预设的 `agent.cordis.yml` 声明挂载,注册落在该预设的 scope 层,只有加入该预设的 agent 可见。每包有 `enabled` 开关,未启用即不注册 → 不进 system prompt。
+
+**工具清单：**
+
+- bilibili:`bilibili_parse` / `bilibili_download`
+- netease-music:`netease_parse` / `netease_download` / `netease_status`
+- ffmpeg:`ffmpeg_probe` / `ffmpeg_transcode` / `ffmpeg_extract_audio` / `ffmpeg_thumbnail`
+- email:`email_verify` / `email_send`(默认关,配置 SMTP 后启用)
+- lol:`lol_summoner` / `lol_match_history` / `lol_ranked`
+
+**安全与合规：** SMTP 密码等敏感配置只存在于 host 端预设 config;工具返回与错误消息脱敏;netease 的试听拦截/权限拒绝硬规则在 SDK 层强制,工具层不绕过。
+
+**安装方式：**
+
+```powershell
+# 1. .npmrc 配置 @sakurachiyo0v0 指向 GitHub Packages(仓库已公开,无需 token)
+#    @sakurachiyo0v0:registry=https://npm.pkg.github.com/
+# 2. 装进 DSH profile 依赖(需先在 GitHub Packages 发布,见 docs/GITHUB_PACKAGES.md)
+npx -p @deepseek-ai/dsh dsh plugin --profile <name> add @sakurachiyo0v0/dsh-sdk-tools
+# 3. 复制随包分发的预设模板到 DSH 用户预设目录
+Copy-Item -Recurse <profile>/node_modules/@sakurachiyo0v0/dsh-sdk-tools/presets/ts-dev-kits "$env:DSH_HOME/.agent-presets/"
+# 4. 重启 DSH,新建会话选择 ts-dev-kits 预设
+```
+
+仓库内开发时也可用本地路径安装;未发布跨机时用 git 子目录依赖。
+
+**在仓库内的验证方式：**
+
+```powershell
+pnpm --filter @sakurachiyo0v0/dsh-sdk-tools typecheck
+pnpm --filter @sakurachiyo0v0/dsh-sdk-tools test
+pnpm --filter @sakurachiyo0v0/dsh-sdk-tools build
+```
+
+**更多细节：** [`packages/dsh-sdk-tools/README.md`](../packages/dsh-sdk-tools/README.md)

@@ -1,0 +1,59 @@
+{
+  "name": "@sakurachiyo0v0/dsh-sdk-tools",
+  "version": "0.1.0",
+  "description": "DSH host plugin: expose ts-dev-kits SDK packages as agent tools via agent presets",
+  "license": "UNLICENSED",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "presets",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "node scripts/clean.mjs && tsc --project tsconfig.bundle.json && rollup --config rollup.config.mjs && tsc --project tsconfig.build.json && node scripts/clean.mjs --intermediate-only",
+    "prepare": "npm run build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@sakurachiyo0v0/bilibili": "workspace:*",
+    "@sakurachiyo0v0/email": "workspace:*",
+    "@sakurachiyo0v0/ffmpeg": "workspace:*",
+    "@sakurachiyo0v0/lol": "workspace:*",
+    "@sakurachiyo0v0/netease-music": "workspace:*"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1-rc.1",
+    "@deepseek-ai/dsh-tools": "^0.1.1-rc.2",
+    "@deepseek-ai/schemastery": "^3.18.1-rc.1"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1-rc.4",
+    "@deepseek-ai/dsh-tools": "^0.1.1-rc.2",
+    "@deepseek-ai/schemastery": "^3.18.1-rc.4",
+    "@types/node": "^26.1.2",
+    "@types/js-yaml": "^4.0.9",
+    "js-yaml": "^4.1.0",
+    "rollup": "^4.62.4",
+    "tslib": "^2.8.1",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  }
+}

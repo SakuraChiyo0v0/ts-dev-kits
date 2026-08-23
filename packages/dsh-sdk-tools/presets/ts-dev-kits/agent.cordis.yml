@@ -1,0 +1,26 @@
+# ts-dev-kits 功能包预设
+# 挂载 dsh-sdk-tools 插件:选中本预设的会话拥有 bilibili / 网易云 / ffmpeg / lol 工具。
+# email 默认关(需先配置 smtp 再手动开启,见下方注释)。
+- name: "@sakurachiyo0v0/dsh-sdk-tools"
+  config:
+    bilibili:
+      enabled: true
+      # outputDir: "~/Downloads/bilibili"
+    netease:
+      enabled: true
+      # outputDir: "~/Downloads/netease"
+      # level: "exhigh"
+    ffmpeg:
+      enabled: true
+    email:
+      enabled: false
+      # 启用 email 请取消注释并填写 SMTP:
+      # smtp:
+      #   host: "smtp.example.com"
+      #   port: 587
+      #   secure: false
+      #   user: "your-user"
+      #   pass: "your-password"
+      #   from: "you@example.com"
+    lol:
+      enabled: true

@@ -5,7 +5,7 @@
  * 行为:
  *   - 已发布过且版本相同 → 跳过(可重复安全执行,本地/CI 通用)
  *   - 本地 version 与已发布版本不同 → 发布
- *   - 按依赖图单向顺序(cli-utils → bilibili-auth → ffmpeg → email → bilibili → chat-platforms)
+ *   - 按依赖图单向顺序(cli-utils → bilibili-auth → ffmpeg → email → account → lol → netease-music → bilibili → chat-platforms → dsh-sdk-tools)
  *
  * 前置:用户目录 .npmrc 已配置 //npm.pkg.github.com/:_authToken(或 CI 注入 NODE_AUTH_TOKEN)。
  *
@@ -23,8 +23,12 @@ const PACKAGES = [
   ["@sakurachiyo0v0/bilibili-auth", "packages/bilibili-auth"],
   ["@sakurachiyo0v0/ffmpeg", "packages/ffmpeg"],
   ["@sakurachiyo0v0/email", "packages/email"],
+  ["@sakurachiyo0v0/account", "packages/account"],
+  ["@sakurachiyo0v0/lol", "packages/lol"],
+  ["@sakurachiyo0v0/netease-music", "packages/netease-music"],
   ["@sakurachiyo0v0/bilibili", "packages/bilibili"],
   ["@sakurachiyo0v0/chat-platforms", "packages/chat-platforms"],
+  ["@sakurachiyo0v0/dsh-sdk-tools", "packages/dsh-sdk-tools"],
 ];
 
 /** 查询包在 registry 上已发布的版本;未发布返回 undefined。 */
