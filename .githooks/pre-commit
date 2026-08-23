@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# pre-commit hook —— 提交前自动重生成 repo-structure.html
+#
+# 逻辑(与 CI auto-sync 相同的两段式):
+#   1) --no-stamp 重新生成,仅时间戳变化不算过期;
+#   2) 若结构确有变化,带时间戳再生成一次,并把 repo-structure.html
+#      随本次提交一起暂存 —— 页面更新与代码变更进同一个 commit。
+#
+# 安装:git config core.hooksPath .githooks
+set -euo pipefail
+
+# 无 node 环境时跳过,不阻塞提交
+if ! command -v node >/dev/null 2>&1; then
+  exit 0
+fi
+
+if [ ! -f scripts/gen-repo-structure.mjs ]; then
+  exit 0
+fi
+
+node scripts/gen-repo-structure.mjs --no-stamp
+
+if [ -n "$(git status --porcelain -- repo-structure.html)" ]; then
+  # 结构有变化:带时间戳重新生成,更新快照时间,并入本次提交
+  node scripts/gen-repo-structure.mjs
+  git add repo-structure.html
+  echo "repo-structure.html 已随本次提交自动更新"
+fi
