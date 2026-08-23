@@ -180,6 +180,142 @@ interface DownloadOptions {
 
 > 基础清晰度(720P 及以下)无需登录;1080P+ / HDR / 杜比等需要登录 Cookie。
 
+## 平台控制 API(收藏夹/关注/分组/互动,逐块扩展中)
+
+SDK 在下载能力之外,按域提供**平台控制 API**(需登录,自动复用登录态/CSRF/续期)。当前已完成:
+
+### 收藏夹管理(`client.fav`)
+
+```ts
+// 收藏夹管理
+const mediaId = await bili.fav.createFolder({ title: "我的收藏", intro: "备注", privacy: 1 });
+await bili.fav.editFolder(mediaId, { title: "新名字" });
+await bili.fav.deleteFolder([mediaId1, mediaId2]);
+
+// 收藏内容操作
+await bili.fav.addVideo("170001", [mediaId]);            // 收藏视频到收藏夹(可多个)
+await bili.fav.removeVideo("170001", [mediaId]);         // 取消收藏
+await bili.fav.isFavoured("BV1xx411c7mD");               // 是否已收藏
+await bili.fav.copyResources(srcId, tarId, [{ type: 2, id: 170001 }]); // 批量复制
+await bili.fav.moveResources(srcId, tarId, [{ type: 2, id: 170001 }]); // 批量移动
+await bili.fav.batchRemove(mediaId, [{ type: 2, id: 170001 }]);        // 批量删除内容
+await bili.fav.cleanInvalid(mediaId);                    // 清空失效内容
+
+// 查询
+const folders = await bili.fav.listCreatedFolders(10086);   // 用户创建的收藏夹
+const collected = await bili.fav.listCollectedFolders(10086); // 用户收藏的收藏夹
+const info = await bili.fav.getFolderInfo(mediaId);        // 收藏夹元数据
+const page = await bili.fav.listResources(mediaId, { pn: 1, ps: 20 }); // 内容明细
+```
+
+CLI:
+
+```powershell
+amechan-bilibili fav list <mid>                 # 用户创建的收藏夹
+amechan-bilibili fav collected <mid>            # 用户收藏的收藏夹
+amechan-bilibili fav info <mediaId>             # 收藏夹元数据
+amechan-bilibili fav videos <mediaId>           # 收藏夹内容(--pn --ps)
+amechan-bilibili fav create <title> [--intro] [--private]
+amechan-bilibili fav edit <mediaId> <title> [--intro] [--private]
+amechan-bilibili fav delete <mediaIds...>
+amechan-bilibili fav add <rid> <mediaIds...>    # 收藏视频到收藏夹
+amechan-bilibili fav remove <rid> <mediaIds...> # 取消收藏
+```
+
+> 后续块(关注/分组/三连/评论/弹幕/动态/稍后再看/历史等)按 [`docs/superpowers/specs/2026-08-23-bilibili-control-apis-design.md`](../../docs/superpowers/specs/2026-08-23-bilibili-control-apis-design.md) 的清单逐块实现。
+
+### 关注关系(`client.relation`)
+
+```ts
+await bili.relation.follow(14082);            // 关注
+await bili.relation.unfollow(14082);          // 取关
+await bili.relation.block(14082);             // 拉黑
+await bili.relation.unblock(14082);           // 解除拉黑
+await bili.relation.batchFollow([1, 2, 3]);   // 批量关注(返回失败的 mid)
+const page = await bili.relation.listFollowings(10086, { pn: 1, ps: 50 }); // 关注列表
+const fans = await bili.relation.listFollowers(10086);                    // 粉丝列表
+const stat = await bili.relation.getStat(10086);                          // 关注/粉丝统计
+const pair = await bili.relation.getRelation(14082);                      // 与某用户的关系
+const map = await bili.relation.getRelations([1, 2]);                     // 批量关系
+const blacks = await bili.relation.listBlacks();                          // 黑名单
+const friends = await bili.relation.listFriends();                        // 互关列表
+```
+
+### 关注分组(`client.tag`)
+
+```ts
+const tags = await bili.tag.listTags();                      // 分组列表
+const users = await bili.tag.listTagUsers(123);              // 分组内用户
+const map = await bili.tag.getUserTags(14082);               // 用户所在分组
+const tagid = await bili.tag.createTag("朋友");              // 创建分组
+await bili.tag.renameTag(tagid, "好友");                     // 重命名
+await bili.tag.deleteTag(tagid);                             // 删除分组
+await bili.tag.addUsersToTags([14082], [tagid]);             // 用户加入分组
+await bili.tag.removeUsersFromTags([14082]);                 // 移出分组(回默认分组)
+await bili.tag.moveUsersToTags([14082], [oldTag], [newTag]); // 移动分组
+```
+
+### 视频互动(`client.interaction`,只读)
+
+> 点赞/投币/一键三连等写操作属于 B 站刷量重灾区接口(风控最严、易触发人机验证,批量使用违反官方规则),本 SDK 不予提供。仅保留只读查询。
+
+```ts
+await bili.interaction.isLiked(170001);         // 是否(近期)点赞(aid 或 bvid)
+```
+
+### 评论(`client.comment`)
+
+```ts
+const page = await bili.comment.list(1, 170001, { pn: 1, ps: 20 }); // 评论列表(type 1=视频)
+const rpid = await bili.comment.add(1, 170001, "前排");             // 发表评论
+await bili.comment.add(1, 170001, "回复", { root: 100, parent: 100 }); // 回复评论
+await bili.comment.del(1, 170001, rpid);        // 删除评论
+await bili.comment.pin(1, 170001, rpid);        // 置顶评论(自己管理的评论区)
+```
+
+> 评论点赞/点踩已下线(刷量重灾区,同 `interaction` 说明)。
+
+### 弹幕(`client.danmaku`)
+
+```ts
+await bili.danmaku.send(280001, "233", { progress: 1000, color: 16777215 }); // 发送弹幕(cid)
+const items = await bili.danmaku.list(280001);   // 获取弹幕列表
+```
+
+### 动态(`client.dynamic`)
+
+```ts
+const dynId = await bili.dynamic.createText("hello", { atUids: ["14082"] }); // 发布纯文本动态
+await bili.dynamic.del(dynId);                  // 删除动态
+const newId = await bili.dynamic.repost(dynId, { content: "转发" }); // 转发
+await bili.dynamic.pin(dynId);                  // 置顶动态
+await bili.dynamic.unpin(dynId);                // 取消置顶
+```
+
+> 动态点赞/取消点赞已下线(刷量重灾区,同 `interaction` 说明)。
+
+### 稍后再看 / 历史记录(`client.data`)
+
+```ts
+const list = await bili.data.listToView();       // 稍后再看列表
+await bili.data.addToView(170001);              // 添加稍后再看
+await bili.data.removeToView(170001);           // 移除
+await bili.data.clearToView();                  // 清空稍后再看
+const history = await bili.data.listHistory({ ps: 20 }); // 历史记录(游标翻页)
+await bili.data.delHistory("archive_170001");   // 删除一条历史
+await bili.data.clearHistory();                 // 清空历史记录
+await bili.data.setHistoryEnabled(false);       // 停用历史记录
+```
+
+### 创作中心与追番(`client.creative`)
+
+```ts
+const archives = await bili.creative.listArchives({ pn: 1, ps: 10 }); // 稿件列表(含播放/点赞等统计)
+const videos = await bili.creative.getArchiveVideos(170001);          // 稿件分P信息
+await bili.creative.followSeason(41410);      // 追番/追剧(ssid)
+await bili.creative.unfollowSeason(41410);    // 取消追番/追剧
+```
+
 ## 错误处理
 
 统一 `BilibiliError`,错误码:

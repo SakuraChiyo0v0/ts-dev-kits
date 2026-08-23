@@ -24,7 +24,43 @@ const COMMANDS = [
   { name: "parse", desc: "Parse a bilibili URL into media items" },
   { name: "streams", desc: "Get play streams for a media item" },
   { name: "download", desc: "Download a media item (with merge)" },
+  { name: "fav", desc: "Favorites management (list/info/create/edit/delete/add/remove)" },
+  { name: "relation", desc: "Follow management (follow/unfollow/block/followings/followers)" },
+  { name: "tag", desc: "Follow tag management (list/create/rename/delete/users)" },
   { name: "help", desc: "Show this help" },
+];
+
+const FAV_COMMANDS = [
+  { name: "list <mid>", desc: "List folders created by a user" },
+  { name: "collected <mid>", desc: "List folders collected by a user" },
+  { name: "info <mediaId>", desc: "Show folder metadata" },
+  { name: "videos <mediaId>", desc: "List folder contents (--pn --ps)" },
+  { name: "create <title>", desc: "Create a folder (--intro --private)" },
+  { name: "edit <mediaId> <title>", desc: "Edit a folder (--intro --private)" },
+  { name: "delete <mediaIds...>", desc: "Delete folders (comma or space separated)" },
+  { name: "add <rid> <mediaIds...>", desc: "Favourite a video into folders" },
+  { name: "remove <rid> <mediaIds...>", desc: "Unfavourite a video from folders" },
+];
+
+const RELATION_COMMANDS = [
+  { name: "follow <mid>", desc: "Follow a user" },
+  { name: "unfollow <mid>", desc: "Unfollow a user" },
+  { name: "block <mid>", desc: "Block a user" },
+  { name: "unblock <mid>", desc: "Unblock a user" },
+  { name: "followings <vmid>", desc: "List followings (--pn --ps)" },
+  { name: "followers <vmid>", desc: "List followers (--pn --ps)" },
+  { name: "stat <vmid>", desc: "Show relation statistics" },
+  { name: "blacks", desc: "List blacklist" },
+];
+
+const TAG_COMMANDS = [
+  { name: "list", desc: "List follow tags" },
+  { name: "users <tagid>", desc: "List users in a tag (--pn --ps)" },
+  { name: "create <name>", desc: "Create a tag" },
+  { name: "rename <tagid> <name>", desc: "Rename a tag" },
+  { name: "delete <tagid>", desc: "Delete a tag" },
+  { name: "add <mid> <tagids...>", desc: "Add a user to tags" },
+  { name: "remove <mid>", desc: "Remove a user from tags (back to default)" },
 ];
 
 const OPTIONS = [
@@ -169,11 +205,253 @@ async function main(): Promise<void> {
       return;
     }
 
+    case "fav":
+      await runFavCommand(args);
+      return;
+
+    case "relation":
+      await runRelationCommand(args);
+      return;
+
+    case "tag":
+      await runTagCommand(args);
+      return;
+
     default:
       outputText(`Unknown command: ${command}`);
       printHelp(USAGE, COMMANDS, OPTIONS);
       throw new CliError(`Unknown command: ${command}`, 2);
   }
+}
+
+/** 收藏夹管理子命令。 */
+async function runFavCommand(args: ReturnType<typeof parseArgs>): Promise<void> {
+  const sub = args.positionals[0];
+  if (sub === undefined || sub === "help") {
+    printHelp("Usage: amechan-bilibili fav <command> [args]", FAV_COMMANDS, [
+      { flag: "--pn <n>", desc: "Page number (default 1)" },
+      { flag: "--ps <n>", desc: "Page size (default 20, max 20)" },
+      { flag: "--intro <text>", desc: "Folder intro" },
+      { flag: "--private", desc: "Create private folder" },
+    ]);
+    return;
+  }
+  const client = makeClient(args);
+  const rest = args.positionals.slice(1);
+
+  switch (sub) {
+    case "list": {
+      const mid = rest[0] ?? requireString(args, "mid", "user mid");
+      const folders = await client.fav.listCreatedFolders(mid);
+      outputJson(folders);
+      return;
+    }
+    case "collected": {
+      const mid = rest[0] ?? requireString(args, "mid", "user mid");
+      const folders = await client.fav.listCollectedFolders(mid, {
+        ...(getNumber(args, "pn") !== undefined ? { pn: getNumber(args, "pn")! } : {}),
+        ...(getNumber(args, "ps") !== undefined ? { ps: getNumber(args, "ps")! } : {}),
+      });
+      outputJson(folders);
+      return;
+    }
+    case "info": {
+      const mediaId = rest[0] ?? requireString(args, "media-id", "media id");
+      outputJson(await client.fav.getFolderInfo(mediaId));
+      return;
+    }
+    case "videos": {
+      const mediaId = rest[0] ?? requireString(args, "media-id", "media id");
+      const page = await client.fav.listResources(mediaId, {
+        ...(getNumber(args, "pn") !== undefined ? { pn: getNumber(args, "pn")! } : {}),
+        ...(getNumber(args, "ps") !== undefined ? { ps: getNumber(args, "ps")! } : {}),
+      });
+      outputJson(page);
+      return;
+    }
+    case "create": {
+      const title = rest[0] ?? requireString(args, "title", "folder title");
+      const id = await client.fav.createFolder({
+        title,
+        ...(getString(args, "intro") !== undefined ? { intro: getString(args, "intro")! } : {}),
+        ...(getBool(args, "private") ? { privacy: 1 as const } : {}),
+      });
+      outputJson({ ok: true, mediaId: id });
+      return;
+    }
+    case "edit": {
+      const mediaId = rest[0] ?? requireString(args, "media-id", "media id");
+      const title = rest[1] ?? requireString(args, "title", "folder title");
+      await client.fav.editFolder(mediaId, {
+        title,
+        ...(getString(args, "intro") !== undefined ? { intro: getString(args, "intro")! } : {}),
+        ...(getBool(args, "private") ? { privacy: 1 as const } : {}),
+      });
+      outputJson({ ok: true });
+      return;
+    }
+    case "delete": {
+      const ids = splitIds(rest.length > 0 ? rest : (getString(args, "media-ids") ?? ""));
+      if (ids.length === 0) {
+        throw new CliError("Missing folder media ids");
+      }
+      await client.fav.deleteFolder(ids);
+      outputJson({ ok: true, mediaIds: ids });
+      return;
+    }
+    case "add":
+    case "remove": {
+      const rid = rest[0] ?? requireString(args, "rid", "video avid");
+      const mediaIds = splitIds(rest.slice(1).length > 0 ? rest.slice(1) : (getString(args, "media-ids") ?? ""));
+      if (mediaIds.length === 0) {
+        throw new CliError("Missing folder media ids");
+      }
+      if (sub === "add") {
+        await client.fav.addVideo(rid, mediaIds);
+      } else {
+        await client.fav.removeVideo(rid, mediaIds);
+      }
+      outputJson({ ok: true, rid, mediaIds });
+      return;
+    }
+    default:
+      outputText(`Unknown fav command: ${sub}`);
+      printHelp("Usage: amechan-bilibili fav <command> [args]", FAV_COMMANDS, []);
+      throw new CliError(`Unknown fav command: ${sub}`, 2);
+  }
+}
+
+/** 关注关系子命令。 */
+async function runRelationCommand(args: ReturnType<typeof parseArgs>): Promise<void> {
+  const sub = args.positionals[0];
+  if (sub === undefined || sub === "help") {
+    printHelp("Usage: amechan-bilibili relation <command> [args]", RELATION_COMMANDS, [
+      { flag: "--pn <n>", desc: "Page number (default 1)" },
+      { flag: "--ps <n>", desc: "Page size (default 50)" },
+    ]);
+    return;
+  }
+  const client = makeClient(args);
+  const rest = args.positionals.slice(1);
+
+  switch (sub) {
+    case "follow":
+    case "unfollow":
+    case "block":
+    case "unblock": {
+      const mid = rest[0] ?? requireString(args, "mid", "user mid");
+      if (sub === "follow") await client.relation.follow(mid);
+      else if (sub === "unfollow") await client.relation.unfollow(mid);
+      else if (sub === "block") await client.relation.block(mid);
+      else await client.relation.unblock(mid);
+      outputJson({ ok: true, action: sub, mid });
+      return;
+    }
+    case "followings": {
+      const vmid = rest[0] ?? requireString(args, "vmid", "user mid");
+      const page = await client.relation.listFollowings(vmid, {
+        ...(getNumber(args, "pn") !== undefined ? { pn: getNumber(args, "pn")! } : {}),
+        ...(getNumber(args, "ps") !== undefined ? { ps: getNumber(args, "ps")! } : {}),
+      });
+      outputJson(page);
+      return;
+    }
+    case "followers": {
+      const vmid = rest[0] ?? requireString(args, "vmid", "user mid");
+      const page = await client.relation.listFollowers(vmid, {
+        ...(getNumber(args, "pn") !== undefined ? { pn: getNumber(args, "pn")! } : {}),
+        ...(getNumber(args, "ps") !== undefined ? { ps: getNumber(args, "ps")! } : {}),
+      });
+      outputJson(page);
+      return;
+    }
+    case "stat": {
+      const vmid = rest[0] ?? requireString(args, "vmid", "user mid");
+      outputJson(await client.relation.getStat(vmid));
+      return;
+    }
+    case "blacks":
+      outputJson(await client.relation.listBlacks());
+      return;
+    default:
+      outputText(`Unknown relation command: ${sub}`);
+      printHelp("Usage: amechan-bilibili relation <command> [args]", RELATION_COMMANDS, []);
+      throw new CliError(`Unknown relation command: ${sub}`, 2);
+  }
+}
+
+/** 关注分组子命令。 */
+async function runTagCommand(args: ReturnType<typeof parseArgs>): Promise<void> {
+  const sub = args.positionals[0];
+  if (sub === undefined || sub === "help") {
+    printHelp("Usage: amechan-bilibili tag <command> [args]", TAG_COMMANDS, [
+      { flag: "--pn <n>", desc: "Page number (default 1)" },
+      { flag: "--ps <n>", desc: "Page size (default 20)" },
+    ]);
+    return;
+  }
+  const client = makeClient(args);
+  const rest = args.positionals.slice(1);
+
+  switch (sub) {
+    case "list":
+      outputJson(await client.tag.listTags());
+      return;
+    case "users": {
+      const tagid = rest[0] ?? requireString(args, "tagid", "tag id");
+      const users = await client.tag.listTagUsers(tagid, {
+        ...(getNumber(args, "pn") !== undefined ? { pn: getNumber(args, "pn")! } : {}),
+        ...(getNumber(args, "ps") !== undefined ? { ps: getNumber(args, "ps")! } : {}),
+      });
+      outputJson(users);
+      return;
+    }
+    case "create": {
+      const name = rest[0] ?? requireString(args, "name", "tag name");
+      const tagid = await client.tag.createTag(name);
+      outputJson({ ok: true, tagid });
+      return;
+    }
+    case "rename": {
+      const tagid = rest[0] ?? requireString(args, "tagid", "tag id");
+      const name = rest[1] ?? requireString(args, "name", "tag name");
+      await client.tag.renameTag(tagid, name);
+      outputJson({ ok: true });
+      return;
+    }
+    case "delete": {
+      const tagid = rest[0] ?? requireString(args, "tagid", "tag id");
+      await client.tag.deleteTag(tagid);
+      outputJson({ ok: true });
+      return;
+    }
+    case "add": {
+      const mid = rest[0] ?? requireString(args, "mid", "user mid");
+      const tagids = splitIds(rest.slice(1).length > 0 ? rest.slice(1) : (getString(args, "tagids") ?? ""));
+      if (tagids.length === 0) {
+        throw new CliError("Missing tag ids");
+      }
+      await client.tag.addUsersToTags([mid], tagids);
+      outputJson({ ok: true, mid, tagids });
+      return;
+    }
+    case "remove": {
+      const mid = rest[0] ?? requireString(args, "mid", "user mid");
+      await client.tag.removeUsersFromTags([mid]);
+      outputJson({ ok: true, mid });
+      return;
+    }
+    default:
+      outputText(`Unknown tag command: ${sub}`);
+      printHelp("Usage: amechan-bilibili tag <command> [args]", TAG_COMMANDS, []);
+      throw new CliError(`Unknown tag command: ${sub}`, 2);
+  }
+}
+
+/** 把位置参数或逗号分隔串解析为 id 列表(去空)。 */
+function splitIds(input: string[] | string): string[] {
+  const source = Array.isArray(input) ? input : [input];
+  return source.flatMap((part) => part.split(",")).map((s) => s.trim()).filter((s) => s !== "");
 }
 
 main().catch(handleCliError);

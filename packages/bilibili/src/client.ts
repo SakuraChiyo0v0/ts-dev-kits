@@ -20,6 +20,18 @@ import {
 } from "./parsers/aggregate.js";
 import { StreamResolverImpl, selectBestAudioStream, selectBestStream } from "./streams.js";
 import { parseUrl } from "./url.js";
+import {
+  FavApi,
+  RelationApi,
+  TagApi,
+  InteractionApi,
+  CommentApi,
+  DanmakuApi,
+  DynamicApi,
+  DataApi,
+  CreativeApi,
+  UserApi,
+} from "./api/index.js";
 import type {
   BilibiliClientOptions,
   DownloadProgress,
@@ -48,6 +60,16 @@ export class BilibiliClient {
   readonly #streamResolver: StreamResolver;
   readonly #options: Required<Pick<BilibiliClientOptions, "merge">> &
     Pick<BilibiliClientOptions, "download">;
+  #fav: FavApi | undefined;
+  #relation: RelationApi | undefined;
+  #tag: TagApi | undefined;
+  #interaction: InteractionApi | undefined;
+  #comment: CommentApi | undefined;
+  #danmaku: DanmakuApi | undefined;
+  #dynamic: DynamicApi | undefined;
+  #data: DataApi | undefined;
+  #creative: CreativeApi | undefined;
+  #user: UserApi | undefined;
 
   constructor(options: BilibiliClientOptions = {}) {
     // 显式 cookie 优先;未传时从登录态存储自动加载(复用 account 底座)。
@@ -73,6 +95,8 @@ export class BilibiliClient {
       ...(cookie !== undefined ? { cookie } : {}),
       ...(options.userAgent !== undefined ? { userAgent: options.userAgent } : {}),
       ...(options.baseUrl !== undefined ? { baseUrl: options.baseUrl } : {}),
+      ...(options.vcBaseUrl !== undefined ? { vcBaseUrl: options.vcBaseUrl } : {}),
+      ...(options.memberBaseUrl !== undefined ? { memberBaseUrl: options.memberBaseUrl } : {}),
     });
     if (authStore !== undefined && credentials !== null) {
       // 登录态失效(-101)时自动续期一次并重试。
@@ -112,8 +136,78 @@ export class BilibiliClient {
     };
   }
 
+  /** 当前是否已登录(有 SESSDATA cookie)。 */
+  get isLoggedIn(): boolean {
+    return this.#session.currentMid() !== undefined;
+  }
+
+  /** 当前登录用户 mid(未登录为 undefined)。 */
+  get currentMid(): number | undefined {
+    return this.#session.currentMid();
+  }
+
   #registerParser(parser: Parser): void {
     this.#parsers.set(parser.type, parser);
+  }
+
+  /** 收藏夹管理 API(创建/编辑/删除收藏夹、收藏内容操作、查询)。 */
+  get fav(): FavApi {
+    this.#fav ??= new FavApi(this.#session);
+    return this.#fav;
+  }
+
+  /** 关注关系 API(关注/取关/批量关注、列表、拉黑、关系统计)。 */
+  get relation(): RelationApi {
+    this.#relation ??= new RelationApi(this.#session);
+    return this.#relation;
+  }
+
+  /** 关注分组 API(分组列表/明细、创建/重命名/删除分组、用户分组操作)。 */
+  get tag(): TagApi {
+    this.#tag ??= new TagApi(this.#session);
+    return this.#tag;
+  }
+
+  /** 视频互动 API(点赞/投币/一键三连/点赞状态)。 */
+  get interaction(): InteractionApi {
+    this.#interaction ??= new InteractionApi(this.#session);
+    return this.#interaction;
+  }
+
+  /** 评论 API(列表/发表/删除/点赞/置顶)。 */
+  get comment(): CommentApi {
+    this.#comment ??= new CommentApi(this.#session);
+    return this.#comment;
+  }
+
+  /** 弹幕 API(发送/获取列表)。 */
+  get danmaku(): DanmakuApi {
+    this.#danmaku ??= new DanmakuApi(this.#session);
+    return this.#danmaku;
+  }
+
+  /** 动态 API(发布/删除/点赞/置顶/转发)。 */
+  get dynamic(): DynamicApi {
+    this.#dynamic ??= new DynamicApi(this.#session);
+    return this.#dynamic;
+  }
+
+  /** 个人数据 API(稍后再看/历史记录)。 */
+  get data(): DataApi {
+    this.#data ??= new DataApi(this.#session);
+    return this.#data;
+  }
+
+  /** 创作中心与追番 API(稿件列表/分P信息/追番追剧)。 */
+  get creative(): CreativeApi {
+    this.#creative ??= new CreativeApi(this.#session);
+    return this.#creative;
+  }
+
+  /** 用户信息 API(只读:昵称/签名/粉丝/关注/等级)。 */
+  get user(): UserApi {
+    this.#user ??= new UserApi(this.#session);
+    return this.#user;
   }
 
   /** 解析任意 B 站链接,返回媒体项列表。 */

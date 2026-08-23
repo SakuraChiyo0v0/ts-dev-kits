@@ -13,7 +13,7 @@
 | --- | --- | --- | --- | --- |
 | `@sakurachiyo0v0/email` | 0.1.0 | 与供应商解耦的 Node.js 邮件 SDK | 可用（SMTP 适配器） | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/email` |
 | `@sakurachiyo0v0/ffmpeg` | 0.1.0 | FFmpeg/ffprobe 进程封装 + 媒体处理高层函数 | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/ffmpeg` |
-| `@sakurachiyo0v0/bilibili` | 0.1.0 | B 站视频下载 SDK(解析/取流/下载/ffmpeg 合并,扫码登录内聚复用 account 底座) | 可用(投稿视频) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/bilibili` |
+| `@sakurachiyo0v0/bilibili` | 0.2.0 | B 站 SDK:视频下载(解析/取流/下载/ffmpeg 合并)+ 平台控制(收藏夹/关注/分组/互动/动态/稍后再看/历史) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/bilibili` |
 | `@sakurachiyo0v0/chat-platforms` | 0.1.0 | 统一聊天平台接入 SDK(消息模型/适配器注册表,当前飞书) | 可用(飞书, websocket/webhook) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/chat-platforms` |
 | `@sakurachiyo0v0/lol` | 0.1.0 | 英雄联盟 LCU 本地能力 SDK(召唤师/战绩/段位/对局流程/游戏数据/事件) | 可用(查询+对局感知, 国服 SGP) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/lol` |
 | `@sakurachiyo0v0/account` | 0.1.0 | 跨平台账号认证底座(登录态存储/扫码登录骨架/错误模型) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/account` |
@@ -169,12 +169,22 @@ B 站视频下载 SDK。解析视频信息、获取播放流、可配置下载�
 **核心接口：**
 
 - `createBilibiliClient({ cookie?, authPath?, download?, merge? })` — 创建客户端;未传 cookie 时自动从登录态存储加载(`authPath` 复用 `@sakurachiyo0v0/account` 底座,默认 `<配置根>/amechan/bilibili/auth.json`)
-- `client.parse(url)` — 解析 B 站链接,返回 `MediaItem[]`(第一版支持投稿视频/BV/av,其余类型第二版)
+- `client.parse(url)` — 解析 B 站链接,返回 `MediaItem[]`(投稿视频/番剧/课程/音乐/空间/收藏夹/合集/每周必看/稍后再看/历史记录)
 - `client.getStreams(item, { quality?, codec? })` — 获取 DASH/MP4 播放流,支持清晰度与编码选择
 - `client.download(item, { outputDir, quality?, onProgress? })` — 下载并合并,返回文件路径
+- `client.fav` — 收藏夹管理:创建/重命名/删除收藏夹、收藏/取消收藏视频、内容复制/移动/批量删除/清空失效、收藏夹列表/元数据/内容明细
+- `client.relation` — 关注关系:关注/取关/批量关注/拉黑、关注/粉丝列表、关系统计、批量关系查询
+- `client.tag` — 关注分组:分组列表/明细、创建/重命名/删除分组、用户加入/移出/复制/移动分组
+- `client.interaction` — 视频互动(只读):点赞状态查询
+- `client.comment` — 评论:列表/发表/回复/删除/置顶
+- `client.danmaku` — 弹幕:发送(自动 WBI 签名)/获取列表
+- `client.dynamic` — 动态:发布纯文本/删除/转发/置顶
+- `client.data` — 个人数据:稍后再看(列表/添加/删除/清空)、历史记录(列表/删除/清空/停用开关)
 - `bilibiliQrAdapter()` — B 站扫码登录适配器(`QrLoginAdapter` 实现,复用 `@sakurachiyo0v0/account` 的扫码骨架/存储/续期)
 - 下载器可配置:并发数/分块大小/重试/限速/断点续传/CDN 过滤
 - `BilibiliError` — 统一错误码:`NETWORK` / `API_ERROR` / `INVALID_URL` / `LOGIN_REQUIRED` / `AUTH_EXPIRED` / `DOWNLOAD_FAILED` / `MERGE_FAILED` / `UNSUPPORTED_TYPE`
+
+**平台控制 API 需登录**(自动注入 csrf 并复用登录态续期),协议对照 [bilibili-API-collect](https://github.com/SocialSisterYi/bilibili-API-collect);完整能力清单见 [`docs/superpowers/specs/2026-08-23-bilibili-control-apis-design.md`](../superpowers/specs/2026-08-23-bilibili-control-apis-design.md)。点赞/投币/三连(视频)、评论点赞/点踩、动态点赞等刷量重灾区写操作因违反官方规则未提供。
 
 **WBI 签名内置**,自动处理 img_key/sub_key 获取与签名;高画质需登录。扫码登录内聚于本包:`bilibiliQrAdapter()` 配合 account 的 `qrcodeLogin`(本地窗口 + 浏览器弹窗 + 自动落盘),登录态失效时自动 `refresh` 续期。兼容旧版独立登录包(bilibili-auth)留下的老格式 auth.json,首次读取自动迁移为新格式。
 

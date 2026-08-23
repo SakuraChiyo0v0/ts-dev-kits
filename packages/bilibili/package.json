@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/bilibili",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Bilibili video download SDK with pluggable parsers, configurable downloader and ffmpeg merge",
   "license": "UNLICENSED",
   "publishConfig": {

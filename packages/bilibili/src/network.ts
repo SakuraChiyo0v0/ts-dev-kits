@@ -96,13 +96,30 @@ export class ApiSession {
   readonly userAgent: string;
   /** API 根地址,默认 https://api.bilibili.com(测试可覆盖)。 */
   readonly baseUrl: string;
+  /** 动态等 vc 域接口根地址,默认 https://api.vc.bilibili.com(测试可覆盖)。 */
+  readonly vcBaseUrl: string;
+  /** 创作中心接口根地址,默认 https://member.bilibili.com(测试可覆盖)。 */
+  readonly memberBaseUrl: string;
   /** 登录态失效(-101)时的回调:返回 true 表示已刷新 cookie,调用方应重试一次。 */
   onAuthFailure?: () => Promise<boolean>;
+  /** 会话级基础 cookie(构造时生成一次,buvid3/buvid4 会话内保持稳定,避免触发风控)。 */
+  readonly #baseCookies: Record<string, string>;
 
-  constructor(options: { cookie?: string; userAgent?: string; baseUrl?: string } = {}) {
+  constructor(
+    options: {
+      cookie?: string;
+      userAgent?: string;
+      baseUrl?: string;
+      vcBaseUrl?: string;
+      memberBaseUrl?: string;
+    } = {},
+  ) {
     this.cookie = options.cookie ?? "";
     this.userAgent = options.userAgent ?? USER_AGENT;
     this.baseUrl = (options.baseUrl ?? "https://api.bilibili.com").replace(/\/+$/u, "");
+    this.vcBaseUrl = (options.vcBaseUrl ?? "https://api.vc.bilibili.com").replace(/\/+$/u, "");
+    this.memberBaseUrl = (options.memberBaseUrl ?? "https://member.bilibili.com").replace(/\/+$/u, "");
+    this.#baseCookies = baseCookies();
     this.wbi = new WbiSigner(this);
   }
 
@@ -119,8 +136,8 @@ export class ApiSession {
       accept: "application/json, text/plain, */*",
     };
     if (this.cookie !== "") {
-      // 合并基础 cookie 与用户 cookie,用户 cookie 优先。
-      const cookies = { ...baseCookies(), ...parseCookieString(this.cookie) };
+      // 合并基础 cookie 与用户 cookie,用户 cookie 优先;会话内基础 cookie 保持稳定。
+      const cookies = { ...this.#baseCookies, ...parseCookieString(this.cookie) };
       headers.cookie = Object.entries(cookies)
         .map(([key, value]) => `${key}=${value}`)
         .join("; ");
@@ -170,10 +187,140 @@ export class ApiSession {
     return record.data as T;
   }
 
-  /** fetch + JSON 解析,网络错误归一为 BilibiliError。 */
-  async #fetchJson(fullUrl: string): Promise<unknown> {
+  /** 发起 POST application/x-www-form-urlencoded,返回校验后的 data。url 可为绝对地址或 baseUrl 相对路径。 */
+  async post<T = unknown>(
+    url: string,
+    params: Record<string, string | number>,
+    options: { csrf?: boolean } = {},
+  ): Promise<T> {
+    const withCsrf = options.csrf ?? true;
+    let body: Record<string, string | number> = params;
+    if (withCsrf) {
+      const token = this.csrf();
+      if (token === undefined) {
+        throw new BilibiliError(
+          "LOGIN_REQUIRED",
+          "Missing bili_jct cookie; login is required for this API",
+        );
+      }
+      body = { ...params, csrf: token };
+    }
+    const encoded = new URLSearchParams(
+      Object.fromEntries(Object.entries(body).map(([key, value]) => [key, String(value)])),
+    ).toString();
+    const record = await this.#checkedJson(url, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: encoded,
+    });
+    return record.data as T;
+  }
+
+  /**
+   * 发起 POST JSON body,返回校验后的 data。url 可为绝对地址或 baseUrl 相对路径。
+   * csrfInQuery: 部分接口(如动态点赞/置顶)要求 csrf 放在 URL 查询串而非 body。
+   */
+  async postJson<T = unknown>(
+    url: string,
+    body: Record<string, unknown>,
+    options: { csrf?: boolean; csrfInQuery?: boolean } = {},
+  ): Promise<T> {
+    const withCsrf = options.csrf ?? true;
+    let fullUrl = url;
+    let payload: Record<string, unknown> = body;
+    if (withCsrf) {
+      const token = this.csrf();
+      if (token === undefined) {
+        throw new BilibiliError(
+          "LOGIN_REQUIRED",
+          "Missing bili_jct cookie; login is required for this API",
+        );
+      }
+      if (options.csrfInQuery === true) {
+        fullUrl = `${url}${url.includes("?") ? "&" : "?"}csrf=${encodeURIComponent(token)}`;
+      } else {
+        payload = { ...body, csrf: token };
+      }
+    }
+    const record = await this.#checkedJson(fullUrl, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    return record.data as T;
+  }
+
+  /**
+   * 发起带 WBI 签名的 POST(如发送弹幕),返回校验后的 data。
+   * 签名基于表单参数,签名结果(wts/w_rid)放入 URL 查询串。
+   */
+  async postWbi<T = unknown>(
+    url: string,
+    params: Record<string, string | number>,
+    options: { csrf?: boolean } = {},
+  ): Promise<T> {
+    const withCsrf = options.csrf ?? true;
+    let body: Record<string, string | number> = params;
+    let signedQuery = "";
+    if (withCsrf) {
+      const token = this.csrf();
+      if (token === undefined) {
+        throw new BilibiliError(
+          "LOGIN_REQUIRED",
+          "Missing bili_jct cookie; login is required for this API",
+        );
+      }
+      body = { ...params, csrf: token };
+      signedQuery = await this.wbi.sign(params);
+    } else {
+      signedQuery = await this.wbi.sign(params);
+    }
+    const fullUrl = `${url}?${signedQuery}`;
+    const encoded = new URLSearchParams(
+      Object.fromEntries(Object.entries(body).map(([key, value]) => [key, String(value)])),
+    ).toString();
+    const record = await this.#checkedJson(fullUrl, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: encoded,
+    });
+    return record.data as T;
+  }
+
+  /** 发起 GET 请求,返回原始文本(如弹幕 XML)。 */
+  async getRawText(url: string): Promise<string> {
     try {
-      const response = await fetch(fullUrl, { headers: this.headers() });
+      const response = await fetch(url, { headers: this.headers() });
+      return await response.text();
+    } catch (error) {
+      throw toBilibiliError(error);
+    }
+  }
+
+  /** 从当前 cookie 提取 bili_jct(CSRF Token);没有则返回 undefined。 */
+  csrf(): string | undefined {
+    const token = parseCookieString(this.cookie).bili_jct;
+    return token !== undefined && token !== "" ? token : undefined;
+  }
+
+  /** 从当前 cookie 提取 DedeUserID(当前登录用户 mid);没有则返回 undefined。 */
+  currentMid(): number | undefined {
+    const mid = parseCookieString(this.cookie).DedeUserID;
+    const parsed = mid !== undefined ? Number(mid) : Number.NaN;
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+  }
+
+  /** fetch + JSON 解析,网络错误归一为 BilibiliError。 */
+  async #fetchJson(
+    fullUrl: string,
+    init?: { method?: string; headers?: Record<string, string>; body?: string },
+  ): Promise<unknown> {
+    try {
+      const response = await fetch(fullUrl, {
+        method: init?.method ?? "GET",
+        ...(init?.body !== undefined ? { body: init.body } : {}),
+        headers: { ...this.headers(), ...(init?.headers ?? {}) },
+      });
       const text = await response.text();
       return JSON.parse(text) as unknown;
     } catch (error) {
@@ -182,9 +329,12 @@ export class ApiSession {
   }
 
   /** 校验 API 响应;遇到登录态失效(-101)且有续期回调时,刷新后重试一次。 */
-  async #checkedJson(fullUrl: string): Promise<Record<string, unknown>> {
+  async #checkedJson(
+    fullUrl: string,
+    init?: { method?: string; headers?: Record<string, string>; body?: string },
+  ): Promise<Record<string, unknown>> {
     const attempt = async (): Promise<Record<string, unknown>> =>
-      checkApiResponse(await this.#fetchJson(fullUrl), fullUrl);
+      checkApiResponse(await this.#fetchJson(fullUrl, init), fullUrl);
     try {
       return await attempt();
     } catch (error) {

@@ -24,6 +24,41 @@ export {
   WatchLaterParser,
 } from "./parsers/aggregate.js";
 export {
+  FavApi,
+  type FavFolder,
+  type FavResource,
+  type FavResourceItem,
+  type FavResourcePage,
+  type FavResourceType,
+} from "./api/index.js";
+export {
+  RelationApi,
+  RelationAttribute,
+  type RelationAct,
+  type RelationPage,
+  type RelationPair,
+  type RelationStat,
+  type RelationUser,
+} from "./api/index.js";
+export { TagApi, type RelationTag } from "./api/index.js";
+export { InteractionApi } from "./api/index.js";
+export {
+  CommentApi,
+  CommentType,
+  type ReplyItem,
+  type ReplyPage,
+} from "./api/index.js";
+export {
+  DanmakuApi,
+  DanmakuMode,
+  parseDanmakuXml,
+  type DanmakuItem,
+} from "./api/index.js";
+export { DynamicApi } from "./api/index.js";
+export { DataApi, type HistoryItem, type ToViewItem } from "./api/index.js";
+export { CreativeApi, type ArchiveVideoPage, type CreativeArchive } from "./api/index.js";
+export { UserApi, type UserCard } from "./api/index.js";
+export {
   selectBestAudioStream,
   selectBestStream,
   StreamResolverImpl,

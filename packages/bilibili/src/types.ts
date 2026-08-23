@@ -169,6 +169,10 @@ export interface BilibiliClientOptions {
   userAgent?: string;
   /** API 根地址(测试用,默认官方)。 */
   baseUrl?: string;
+  /** 动态等 vc 域接口根地址(测试用,默认官方 api.vc.bilibili.com)。 */
+  vcBaseUrl?: string;
+  /** 创作中心接口根地址(测试用,默认官方 member.bilibili.com)。 */
+  memberBaseUrl?: string;
   /** 下载器配置。 */
   download?: DownloadConfig;
   /** 是否合并音视频(需 @sakurachiyo0v0/ffmpeg),默认 true。 */
