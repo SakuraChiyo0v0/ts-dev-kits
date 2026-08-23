@@ -17,6 +17,8 @@
 | `@sakurachiyo0v0/bilibili-auth` | 0.1.0 | B 站扫码登录(二维码弹窗/登录态存储/refresh_token 续期) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/bilibili-auth` |
 | `@sakurachiyo0v0/chat-platforms` | 0.1.0 | 统一聊天平台接入 SDK(消息模型/适配器注册表,当前飞书) | 可用(飞书, websocket/webhook) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/chat-platforms` |
 | `@sakurachiyo0v0/lol` | 0.1.0 | 英雄联盟 LCU 本地能力 SDK(召唤师/战绩/段位/对局流程/游戏数据/事件) | 可用(查询+对局感知, 国服 SGP) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/lol` |
+| `@sakurachiyo0v0/account` | 0.1.0 | 跨平台账号认证底座(登录态存储/扫码登录骨架/错误模型) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/account` |
+| `@sakurachiyo0v0/netease-music` | 0.1.0 | 网易云音乐下载 SDK(weapi 加密/二维码登录/权限感知品质/试听拦截) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/netease-music` |
 
 ## 包详情
 
@@ -365,3 +367,108 @@ pnpm --filter @sakurachiyo0v0/lol build       # 构建 ESM + CJS + d.ts
 ```
 
 **更多细节：** [`packages/lol/README.md`](../packages/lol/README.md)；设计文档 [`docs/superpowers/specs/2026-08-22-lol-sdk-design.md`](superpowers/specs/2026-08-22-lol-sdk-design.md)
+
+### `@sakurachiyo0v0/account`
+
+跨平台账号认证底座（薄）：登录态存储、扫码登录骨架与公共错误模型。**不感知具体平台**——网易云、B 站、酷狗、QQ 音乐等平台的登录差异收敛在各自的 `QrLoginAdapter` 实现里，登录流程、存储、CLI 全复用。设计文档 [`docs/superpowers/specs/2026-08-23-netease-music-sdk-design.md`](superpowers/specs/2026-08-23-netease-music-sdk-design.md)。
+
+**适用环境：** Node.js 20+，桌面环境（需要打开浏览器）；无头环境可用 `autoOpenBrowser: false`。
+
+**核心接口：**
+
+- `AuthStore` — 跨平台登录态存储：`new AuthStore({ platform, path? })`，默认 `<配置根>/amechan/<platform>/auth.json`，原子写 + 600 权限；`save()` / `load()` / `loadSync()` / `clear()` / `exists()`
+- `qrcodeLogin({ adapter, store?, ... })` — 扫码登录骨架：本地窗口 + 系统浏览器弹二维码 → 手机 App 扫码 → 轮询确认 → 收集凭证 → 可选持久化；返回 `{ credentials, saved }`
+- `QrLoginAdapter` — 平台适配器契约：`generateKey()` / `pollStatus()` / `refresh?()` / `serialize()` / `deserialize()`；新平台接入 = 实现这 5 个方法
+- `resolveConfigRoot()` / `defaultAuthPath(platform)` — 配置目录解析（Windows `%APPDATA%` / macOS `~/Library/Application Support` / Linux `$XDG_CONFIG_HOME`，支持 `AMECHAN_CONFIG_HOME` 覆盖）
+- `AccountError` — 错误码 `NETWORK` / `API_ERROR` / `AUTH_EXPIRED` / `LOGIN_REQUIRED` / `UNKNOWN`
+
+**安装方式：**
+
+同一 pnpm workspace 内：
+
+```powershell
+pnpm add @sakurachiyo0v0/account@workspace:*
+```
+
+从私有 GitHub monorepo 安装：
+
+```powershell
+pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/account"
+```
+
+**API 示例：**
+
+```ts
+import { AuthStore, qrcodeLogin } from "@sakurachiyo0v0/account";
+import { neteaseQrAdapter } from "@sakurachiyo0v0/netease-music";
+
+const store = new AuthStore({ platform: "netease-music" });
+const { credentials, saved } = await qrcodeLogin({ adapter: neteaseQrAdapter(), store });
+```
+
+**在仓库内的验证方式：**
+
+```powershell
+pnpm --filter @sakurachiyo0v0/account test        # 单测（存储/扫码骨架状态机/错误模型）
+pnpm --filter @sakurachiyo0v0/account build       # 构建 ESM + CJS + d.ts
+```
+
+**更多细节：** [`packages/account/README.md`](../packages/account/README.md)
+
+### `@sakurachiyo0v0/netease-music`
+
+网易云音乐下载 SDK：自研 weapi 加密通道（两层 AES-CBC + RSA）、二维码登录（基于 `@sakurachiyo0v0/account`）、**权限感知的品质选择**与**试听拦截（硬规则）**的合规下载。支持单曲/歌单/专辑、歌词（LRC）、封面与 ID3 标签。设计文档 [`docs/superpowers/specs/2026-08-23-netease-music-sdk-design.md`](superpowers/specs/2026-08-23-netease-music-sdk-design.md)。
+
+**适用环境：** Node.js 20+；ID3 标签写入需系统安装 `ffmpeg`（通过 `@sakurachiyo0v0/ffmpeg`）。
+
+**合规红线（用户明确要求）：**
+
+- 不涉及任何"非 VIP 下载到 VIP 歌曲"的违规行为；取流由服务端按账号身份裁决，SDK 不绕过、不伪装会员；
+- **试听 = 拒绝**：取流响应出现 `freeTrialInfo` 或时长明显短于完整歌曲 → 抛 `TRIAL_ONLY`，绝不落盘不完整音频；
+- 品质与身份匹配：下载前用 `song/privilege` + `vip/info` 计算"该账号实际可请求的品质清单"，目标品质不在清单内 → 抛 `PRIVILEGE_DENIED`（严格模式，不降级不绕行）。
+
+**核心接口：**
+
+- `createNeteaseClient({ cookie?, authPath?, download?, baseUrl?, fetchImpl? })` — 创建客户端；未传 cookie 时自动从 account AuthStore 加载
+- `client.parse(url)` — 解析歌曲/歌单/专辑链接 → `{ items, songs }`（歌单/专辑展开为歌曲清单）
+- `client.getSongInfo(id)` / `client.getVipInfo()` / `client.getAvailableLevels(id)` — 详情 / VIP 信息 / 权限品质清单
+- `client.download(item, { outputDir?, level?, lyric?, lyricMode?, cover?, writeTags?, onProgress? })` — 下载（权限预检 + 试听拦截强制），返回 `{ filePath, level, lyricPath?, coverPath? }`
+- `client.downloadByInput(input)` — 按链接或歌曲 ID 便捷下载
+- `neteaseQrAdapter()` — 网易云二维码登录适配器（供 `qrcodeLogin` 使用）
+- 品质等级：`standard`(128k) / `higher`(192k) / `exhigh`(320k) / `lossless`(FLAC) / `hires`
+- `NeteaseError` — 错误码 `NETWORK` / `API_ERROR` / `NOT_FOUND` / `INVALID_URL` / `LOGIN_REQUIRED` / `AUTH_EXPIRED` / `PRIVILEGE_DENIED` / `TRIAL_ONLY` / `DOWNLOAD_FAILED` / `UNKNOWN`
+
+**CLI：** `amechan-netease login|status|logout|parse|download`（选项 `--auth-path` / `--no-browser` / `--level` / `--output-dir` / `--no-lyric` / `--no-cover` / `--lyric-mode`）。
+
+**安装方式：**
+
+同一 pnpm workspace 内：
+
+```powershell
+pnpm add @sakurachiyo0v0/netease-music@workspace:*
+```
+
+从私有 GitHub monorepo 安装（需授权 `@sakurachiyo0v0/netease-music`、`@sakurachiyo0v0/account`、`@sakurachiyo0v0/ffmpeg` 构建脚本）：
+
+```powershell
+pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/netease-music"
+```
+
+**API 示例：**
+
+```ts
+import { createNeteaseClient } from "@sakurachiyo0v0/netease-music";
+
+const client = createNeteaseClient({ authPath: "path/to/auth.json" });
+const { songs } = await client.parse("https://music.163.com/song?id=123456");
+await client.download(songs[0]!, { outputDir: "./downloads", level: "exhigh" });
+```
+
+**在仓库内的验证方式：**
+
+```powershell
+pnpm --filter @sakurachiyo0v0/netease-music test        # 单测（本地 mock 接口：weapi/解析/权限/试听拦截/下载链路）
+pnpm --filter @sakurachiyo0v0/netease-music build       # 构建 ESM + CJS + d.ts + CLI
+```
+
+**更多细节：** [`packages/netease-music/README.md`](../packages/netease-music/README.md)
