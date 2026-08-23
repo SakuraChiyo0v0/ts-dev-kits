@@ -64,10 +64,12 @@ Copy-Item -Recurse <本仓库>/packages/dsh-sdk-tools/presets/ts-dev-kits "$env:
 | 包 | 工具 | 默认 |
 | --- | --- | --- |
 | bilibili | `bilibili_parse` / `bilibili_download` | 开 |
-| netease-music | `netease_parse` / `netease_download` / `netease_status` | 开 |
+| netease-music | 解析/下载:`netease_parse` / `netease_download` / `netease_status` / `netease_levels`;账号与收藏:`netease_account` / `netease_playlists` / `netease_likes` / `netease_check_liked` / `netease_like` / `netease_unlike`;歌单管理:`netease_playlist_add` / `netease_playlist_remove` / `netease_playlist_subscribe` / `netease_playlist_unsubscribe` / `netease_playlist_create` / `netease_playlist_delete` | 开 |
 | ffmpeg | `ffmpeg_probe` / `ffmpeg_transcode` / `ffmpeg_extract_audio` / `ffmpeg_thumbnail` | 开 |
 | email | `email_verify` / `email_send` | **关**(需配置 SMTP) |
 | lol | `lol_summoner` / `lol_match_history` / `lol_ranked` | 开 |
+
+> 网易云账号/收藏/歌单类工具只操作**当前登录账号自己的收藏与歌单**(红心、增删歌、订阅/退订、创建/删除),不涉及他人内容;下载链路的权限预检与试听拦截硬规则仍由 SDK 强制。
 
 ## 配置
 
@@ -86,6 +88,10 @@ Copy-Item -Recurse <本仓库>/packages/dsh-sdk-tools/presets/ts-dev-kits "$env:
 ## 合规红线
 
 netease-music 的硬规则在 SDK 层强制,工具层不绕过:无权限品质 → 拒绝不降级(`PRIVILEGE_DENIED`);试听片段 → 拒绝不落盘(`TRIAL_ONLY`)。
+
+## 已知环境注意事项
+
+- **11 位纯数字 id 会被显示层打码:** 对话/终端显示层会对连续 11 位纯数字(疑似手机号)自动把中间 4 位替换为 `****`。网易云歌单 id 恰好是 11 位数字,会被误伤(如 `181****6754`)。这**只是显示层行为,数据本身完整**——SDK 内部拿到的 id 一直是完整数字。**不要复制打码后的文本当参数传**(会解析失败);应在脚本内部用完整数字 id 操作,或让 agent 从工具返回中直接取用 id。详见 `packages/netease-music/README.md`。
 
 ## 开发
 
