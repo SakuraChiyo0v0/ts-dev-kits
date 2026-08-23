@@ -161,12 +161,13 @@ async function runLogin(context: CliContext, args: ReturnType<typeof parseArgs>)
   }
 
   if (getBool(args, "qr")) {
-    outputText("二维码登录:请用 Steam 手机 App 打开如下链接或扫码:");
+    outputText("二维码登录:即将弹出二维码页面,请用 Steam 手机 App 扫码确认…");
     const result = await client.auth.loginWithQr({
-      autoOpenBrowser: false,
+      autoOpenBrowser: true,
       pollIntervalMs: 1500,
-      timeoutMs: 60_000,
+      timeoutMs: 180_000,
       onStatus: (status) => {
+        if (status.state === "waiting") outputText("请用 Steam App 扫描弹出的二维码");
         if (status.state === "scanned") outputText("已扫码,请在手机上确认…");
         if (status.state === "expired") outputText("二维码已过期,重新生成…");
       },

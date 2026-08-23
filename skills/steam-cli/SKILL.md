@@ -17,7 +17,7 @@ which amechan-steam   # 确认已安装
 
 ```bash
 amechan-steam login --account <账号名>          # 密码登录;如开启 Guard,按提示粘贴邮箱/令牌验证码(输完 Ctrl+D/EOF 提交)
-amechan-steam login --qr                        # 二维码登录:用 Steam 手机 App 扫码确认
+amechan-steam login --qr                        # 二维码登录:自动弹出本地二维码页面,用 Steam 手机 App 扫码确认
 amechan-steam login --cookie "steamLoginSecure=...; sessionid=..."   # 导入浏览器 Cookie 头
 amechan-steam status                            # 查看登录状态(登录态/账号/steamid)
 amechan-steam logout                            # 清除本地登录态
