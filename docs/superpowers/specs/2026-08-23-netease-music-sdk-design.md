@@ -97,6 +97,16 @@ amechan-netease logout   [--auth-path <path>]
 amechan-netease parse    <url> [--auth-path <path>]
 amechan-netease download <url|song-id> [--level <standard|higher|exhigh|lossless|hires>]
                          [--output-dir <dir>] [--lyric] [--no-cover] [--auth-path <path>]
+
+# 收藏夹管理(需登录;authPath 缺省时自动从默认 AuthStore 加载)
+amechan-netease favorites                     [--uid <uid>]   # 用户歌单列表
+amechan-netease likes                         [--uid <uid>]   # 红心歌曲 ID
+amechan-netease like <songId> / unlike <songId>               # 红心收藏/取消
+amechan-netease playlist-create <name> [--privacy 10]         # 创建歌单
+amechan-netease playlist-delete <playlistId>                  # 删除歌单
+amechan-netease playlist-add <pid> <songId...>                # 歌单添加歌曲
+amechan-netease playlist-remove <pid> <songId...>             # 歌单移除歌曲
+amechan-netease subscribe / unsubscribe <playlistId>          # 收藏/取消收藏歌单
 ```
 
 ### 3.8 测试策略:离线 mock 为主 + 可选真实冒烟(采用)
@@ -249,6 +259,22 @@ interface NeteaseMusicClient {
   static qrAdapter(options?: { baseUrl?: string }): QrLoginAdapter;
 }
 
+// 收藏夹管理(需登录;全部为操作登录者自己的收藏/歌单,不影响下载合规)
+interface NeteaseMusicClient /* 收藏夹 */ {
+  getAccountInfo(): Promise<AccountInfo>;                    // uid/nickname/avatar
+  getUserPlaylists(opts?: { uid?; limit?; offset? }): Promise<UserPlaylistSummary[]>;
+  getLikeList(opts?: { uid? }): Promise<string[]>;           // 红心歌曲 id
+  checkLiked(ids: (string|number)[]): Promise<Map<string, boolean>>; // 有缓存延迟
+  likeSong(id: string|number): Promise<void>;
+  unlikeSong(id: string|number): Promise<void>;
+  addTracksToPlaylist(pid, trackIds): Promise<void>;         // /weapi/playlist/manipulate/tracks
+  removeTracksFromPlaylist(pid, trackIds): Promise<void>;
+  subscribePlaylist(pid): Promise<void>;                     // /weapi/playlist/subscribe(老 eapi 已 404)
+  unsubscribePlaylist(pid): Promise<void>;
+  createPlaylist(opts: { name; privacy?; type? }): Promise<string>; // 返回新歌单 id
+  deletePlaylist(pid): Promise<void>;
+}
+
 NeteaseError · code:
   NETWORK | API_ERROR | NOT_FOUND | INVALID_URL | LOGIN_REQUIRED | AUTH_EXPIRED |
   PRIVILEGE_DENIED | TRIAL_ONLY | DOWNLOAD_FAILED | UNKNOWN
@@ -310,4 +336,7 @@ NeteaseError · code:
 - [x] `amechan-netease` CLI 注入假服务可跑通 login/status/logout/parse/download(`tests/cli.test.ts`);
 - [x] `NETEASE_SMOKE=1` 真实接口冒烟通过(`tests/smoke.test.ts`);
 - [x] 真实账号扫码登录 + 单曲/歌单下载 + 合规拦截(非 VIP 拒 VIP 歌)实测通过;
+- [x] 收藏夹功能(§5.2 接口)真实账号实测通过:账号信息、用户歌单(含我喜欢的音乐)、红心列表、红心收藏/取消(歌单数 72→73→72 净零)、订阅/退订他人歌单、歌单增删歌曲、创建/删除歌单(全部自清理);
+- [x] CLI 收藏夹子命令(favorites/likes/like/unlike/playlist-create/playlist-delete/playlist-add/playlist-remove/subscribe/unsubscribe)真实验证通过;
+- [x] 修复:client 构造时 authPath 缺省也尝试从默认 AuthStore 加载(否则 CLI 无 --auth-path 时视为未登录);
 - [x] `docs/packages-index.md` 已更新。

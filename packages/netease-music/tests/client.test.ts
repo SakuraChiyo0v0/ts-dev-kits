@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -206,3 +206,40 @@ describe("download", () => {
     expect(readFileSync(result.filePath).length).toBeGreaterThan(0);
   });
 });
+
+describe("auth loading", () => {
+  const authDir = mkdtempSync(join(tmpdir(), "netease-music-auth-test-"));
+
+  afterAll(() => {
+    rmSync(authDir, { recursive: true, force: true });
+  });
+
+  it("loads credentials from explicit authPath and reports isLoggedIn", () => {
+    const authFile = join(authDir, "auth.json");
+    writeAuthFile(authFile);
+    const client = createNeteaseClient({
+      baseUrl,
+      authPath: authFile,
+    });
+    expect(client.isLoggedIn).toBe(true);
+  });
+
+  it("reports not logged in when authPath file is missing", () => {
+    const missing = join(authDir, "nope.json");
+    const client = createNeteaseClient({ baseUrl, authPath: missing });
+    expect(client.isLoggedIn).toBe(false);
+  });
+});
+
+/** 写一个最小合法 AuthStore 文件(auth payload 结构)。 */
+function writeAuthFile(path: string): void {
+  const payload = {
+    platform: "netease-music",
+    credentials: {
+      cookies: "MUSIC_U=test-value; os=pc; appver=8.9.70",
+    },
+    savedAt: new Date().toISOString(),
+  };
+  // AuthStore 文件格式:JSON 直写(与 account 包 loadSync 的 parseAuthPayload 对应)。
+  writeFileSync(path, JSON.stringify(payload));
+}

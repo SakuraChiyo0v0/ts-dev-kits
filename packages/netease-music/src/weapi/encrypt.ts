@@ -13,6 +13,7 @@ import {
   constants,
   createCipheriv,
   createDecipheriv,
+  createHash,
   createPublicKey,
   publicEncrypt,
   randomBytes,
@@ -23,6 +24,8 @@ import {
 const AES_IV = "0102030405060708";
 /** 第一层 AES 固定密钥(协议常量,16 字节)。 */
 const PRESET_KEY = "0CoJUm6Qyw8W8jud";
+/** eapi 固定 AES 密钥(协议常量,16 字节)。 */
+const EAPI_KEY = "e82ckenh8dichen8";
 /** RSA 公钥 modulus(协议常量,1024 位,前导 0x00)。 */
 const RSA_MODULUS_HEX =
   "00e0b509f6259df8642dbc35662901477df22677ec152b5ff68ace615bb7b725152b3ab17a876aea8a5aa76d2e417629ec4ee341f56135fccf695280104e0312ecbda92557c93870114af6c9d05c4f7f0c3685b7a46bee255932575cce10b424d813cfe4875d3e82047b97ddef52741d546b8e289dc6935b3ece0462db0a22b8e7";
@@ -126,4 +129,44 @@ export function weapiDecrypt(params: string, secretKey: string): string {
   // 第二层解密得到第一层 base64,再解第一层。
   const firstPass = aesDecrypt(secretKey, params);
   return aesDecrypt(PRESET_KEY, firstPass);
+}
+
+/** AES-ECB 加密(128 位),输出大写 hex(协议要求)。 */
+function aesEcbEncryptHex(key: string, text: string): string {
+  const cipher = createCipheriv("aes-128-ecb", key, null);
+  return (cipher.update(text, "utf8", "hex") + cipher.final("hex")).toUpperCase();
+}
+
+/** AES-ECB 解密(128 位),输入大写/小写 hex,输出 utf8。 */
+function aesEcbDecryptHex(key: string, hexText: string): string {
+  const decipher = createDecipheriv("aes-128-ecb", key, null);
+  return decipher.update(hexText, "hex", "utf8") + decipher.final("utf8");
+}
+
+/**
+ * eapi 加密一个请求。
+ * 协议(参考 Binaryify/NeteaseCloudMusicApi):
+ *   message = `nobody${url}use${text}md5forencrypt`
+ *   digest  = MD5(message)
+ *   data    = `${url}-36cd479b6b5-${text}-36cd479b6b5-${digest}`
+ *   params  = AES-ECB(EAPI_KEY, data) 大写 hex
+ * @param url 如 "/eapi/playlist/subscribe"
+ * @param payload 明文参数
+ */
+export function eapiEncrypt(url: string, payload: Record<string, unknown>): {
+  params: string;
+} {
+  const text = JSON.stringify(payload);
+  const message = `nobody${url}use${text}md5forencrypt`;
+  const digest = createHash("md5").update(message).digest("hex");
+  const data = `${url}-36cd479b6b5-${text}-36cd479b6b5-${digest}`;
+  return { params: aesEcbEncryptHex(EAPI_KEY, data) };
+}
+
+/**
+ * eapi 响应解密:响应 body 是 AES-ECB(EAPI_KEY) 加密后的大写 hex 字符串,
+ * 解密得到 JSON 文本。
+ */
+export function eapiDecrypt(hexText: string): string {
+  return aesEcbDecryptHex(EAPI_KEY, hexText);
 }

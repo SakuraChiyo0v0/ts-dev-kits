@@ -3,7 +3,7 @@
  * 所有 /weapi/* 接口统一走这里:参数加密、cookie 注入、非 200 code 抛错。
  */
 import { NeteaseError, checkApiResponse, toNeteaseError } from "../errors.js";
-import { weapiEncrypt } from "../weapi/encrypt.js";
+import { weapiEncrypt, eapiEncrypt, eapiDecrypt } from "../weapi/encrypt.js";
 
 const DEFAULT_BASE_URL = "https://music.163.com";
 const USER_AGENT =
@@ -194,6 +194,74 @@ export class WeapiSession {
       ? bodyRecord
       : {}) as Record<string, unknown>;
     return { body: record, response };
+  }
+
+  /**
+   * 发送 eapi 加密请求(少部分接口如收藏/取消收藏歌单用 eapi,非 weapi)。
+   * 请求参数:params = AES-ECB(固定 key)大写 hex。
+   * 响应:eapi 响应体是 AES-ECB 加密后的大写 hex,需解密为 JSON。
+   * @param path 如 "/eapi/playlist/subscribe"
+   * @param payload 明文参数
+   * @returns 解密并校验后的响应 body
+   */
+  async postEapi(path: string, payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const body = { csrf_token: this.#cookieMap.__csrf ?? "", ...payload };
+    const { params } = eapiEncrypt(path, body);
+    const form = new URLSearchParams({ params });
+
+    let response: Response;
+    try {
+      response = await this.#fetchImpl(`${this.#baseUrl}${path}`, {
+        method: "POST",
+        headers: {
+          "user-agent": USER_AGENT,
+          referer: `${this.#baseUrl}/`,
+          cookie: this.cookie,
+          "content-type": "application/x-www-form-urlencoded",
+        },
+        body: form.toString(),
+      });
+    } catch (error) {
+      throw new NeteaseError("NETWORK", `eapi request failed (${path})`, { cause: error });
+    }
+    if (!response.ok) {
+      throw new NeteaseError("API_ERROR", `eapi request failed (${path}): HTTP ${response.status}`, {
+        apiCode: response.status,
+      });
+    }
+    const setCookies = collectSetCookies(response.headers);
+    if (Object.keys(setCookies).length > 0) {
+      this.mergeCookies(setCookies);
+    }
+    let hexText: string;
+    try {
+      hexText = await response.text();
+    } catch (error) {
+      throw new NeteaseError("API_ERROR", `eapi response read failed (${path})`, { cause: error });
+    }
+    const trimmed = hexText.trim();
+    if (!/^[0-9a-fA-F]+$/u.test(trimmed)) {
+      throw new NeteaseError("API_ERROR", `eapi response is not hex (${path})`, {
+        cause: trimmed.slice(0, 120),
+      });
+    }
+    let decrypted: string;
+    try {
+      decrypted = eapiDecrypt(trimmed);
+    } catch (error) {
+      throw new NeteaseError("API_ERROR", `eapi response decrypt failed (${path})`, {
+        cause: error,
+      });
+    }
+    let bodyRecord: unknown;
+    try {
+      bodyRecord = JSON.parse(decrypted) as unknown;
+    } catch (error) {
+      throw new NeteaseError("API_ERROR", `eapi decrypted body is not JSON (${path})`, {
+        cause: error,
+      });
+    }
+    return checkApiResponse(bodyRecord, path);
   }
 }
 

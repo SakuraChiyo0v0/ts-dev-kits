@@ -4,7 +4,27 @@
  * 额外支持二进制媒体路由(路径以 /media/ 开头),用于下载链路测试。
  */
 import { createServer, type Server } from "node:http";
+import { createCipheriv, createHash } from "node:crypto";
 import type { AddressInfo } from "node:net";
+
+const EAPI_KEY = "e82ckenh8dichen8";
+
+/** 按 eapi 协议加密请求体(模拟客户端请求;用于对照测试)。 */
+export function eapiEncryptBody(url: string, body: Record<string, unknown>): string {
+  const text = JSON.stringify(body);
+  const message = `nobody${url}use${text}md5forencrypt`;
+  const digest = createHash("md5").update(message).digest("hex");
+  const data = `${url}-36cd479b6b5-${text}-36cd479b6b5-${digest}`;
+  const cipher = createCipheriv("aes-128-ecb", EAPI_KEY, null);
+  return (cipher.update(data, "utf8", "hex") + cipher.final("hex")).toUpperCase();
+}
+
+/** 模拟服务端 eapi 响应:AES-ECB 加密 JSON 文本为大写 hex(与 eapiDecrypt 对应)。 */
+export function eapiEncryptResponse(body: Record<string, unknown>): string {
+  const text = JSON.stringify(body);
+  const cipher = createCipheriv("aes-128-ecb", EAPI_KEY, null);
+  return (cipher.update(text, "utf8", "hex") + cipher.final("hex")).toUpperCase();
+}
 
 export interface MockRequest {
   path: string;
@@ -25,6 +45,8 @@ export interface MockNeteaseApi {
   setRoute(path: string, handler: () => Record<string, unknown>): void;
   /** 覆盖路由并携带自定义响应头(如登录 Set-Cookie)。 */
   setRouteWithHeaders(path: string, handler: () => RouteResponse): void;
+  /** 覆盖 eapi 路由:响应体自动按 eapi 协议加密为 hex(postEapi 调用方解密)。 */
+  setEapiRoute(path: string, handler: () => Record<string, unknown>): void;
   /** 注册二进制媒体(如音频)路由。 */
   setMedia(path: string, contentType: string, data: Buffer): void;
   close(): Promise<void>;
@@ -37,6 +59,7 @@ export async function startMockNeteaseApi(
   const requests: MockRequest[] = [];
   const routeMap = new Map(Object.entries(routes));
   const headerRouteMap = new Map<string, () => RouteResponse>();
+  const eapiRouteMap = new Map<string, () => Record<string, unknown>>();
   const mediaMap = new Map<string, { contentType: string; data: Buffer }>();
 
   const server = createServer((request, response) => {
@@ -76,6 +99,14 @@ export async function startMockNeteaseApi(
         response.end(JSON.stringify(result.body));
         return;
       }
+      const eapiHandler = eapiRouteMap.get(pathname);
+      if (eapiHandler !== undefined) {
+        // eapi 响应:服务端返回 AES-ECB 加密的 JSON 文本(大写 hex)。
+        const encrypted = eapiEncryptResponse(eapiHandler());
+        response.writeHead(200, { "content-type": "application/json" });
+        response.end(encrypted);
+        return;
+      }
       const handler = routeMap.get(pathname);
       if (handler === undefined) {
         response.writeHead(404, { "content-type": "application/json" });
@@ -97,6 +128,9 @@ export async function startMockNeteaseApi(
     },
     setRouteWithHeaders(path, handler) {
       headerRouteMap.set(path, handler);
+    },
+    setEapiRoute(path, handler) {
+      eapiRouteMap.set(path, handler);
     },
     setMedia(path, contentType, data) {
       mediaMap.set(path, { contentType, data });

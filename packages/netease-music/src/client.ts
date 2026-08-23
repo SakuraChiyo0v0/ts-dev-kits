@@ -3,7 +3,7 @@
  * 登录态:显式 cookie 优先,否则从 account AuthStore 自动加载。
  * 合规:权限预检 + 试听拦截在 download 内部强制执行。
  */
-import { AuthStore, type AuthPayload } from "@sakurachiyo0v0/account";
+import { AuthStore } from "@sakurachiyo0v0/account";
 import { NeteaseError } from "./errors.js";
 import type {
   DownloadConfig,
@@ -19,6 +19,7 @@ import type {
 import { WeapiSession, type NeteaseCredentials } from "./api/session.js";
 import { SongApi } from "./api/song.js";
 import { PlaylistApi, LyricApi } from "./api/playlist.js";
+import { UserApi, type AccountInfo, type UserPlaylistSummary } from "./api/user.js";
 import { SongDownloader } from "./download/stream.js";
 import { parseNeteaseUrl, isNeteaseUrl } from "./parsers/url.js";
 import { neteaseQrAdapter } from "./auth/adapter.js";
@@ -50,6 +51,7 @@ export class NeteaseMusicClient {
   readonly #songs: SongApi;
   readonly #playlists: PlaylistApi;
   readonly #lyrics: LyricApi;
+  readonly #user: UserApi;
   readonly #downloader: SongDownloader;
   readonly #authPath: string | undefined;
   readonly #concurrency: number;
@@ -59,11 +61,14 @@ export class NeteaseMusicClient {
     this.#authPath = options.authPath;
 
     // 登录态:cookie 显式优先,否则从 AuthStore 加载。
+    // authPath 缺省时也用默认平台路径(与 CLI login 保存位置一致)。
     let cookie = options.cookie;
-    let stored: AuthPayload | null = null;
-    if (cookie === undefined && options.authPath !== undefined) {
-      const store = new AuthStore({ platform: "netease-music", path: options.authPath });
-      stored = store.loadSync();
+    if (cookie === undefined) {
+      const store =
+        options.authPath !== undefined
+          ? new AuthStore({ platform: "netease-music", path: options.authPath })
+          : new AuthStore({ platform: "netease-music" });
+      const stored = store.loadSync();
       cookie = typeof stored?.credentials?.cookies === "string" ? stored.credentials.cookies : undefined;
     }
     this.#credentials = cookie !== undefined
@@ -78,6 +83,7 @@ export class NeteaseMusicClient {
     this.#songs = new SongApi(this.#session);
     this.#playlists = new PlaylistApi(this.#session);
     this.#lyrics = new LyricApi(this.#session);
+    this.#user = new UserApi(this.#session);
     this.#downloader = new SongDownloader(
       this.#songs,
       this.#lyrics,
@@ -125,6 +131,76 @@ export class NeteaseMusicClient {
   /** 获取账号 VIP 信息。 */
   async getVipInfo(): Promise<VipInfo> {
     return this.#songs.getVipInfo();
+  }
+
+  /** 获取当前登录账号信息(uid/nickname)。 */
+  async getAccountInfo(): Promise<AccountInfo> {
+    return this.#user.getAccountInfo();
+  }
+
+  /** 获取用户歌单列表(含"我喜欢的音乐" specialType=5 与订阅歌单)。 */
+  async getUserPlaylists(options?: {
+    uid?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<UserPlaylistSummary[]> {
+    return this.#user.getUserPlaylists(options);
+  }
+
+  /** 获取红心(喜欢)歌曲 id 列表。 */
+  async getLikeList(options?: { uid?: string }): Promise<string[]> {
+    return this.#user.getLikeList(options);
+  }
+
+  /** 批量检查歌曲是否已红心。 */
+  async checkLiked(trackIds: Array<string | number>): Promise<Map<string, boolean>> {
+    return this.#user.checkLiked(trackIds);
+  }
+
+  /** 红心收藏一首歌。 */
+  async likeSong(trackId: string | number): Promise<void> {
+    await this.#user.likeSong(trackId);
+  }
+
+  /** 取消红心收藏一首歌。 */
+  async unlikeSong(trackId: string | number): Promise<void> {
+    await this.#user.unlikeSong(trackId);
+  }
+
+  /** 向歌单添加歌曲。 */
+  async addTracksToPlaylist(
+    playlistId: string | number,
+    trackIds: Array<string | number>,
+  ): Promise<void> {
+    await this.#user.addTracksToPlaylist(playlistId, trackIds);
+  }
+
+  /** 从歌单移除歌曲。 */
+  async removeTracksFromPlaylist(
+    playlistId: string | number,
+    trackIds: Array<string | number>,
+  ): Promise<void> {
+    await this.#user.removeTracksFromPlaylist(playlistId, trackIds);
+  }
+
+  /** 收藏(订阅)歌单。 */
+  async subscribePlaylist(playlistId: string | number): Promise<void> {
+    await this.#user.subscribePlaylist(playlistId);
+  }
+
+  /** 取消收藏(退订)歌单。 */
+  async unsubscribePlaylist(playlistId: string | number): Promise<void> {
+    await this.#user.unsubscribePlaylist(playlistId);
+  }
+
+  /** 创建歌单,返回新歌单 id。 */
+  async createPlaylist(options: { name: string; privacy?: number; type?: string }): Promise<string> {
+    return this.#user.createPlaylist(options);
+  }
+
+  /** 删除歌单。 */
+  async deletePlaylist(playlistId: string | number): Promise<void> {
+    await this.#user.deletePlaylist(playlistId);
   }
 
   /** 获取单曲可用品质清单(按账号身份过滤)。 */

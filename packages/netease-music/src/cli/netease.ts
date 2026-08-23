@@ -32,6 +32,16 @@ const COMMANDS = [
   { name: "logout", desc: "删除存储的登录态" },
   { name: "parse", desc: "解析链接,输出歌曲清单" },
   { name: "download", desc: "下载歌曲/歌单/专辑" },
+  { name: "favorites", desc: "列出用户歌单(含我喜欢的音乐)" },
+  { name: "likes", desc: "列出红心(喜欢)歌曲 ID" },
+  { name: "like", desc: "红心收藏一首歌: like <songId>" },
+  { name: "unlike", desc: "取消红心收藏: unlike <songId>" },
+  { name: "playlist-create", desc: "创建歌单: playlist-create <name> [--privacy 10]" },
+  { name: "playlist-delete", desc: "删除歌单: playlist-delete <playlistId>" },
+  { name: "playlist-add", desc: "歌单添加歌曲: playlist-add <playlistId> <songId...>" },
+  { name: "playlist-remove", desc: "歌单移除歌曲: playlist-remove <playlistId> <songId...>" },
+  { name: "subscribe", desc: "收藏歌单: subscribe <playlistId>" },
+  { name: "unsubscribe", desc: "取消收藏歌单: unsubscribe <playlistId>" },
 ];
 const OPTIONS = [
   { flag: "--auth-path <path>", desc: "登录态存储路径(默认平台配置目录)" },
@@ -41,6 +51,8 @@ const OPTIONS = [
   { flag: "--no-lyric", desc: "不下载歌词" },
   { flag: "--no-cover", desc: "不下载封面" },
   { flag: "--lyric-mode <mode>", desc: "歌词 original|translated|both(默认 both)" },
+  { flag: "--uid <uid>", desc: "查询其它用户的歌单/红心列表(默认当前账号)" },
+  { flag: "--privacy <0|10>", desc: "创建歌单可见性(0 公开,10 隐私)" },
   { flag: "--json", desc: "输出 JSON(默认)" },
 ];
 
@@ -93,6 +105,36 @@ async function main(argv: string[]): Promise<void> {
       break;
     case "download":
       await runDownload(context, args);
+      break;
+    case "favorites":
+      await runFavorites(context, args);
+      break;
+    case "likes":
+      await runLikes(context, args);
+      break;
+    case "like":
+      await runLike(context, args, true);
+      break;
+    case "unlike":
+      await runLike(context, args, false);
+      break;
+    case "playlist-create":
+      await runPlaylistCreate(context, args);
+      break;
+    case "playlist-delete":
+      await runPlaylistDelete(context, args);
+      break;
+    case "playlist-add":
+      await runPlaylistTracks(context, args, "add");
+      break;
+    case "playlist-remove":
+      await runPlaylistTracks(context, args, "del");
+      break;
+    case "subscribe":
+      await runSubscribe(context, args, true);
+      break;
+    case "unsubscribe":
+      await runSubscribe(context, args, false);
       break;
     default:
       outputError(`Unknown command: ${command}`);
@@ -234,6 +276,136 @@ async function runDownload(context: CliContext, args: ReturnType<typeof parseArg
       throw error;
     }
   }
+}
+
+/** 创建客户端(统一 authPath/baseUrl 注入)。 */
+function createContextClient(context: CliContext): ReturnType<typeof createNeteaseClient> {
+  return createNeteaseClient({
+    ...(context.authPath !== undefined ? { authPath: context.authPath } : {}),
+    ...(context.baseUrl !== undefined ? { baseUrl: context.baseUrl } : {}),
+  });
+}
+
+async function runFavorites(context: CliContext, args: ReturnType<typeof parseArgs>): Promise<void> {
+  const client = createContextClient(context);
+  const uid = getString(args, "uid");
+  const playlists = await client.getUserPlaylists({
+    ...(uid !== undefined ? { uid } : {}),
+  });
+  outputJson({
+    count: playlists.length,
+    playlists: playlists.map((p) => ({
+      id: p.id,
+      name: p.name,
+      trackCount: p.trackCount,
+      specialType: p.specialType,
+      subscribed: p.subscribed,
+      ...(p.creatorName !== undefined ? { creator: p.creatorName } : {}),
+    })),
+  });
+}
+
+async function runLikes(context: CliContext, args: ReturnType<typeof parseArgs>): Promise<void> {
+  const client = createContextClient(context);
+  const uid = getString(args, "uid");
+  const ids = await client.getLikeList({
+    ...(uid !== undefined ? { uid } : {}),
+  });
+  outputJson({ count: ids.length, ids });
+}
+
+async function runLike(
+  context: CliContext,
+  args: ReturnType<typeof parseArgs>,
+  like: boolean,
+): Promise<void> {
+  const songId = args.positionals[1];
+  if (songId === undefined) {
+    throw new NeteaseError(
+      "INVALID_URL",
+      `缺少歌曲 ID,用法: amechan-netease ${like ? "like" : "unlike"} <songId>`,
+    );
+  }
+  const client = createContextClient(context);
+  if (like) {
+    await client.likeSong(songId);
+  } else {
+    await client.unlikeSong(songId);
+  }
+  outputJson({ ok: true, songId, action: like ? "liked" : "unliked" });
+}
+
+async function runPlaylistCreate(
+  context: CliContext,
+  args: ReturnType<typeof parseArgs>,
+): Promise<void> {
+  const name = args.positionals[1];
+  if (name === undefined) {
+    throw new NeteaseError("INVALID_URL", "缺少歌单名称,用法: amechan-netease playlist-create <name>");
+  }
+  const client = createContextClient(context);
+  const privacy = getString(args, "privacy");
+  const id = await client.createPlaylist({
+    name,
+    ...(privacy !== undefined ? { privacy: Number(privacy) } : {}),
+  });
+  outputJson({ ok: true, playlistId: id, name });
+}
+
+async function runPlaylistDelete(
+  context: CliContext,
+  args: ReturnType<typeof parseArgs>,
+): Promise<void> {
+  const playlistId = args.positionals[1];
+  if (playlistId === undefined) {
+    throw new NeteaseError("INVALID_URL", "缺少歌单 ID,用法: amechan-netease playlist-delete <playlistId>");
+  }
+  const client = createContextClient(context);
+  await client.deletePlaylist(playlistId);
+  outputJson({ ok: true, playlistId });
+}
+
+async function runPlaylistTracks(
+  context: CliContext,
+  args: ReturnType<typeof parseArgs>,
+  op: "add" | "del",
+): Promise<void> {
+  const playlistId = args.positionals[1];
+  const songIds = args.positionals.slice(2);
+  if (playlistId === undefined || songIds.length === 0) {
+    throw new NeteaseError(
+      "INVALID_URL",
+      `用法: amechan-netease playlist-${op === "add" ? "add" : "remove"} <playlistId> <songId...>`,
+    );
+  }
+  const client = createContextClient(context);
+  if (op === "add") {
+    await client.addTracksToPlaylist(playlistId, songIds);
+  } else {
+    await client.removeTracksFromPlaylist(playlistId, songIds);
+  }
+  outputJson({ ok: true, playlistId, op, songIds });
+}
+
+async function runSubscribe(
+  context: CliContext,
+  args: ReturnType<typeof parseArgs>,
+  subscribe: boolean,
+): Promise<void> {
+  const playlistId = args.positionals[1];
+  if (playlistId === undefined) {
+    throw new NeteaseError(
+      "INVALID_URL",
+      `缺少歌单 ID,用法: amechan-netease ${subscribe ? "subscribe" : "unsubscribe"} <playlistId>`,
+    );
+  }
+  const client = createContextClient(context);
+  if (subscribe) {
+    await client.subscribePlaylist(playlistId);
+  } else {
+    await client.unsubscribePlaylist(playlistId);
+  }
+  outputJson({ ok: true, playlistId, action: subscribe ? "subscribed" : "unsubscribed" });
 }
 
 // 直接作为可执行文件运行时才执行(被测试 import 时不触发)。

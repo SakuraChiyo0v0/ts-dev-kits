@@ -1,6 +1,6 @@
 # @sakurachiyo0v0/netease-music
 
-网易云音乐下载 SDK:自研 weapi 加密通道、二维码登录(基于 `@sakurachiyo0v0/account` 通用认证底座)、**权限感知的品质选择**与**试听拦截(硬规则)**的合规下载。支持单曲/歌单/专辑、歌词(LRC)、封面与 ID3 标签。
+网易云音乐 SDK:自研 weapi/eapi 加密通道、二维码登录(基于 `@sakurachiyo0v0/account` 通用认证底座)、**权限感知的品质选择**与**试听拦截(硬规则)**的合规下载,以及**收藏夹管理**(账号信息/用户歌单/红心歌曲/歌单增删歌曲/订阅歌单)。支持单曲/歌单/专辑、歌词(LRC)、封面与 ID3 标签。
 
 ## 合规说明(请务必阅读)
 
@@ -40,9 +40,21 @@ amechan-netease logout    # 删除登录态
 amechan-netease parse <url>          # 解析链接,输出歌曲清单
 amechan-netease download <url|id>    # 下载(默认品质 exhigh)
 amechan-netease download <url> --level lossless --output-dir ./music
+
+# 收藏夹管理
+amechan-netease favorites                    # 列出用户歌单(含"我喜欢的音乐")
+amechan-netease likes                        # 列出红心(喜欢)歌曲 ID
+amechan-netease like <songId>                # 红心收藏一首歌
+amechan-netease unlike <songId>              # 取消红心收藏
+amechan-netease playlist-create <name>       # 创建歌单(--privacy 10 隐私)
+amechan-netease playlist-delete <playlistId> # 删除歌单
+amechan-netease playlist-add <pid> <songId...>    # 歌单添加歌曲
+amechan-netease playlist-remove <pid> <songId...> # 歌单移除歌曲
+amechan-netease subscribe <playlistId>       # 收藏歌单
+amechan-netease unsubscribe <playlistId>     # 取消收藏歌单
 ```
 
-选项:`--auth-path <path>` / `--no-browser` / `--level` / `--output-dir` / `--no-lyric` / `--no-cover` / `--lyric-mode original|translated|both`。
+选项:`--auth-path <path>` / `--no-browser` / `--level` / `--output-dir` / `--no-lyric` / `--no-cover` / `--lyric-mode original|translated|both` / `--uid <uid>`(查他人歌单/红心)。
 
 ## API
 
@@ -67,6 +79,20 @@ amechan-netease download <url> --level lossless --output-dir ./music
 | `downloadByInput(input)` | 按链接或歌曲 ID 便捷下载 |
 | `isLoggedIn` | 是否已登录(MUSIC_U cookie 存在) |
 
+### 收藏夹管理(需登录)
+
+| 方法 | 说明 |
+| --- | --- |
+| `getAccountInfo()` | 当前账号信息(`{ userId, nickname, avatarUrl?, signature? }`) |
+| `getUserPlaylists({ uid?, limit?, offset? })` | 用户歌单列表;`specialType=5` 为"我喜欢的音乐",`subscribed=true` 为收藏的他人歌单 |
+| `getLikeList({ uid? })` | 红心(喜欢)歌曲 id 列表 |
+| `checkLiked(ids)` | 批量检查是否已红心(注意:该接口有缓存延迟,分钟级,刚操作后可能返回旧值) |
+| `likeSong(id)` / `unlikeSong(id)` | 红心收藏 / 取消红心收藏 |
+| `addTracksToPlaylist(pid, ids)` / `removeTracksFromPlaylist(pid, ids)` | 歌单增删歌曲 |
+| `subscribePlaylist(pid)` / `unsubscribePlaylist(pid)` | 收藏 / 取消收藏歌单(自己创建的歌单不可订阅) |
+| `createPlaylist({ name, privacy?, type? })` | 创建歌单,返回新歌单 id(`privacy` 0 公开 / 10 隐私) |
+| `deletePlaylist(pid)` | 删除歌单 |
+
 ### `download` 选项
 
 `outputDir` / `level`(默认 `exhigh`)/ `lyric`(默认 true)/ `lyricMode`(默认 both)/ `cover`(默认 true)/ `writeTags`(默认 true,写入 ID3/Vorbis 标签与内嵌封面)/ `onProgress`。
@@ -87,7 +113,7 @@ const store = new AuthStore({ platform: "netease-music" });
 await qrcodeLogin({ adapter: neteaseQrAdapter(), store });
 ```
 
-> 协议注意点(已实测验证):匿名请求需自动附带 `os=pc; appver=8.9.70` 基础 cookie,否则被网易云风控拦截(`code -462`);weapi 加密的 `encSecKey` 是 hex(非 base64),明文为 secretKey 反转后前置补 0x00 到 128 字节。
+> 协议注意点(已实测验证):匿名请求需自动附带 `os=pc; appver=8.9.70` 基础 cookie,否则被网易云风控拦截(`code -462`);weapi 加密的 `encSecKey` 是 hex(非 base64),明文为 secretKey 反转后前置补 0x00 到 128 字节。SDK 同时实现了 eapi 加密(`eapiEncrypt`/`eapiDecrypt`/`session.postEapi`),但收藏歌单接口实测老 eapi 路径已废弃(404),当前版本走 weapi 路径。
 
 ## 验证
 
@@ -95,4 +121,4 @@ await qrcodeLogin({ adapter: neteaseQrAdapter(), store });
 pnpm --filter @sakurachiyo0v0/netease-music typecheck && test && build
 ```
 
-测试离线运行(本地 mock 网易云接口),weapi 加密、解析、权限/试听拦截、下载链路均有覆盖。
+测试离线运行(本地 mock 网易云接口),weapi/eapi 加密、解析、权限/试听拦截、下载链路、收藏夹管理均有覆盖。真实接口冒烟:`NETEASE_SMOKE=1 pnpm --filter @sakurachiyo0v0/netease-music test`。
