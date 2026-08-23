@@ -115,6 +115,10 @@ await qrcodeLogin({ adapter: neteaseQrAdapter(), store });
 
 > 协议注意点(已实测验证):匿名请求需自动附带 `os=pc; appver=8.9.70` 基础 cookie,否则被网易云风控拦截(`code -462`);weapi 加密的 `encSecKey` 是 hex(非 base64),明文为 secretKey 反转后前置补 0x00 到 128 字节。SDK 同时实现了 eapi 加密(`eapiEncrypt`/`eapiDecrypt`/`session.postEapi`),但收藏歌单接口实测老 eapi 路径已废弃(404),当前版本走 weapi 路径。
 
+## 已知环境注意事项
+
+- **11 位纯数字 id 会被显示层打码:** 对话/终端显示层会对连续 11 位纯数字(疑似手机号)自动把中间 4 位替换为 `****`。网易云歌单 id 恰好是 11 位数字,会被误伤(如 `181****6754`)。这**只是显示层行为,数据本身完整**——SDK 内部拿到的 id 一直是完整数字(逐字符打印可见 `1 8 1 9 5 1 0 6 7 5 4`)。**不要复制打码后的文本当参数传**(`Number("181****6754")` = NaN → "请求参数错误");请在脚本内部用完整数字 id 操作。
+
 ## 验证
 
 ```powershell
