@@ -26,3 +26,9 @@ if [ -n "$(git status --porcelain -- repo-structure.html)" ]; then
   git add repo-structure.html
   echo "repo-structure.html 已随本次提交自动更新"
 fi
+
+# 版本守卫:改了包内容(packages/**)但没 bump 版本号 -> 阻止提交
+# 确认为非发布性改动可用 git commit --no-verify 跳过
+if [ -f scripts/check-package-bumps.mjs ]; then
+  node scripts/check-package-bumps.mjs
+fi

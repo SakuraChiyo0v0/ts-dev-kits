@@ -6,7 +6,11 @@ on:
     paths:
       - "packages/**"
       - "scripts/publish-packages.mjs"
+      - "scripts/check-package-bumps.mjs"
       - ".github/workflows/publish.yml"
+  pull_request:
+    paths:
+      - "packages/**"
   workflow_dispatch:
 
 permissions:
@@ -14,7 +18,36 @@ permissions:
   packages: read
 
 jobs:
+  # 版本守卫:改了包内容但没 bump 版本号 -> 失败,publish 不会执行
+  check-versions:
+    name: 校验版本 bump
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Check version bumps
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            BASE="${{ github.event.before }}"
+          elif [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+          else
+            BASE="origin/main"
+          fi
+          echo "comparing against: ${BASE}"
+          node scripts/check-package-bumps.mjs "${BASE}"
+
   publish:
+    needs: check-versions
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
