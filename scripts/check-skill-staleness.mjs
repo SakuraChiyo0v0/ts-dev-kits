@@ -38,6 +38,21 @@ const SKILL_MAP = [
     cli: "packages/ffmpeg/src/cli/ffmpeg.ts",
     bin: "amechan-ffmpeg",
   },
+  {
+    skill: "vrchat-cli",
+    cli: "packages/vrchat/src/cli/vrchat.ts",
+    bin: "amechan-vrchat",
+  },
+  {
+    skill: "booth-cli",
+    cli: "packages/booth/src/cli/booth.ts",
+    bin: "amechan-booth",
+  },
+  {
+    skill: "steam-cli",
+    cli: "packages/steam/src/cli/steam.ts",
+    bin: "amechan-steam",
+  },
 ];
 
 /**

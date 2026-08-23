@@ -52,14 +52,15 @@ const DESCRIPTIONS = {
   'ffmpeg': 'FFmpeg / ffprobe 进程封装 + 视频 / 音频 / 图片处理高层函数,带进度回调。',
   'bilibili': 'B 站视频下载 SDK:链接解析、DASH 取流、可配置下载器、ffmpeg 合并,内置 WBI 签名。',
   'netease-music': '网易云音乐下载 SDK:自研 weapi 加密、二维码登录、权限感知品质、试听拦截硬规则。',
-  'dsh-sdk-tools': 'DSH host 插件:把各功能包包装成 agent 工具,经 Agent 预设按需暴露,其余会话零污染。'
+  'dsh-sdk-tools': 'DSH host 插件:把各功能包包装成 agent 工具,经 Agent 预设按需暴露,其余会话零污染。',
+  'steam': 'Steam SDK(查询向):Web API / Storefront / Community 三套接口,登录态支持,零写操作。'
 };
 /** 新增包时可在 COLORS 里指定主题色,否则从 FALLBACK_COLORS 顺序取色。 */
 const COLORS = {
   'cli-utils': '#38bdf8', 'account': '#fb923c',
   'chat-platforms': '#34d399', 'lol': '#a78bfa', 'email': '#f472b6',
   'ffmpeg': '#22d3ee', 'bilibili': '#60a5fa', 'netease-music': '#f87171',
-  'dsh-sdk-tools': '#e879f9'
+  'dsh-sdk-tools': '#e879f9', 'steam': '#94a3b8'
 };
 const FALLBACK_COLORS = ['#38bdf8', '#a78bfa', '#34d399', '#fbbf24', '#f472b6', '#22d3ee', '#60a5fa', '#f87171', '#fb923c', '#e879f9'];
 

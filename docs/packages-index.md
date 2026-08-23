@@ -16,9 +16,12 @@
 | `@sakurachiyo0v0/bilibili` | 0.2.1 | B 站 SDK:视频下载(解析/取流/下载/ffmpeg 合并)+ 平台控制(收藏夹/关注/分组/互动/动态/稍后再看/历史) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/bilibili` |
 | `@sakurachiyo0v0/chat-platforms` | 0.1.0 | 统一聊天平台接入 SDK(消息模型/适配器注册表,当前飞书) | 可用(飞书, websocket/webhook) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/chat-platforms` |
 | `@sakurachiyo0v0/lol` | 0.1.0 | 英雄联盟 LCU 本地能力 SDK(召唤师/战绩/段位/对局流程/游戏数据/事件) | 可用(查询+对局感知, 国服 SGP) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/lol` |
-| `@sakurachiyo0v0/account` | 0.1.0 | 跨平台账号认证底座(登录态存储/扫码登录骨架/错误模型) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/account` |
+| `@sakurachiyo0v0/account` | 0.2.0 | 跨平台账号认证底座(登录态存储/扫码+密码登录骨架/错误模型) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/account` |
 | `@sakurachiyo0v0/netease-music` | 0.1.0 | 网易云音乐下载 SDK(weapi 加密/二维码登录/权限感知品质/试听拦截) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/netease-music` |
-| `@sakurachiyo0v0/dsh-sdk-tools` | 0.1.3 | DSH host 插件:把 bilibili/netease-music/ffmpeg/email/lol 包装成 agent 工具,经 Agent 预设按需暴露 | 可用 | `pnpm add @sakurachiyo0v0/dsh-sdk-tools`(GitHub Packages) |
+| `@sakurachiyo0v0/booth` | 0.1.0 | BOOTH(booth.pm)领取/购买 SDK:登录态管理/商品解析/免费领取/付费下单/文件下载 | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/booth` |
+| `@sakurachiyo0v0/vrchat` | 0.2.0 | VRChat 官方 REST API SDK(认证/用户/世界/头像/实例/好友/通知/收藏/群组/文件/权限/系统/经济/审核) | 可用(全功能覆盖) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/vrchat` |
+| `@sakurachiyo0v0/steam` | 0.4.0 | Steam SDK(查询向):Web API/Storefront/Community 三套接口,登录态支持,零写操作 | 开发中(P0-P3 已交付) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/steam` |
+| `@sakurachiyo0v0/dsh-sdk-tools` | 0.2.0 | DSH host 插件:把 bilibili/netease-music/ffmpeg/email/lol/vrchat 包装成 agent 工具,经 Agent 预设按需暴露 | 可用 | `pnpm add @sakurachiyo0v0/dsh-sdk-tools`(GitHub Packages) |
 
 ## 包详情
 
@@ -342,17 +345,19 @@ pnpm --filter @sakurachiyo0v0/lol build       # 构建 ESM + CJS + d.ts
 
 ### `@sakurachiyo0v0/account`
 
-跨平台账号认证底座（薄）：登录态存储、扫码登录骨架与公共错误模型。**不感知具体平台**——网易云、B 站、酷狗、QQ 音乐等平台的登录差异收敛在各自的 `QrLoginAdapter` 实现里，登录流程、存储、CLI 全复用。设计文档 [`docs/superpowers/specs/2026-08-23-netease-music-sdk-design.md`](superpowers/specs/2026-08-23-netease-music-sdk-design.md)。
+跨平台账号认证底座(薄):登录态存储、扫码登录骨架、密码登录骨架与公共错误模型。**不感知具体平台**——网易云、B 站、酷狗、QQ 音乐等平台的登录差异收敛在各自的 `QrLoginAdapter` / `PasswordLoginAdapter` 实现里,登录流程、存储、CLI 全复用。设计文档 [`docs/superpowers/specs/2026-08-23-netease-music-sdk-design.md`](superpowers/specs/2026-08-23-netease-music-sdk-design.md)。
 
-**适用环境：** Node.js 20+，桌面环境（需要打开浏览器）；无头环境可用 `autoOpenBrowser: false`。
+**适用环境:** Node.js 20+，桌面环境（需要打开浏览器）；无头环境可用 `autoOpenBrowser: false`。
 
 **核心接口：**
 
 - `AuthStore` — 跨平台登录态存储：`new AuthStore({ platform, path? })`，默认 `<配置根>/amechan/<platform>/auth.json`，原子写 + 600 权限；`save()` / `load()` / `loadSync()` / `clear()` / `exists()`
 - `qrcodeLogin({ adapter, store?, ... })` — 扫码登录骨架：本地窗口 + 系统浏览器弹二维码 → 手机 App 扫码 → 轮询确认 → 收集凭证 → 可选持久化；返回 `{ credentials, saved }`
-- `QrLoginAdapter` — 平台适配器契约：`generateKey()` / `pollStatus()` / `refresh?()` / `serialize()` / `deserialize()`；新平台接入 = 实现这 5 个方法
+- `QrLoginAdapter` — 扫码平台适配器契约：`generateKey()` / `pollStatus()` / `refresh?()` / `serialize()` / `deserialize()`；扫码平台接入 = 实现这 5 个方法
+- `passwordLogin({ adapter, username, password, onNeedCode?, store?, ... })` — 密码登录骨架：提交用户名密码 → 若需 2FA 循环取码验证 → 成功可选持久化；2FA 交互经 `onNeedCode` 回调
+- `PasswordLoginAdapter` — 密码平台适配器契约：`login()` / `verifyCode()` / `refresh?()` / `serialize()` / `deserialize()`；密码平台（如 VRChat）接入 = 实现这 5 个方法
 - `resolveConfigRoot()` / `defaultAuthPath(platform)` — 配置目录解析（Windows `%APPDATA%` / macOS `~/Library/Application Support` / Linux `$XDG_CONFIG_HOME`，支持 `AMECHAN_CONFIG_HOME` 覆盖）
-- `AccountError` — 错误码 `NETWORK` / `API_ERROR` / `AUTH_EXPIRED` / `LOGIN_REQUIRED` / `UNKNOWN`
+- `AccountError` — 错误码 `NETWORK` / `API_ERROR` / `AUTH_EXPIRED` / `LOGIN_REQUIRED` / `UNKNOWN` / `INVALID_CREDENTIALS` / `TWO_FACTOR_REQUIRED` / `TWO_FACTOR_FAILED`
 
 **安装方式：**
 
@@ -445,11 +450,175 @@ pnpm --filter @sakurachiyo0v0/netease-music build       # 构建 ESM + CJS + d.t
 
 **更多细节：** [`packages/netease-music/README.md`](../packages/netease-music/README.md)
 
+### `@sakurachiyo0v0/booth`
+
+BOOTH(booth.pm,Pixiv 旗下数字商品市场)领取/购买 SDK:登录态管理、商品解析、免费领取 / 付费下单、订单文件下载与批量编排。BOOTH 无官方公开 API,SDK 基于页面协议模拟(商品页 JSON-LD / 下单端点),端点集中在 `src/api/endpoints.ts` 常量化管理。设计文档 [`docs/superpowers/specs/2026-08-23-booth-sdk-design.md`](superpowers/specs/2026-08-23-booth-sdk-design.md)。
+
+**适用环境：** Node.js 20+,运行在可信任的服务端进程;不要在浏览器/WebView 中保存会话 cookie。
+
+**核心接口：**
+
+- `createBoothClient({ cookie?, authPath?, baseUrl?, fetchImpl?, download?, claim? })` — 创建客户端;显式 cookie 优先,否则从 AuthStore(`<配置根>/amechan/booth/auth.json`)加载
+- `client.getItem(input)` — 解析链接或纯 ID → `BoothItem`(标题/价格/店铺/是否已拥有)
+- `client.claim(inputs, { concurrency? })` — 批量领取:免费直接成交 / 付费生成待支付订单(返回支付 URL,支付留在浏览器)/ 已拥有跳过;保持输入顺序,单项失败不中断
+- `client.isOrderPaid(orderId)` — 订单支付状态(付费商品浏览器支付后确认可下载)
+- `client.getOrderFiles(orderId)` / `client.downloadOrder(orderId, { outputDir? })` — 文件清单 / 下载到 `outputDir/<orderId>/`
+- `client.claimAndDownload(input, { outputDir? })` — 领取后下载一条龙(付费待支付不下载)
+- `loginBooth({ authPath?, openBrowser? })` — 浏览器登录捕获(本地回环临时 HTTP 接收 cookie,复用 account AuthStore 持久化)
+- `BoothError` — 统一错误码:`NETWORK` / `API_ERROR` / `NOT_FOUND` / `INVALID_URL` / `LOGIN_REQUIRED` / `AUTH_EXPIRED` / `ALREADY_OWNED` / `PAYMENT_REQUIRED` / `DOWNLOAD_FAILED` / `UNKNOWN`
+
+**合规边界：** 只操作自己的账号、领取/下载自己拥有的商品;不绕过支付、不伪装会员、不代抢;付费商品仅生成待支付订单,支付永远在浏览器手动完成;批量领取默认并发 1,避免站方压力。
+
+**安装方式：**
+
+同一 pnpm workspace 内:
+
+```powershell
+pnpm add @sakurachiyo0v0/booth@workspace:*
+```
+
+从私有 GitHub monorepo 安装(需授权 `@sakurachiyo0v0/booth` 与 `@sakurachiyo0v0/account` 构建脚本):
+
+```powershell
+pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/booth"
+```
+
+**API 示例：**
+
+```ts
+import { createBoothClient } from "@sakurachiyo0v0/booth";
+
+const client = createBoothClient();
+const item = await client.getItem("https://booth.pm/ja/items/12345");
+const results = await client.claim(["12345"]);
+if (results[0]?.status === "claimed" && results[0].orderId) {
+  await client.downloadOrder(results[0].orderId, { outputDir: "./downloads" });
+}
+```
+
+**在仓库内的验证方式：**
+
+```powershell
+pnpm --filter @sakurachiyo0v0/booth typecheck   # 类型检查
+pnpm --filter @sakurachiyo0v0/booth test        # 单测(本地 mock BOOTH 服务器,真实协议路径)
+pnpm --filter @sakurachiyo0v0/booth build       # 构建 ESM + CJS + d.ts + CLI
+```
+
+**更多细节：** [`packages/booth/README.md`](../packages/booth/README.md)
+
+### `@sakurachiyo0v0/vrchat`
+
+VRChat 官方 REST API SDK。认证（密码 + 2FA，基于 `@sakurachiyo0v0/account` 密码登录骨架）+ 用户 / 世界 / 头像 / 实例 / 好友 / 通知等能力,分阶段交付。设计文档 [`docs/superpowers/specs/2026-08-23-vrchat-sdk-design.md`](superpowers/specs/2026-08-23-vrchat-sdk-design.md)。
+
+**适用环境：** Node.js 20+，用户机器或服务器上的 Node 进程。凭证只保存 cookie，不保存密码。
+
+**核心接口：**
+
+- `createVrchatClient({ authPath?, cookie?, baseUrl?, ... })` — 创建客户端；优先使用显式 cookie，否则从 AuthStore（`<配置根>/amechan/vrchat/auth.json`）加载
+- `client.login({ username, password, onNeedCode?, store? })` — 密码登录（2FA：邮箱 OTP / TOTP 经 `onNeedCode` 交互）
+- `client.auth` — 认证域：`currentUser()` / `checkSession()` / `logout()` / `getConfig()`
+- `client.users` — 用户域：`getById()` / `getByUsername()` / `search()` / `getFriendStatus()` / `getUserWorlds()` / `updateCurrent()`
+- `client.worlds` — 世界域：`getById()` / `search()` / `getInstances()` / `getMetadata()` / `publish()` / `update()` / `delete()`
+- `client.avatars` — 头像域：`getById()` / `search()` / `listOwned()` / `selectCurrent()` / `selectFallback()`
+- `client.instances` — 实例域：`getById()` / `getByShortName()` / `create()`
+- `client.friends` — 好友域：`list()` / `sendRequest()` / `delete()`
+- `client.notifications` — 通知域：`list()` / `accept()` / `hide()` / `clear()`
+- `client.favorites` — 收藏域：`list()` / `add()` / `remove()` / `listGroups()` / `createGroup()` / `deleteGroup()`
+- `client.groups` — 群组域：`getById()` / `search()` / `create()` / `update()` / `delete()` / `listMembers()` / `listRoles()` / `createRole()` / `deleteRole()` / `join()` / `leave()` / `getAnnouncement()` / `setAnnouncement()`
+- `client.files` — 文件域：`getById()` / `list()` / `create()` / `delete()` / `startUpload()` / `finishUpload()` / `getUploadStatus()`（完整上传链路）
+- `client.permissions` — 权限域：`list()` / `getById()`
+- `client.system` — 系统域：`health()`(需登录)/ `stats()`(在线人数,无需登录)/ `time()`(无需登录)
+- `client.economy` — 经济域：`getBalance()` / `getTransactions()`
+- `client.moderation` — 审核域：`list()` / `create()` / `delete()` / `report()`
+- `client.invite` — 邀请域：`invite()` / `requestInvite()` / `joinSelf()` / `respond()`
+- `VrchatError` — 错误码 `LOGIN_REQUIRED` / `AUTH_EXPIRED` / `INVALID_CREDENTIALS` / `TWO_FACTOR_REQUIRED` / `TWO_FACTOR_FAILED` / `NOT_FOUND` / `FORBIDDEN` / `RATE_LIMIT` / `NETWORK` / `TIMEOUT` / `UNKNOWN`，消息脱敏
+
+**关键机制：** 强制 User-Agent；cookie 自动携带；429 自动退避重试（读 `Retry-After`）；401 → `AUTH_EXPIRED`。
+
+**安装方式：**
+
+同一 pnpm workspace 内：
+
+```powershell
+pnpm add @sakurachiyo0v0/vrchat@workspace:*
+```
+
+从私有 GitHub monorepo 安装（需授权 `@sakurachiyo0v0/vrchat` 与 `@sakurachiyo0v0/account` 构建脚本）：
+
+```powershell
+pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/vrchat"
+```
+
+**API 示例：**
+
+```ts
+import { createVrchatClient } from "@sakurachiyo0v0/vrchat";
+
+const client = await createVrchatClient();
+await client.login({
+  username: "alice",
+  password: "pw",
+  onNeedCode: () => "123456", // 2FA 验证码
+});
+const me = await client.auth.currentUser();
+console.log(me.displayName);
+await client.logout();
+await client.close();
+```
+
+**在仓库内的验证方式：**
+
+```powershell
+pnpm --filter @sakurachiyo0v0/vrchat typecheck   # 类型检查
+pnpm --filter @sakurachiyo0v0/vrchat test        # 单测（本地 mock VRChat API,真实 HTTP 协议路径）
+pnpm --filter @sakurachiyo0v0/vrchat build       # 构建 ESM + CJS + d.ts + CLI
+```
+
+**更多细节：** [`packages/vrchat/README.md`](../packages/vrchat/README.md)
+
+### `@sakurachiyo0v0/steam`
+
+Steam SDK(查询向):官方 Web API(`api.steampowered.com`)+ Storefront(`store.steampowered.com`)+ 社区站点(`steamcommunity.com`)。**零写操作**——不提供市场买卖、交易创建、好友增删等任何写接口。设计文档 [`docs/superpowers/specs/2026-08-23-steam-sdk-design.md`](superpowers/specs/2026-08-23-steam-sdk-design.md);调研报告 [`docs/steam-api-research.md`](steam-api-research.md)。
+
+**适用环境:** Node.js 20+,服务端进程。`steamcommunity.com` 国内网络不可达,社区相关请求需配置 `proxy`(undici ProxyAgent)。
+
+**当前能力(P0 基础设施 + P1 公开查询 + P2 登录态 + P3 登录后只读深水区):**
+
+- `createSteamClient({ apiKey?, publisherKey?, proxy?, baseUrls?, sessionPath?, cache?, ... })` — 客户端工厂
+- 四主机 HTTP 层:Web API key 注入(`X-WebAPI-Key`)、会话 cookie 携带、429 退避重试(尊重 `Retry-After`)、TTL 缓存、超时、代理、脱敏日志
+- `client.probe()` — `GetServerInfo` 连通性探针(无需 key);`client.getSupportedApiList()` — 动态枚举全部接口(需 key)
+- `client.auth` — 密码登录(自动识别 Guard:邮箱验证码/TOTP/设备确认)、二维码登录、cookie 导入、会话状态/续期验证(`checkSession`)、`refreshCookies`、`logout`;登录态经 `@sakurachiyo0v0/account` AuthStore 持久化
+- `client.user` — 资料摘要 / vanity 解析(支持 steamID64/3/2/vanity/URL 输入)/ 封禁信息 / 好友列表(隐私语义)/ 等级 / 徽章 / 徽章任务 / 群组 / 动态流(`recentActivity` XML)/ 评论读
+- `client.library` — 游戏库(`GetOwnedGames` 隐私空结果 → `privacyRestricted` 标记)/ 家庭共享 / 近期游戏 / 愿望单(公开读,隐私标记)
+- `client.stats` — 成就/统计定义、玩家成就与统计、全局成就/统计、在线人数
+- `client.news` — 游戏新闻(无需 key)
+- `client.store` — appdetails / featured / packagedetails / dlcforapp / 商店搜索 / GetAppList 等(无需 key,`cc`/`l` 本地化)
+- `client.inventory` — 公开库存(`/inventory/:steamid/:appid/:contextid`,默认不缓存)/ 自己库存(需登录态)/ `GetItemDefs` 物品定义(publisher key)
+- `client.market` — 单件即时价 `priceoverview` / 市场搜索 `search/render` / 订单簿 `itemordershistogram` / 价格历史 `pricehistory` / 我的挂单 `mylistings` / 成交历史 `myhistory`(后两者需登录态;全部只读)
+- `client.workshop` — `GetPublishedFileDetails`(POST form,无需 key)/ `EnumerateUserPublishedFiles` / `EnumerateUserSubscribedFiles`
+- `client.trade`(只读)— 交易报价 `GetTradeOffers` / 单笔报价 `GetTradeOffer` / 交易历史 `GetTradeHistory`(需 key)/ 交易链接解析(需登录态);零写操作
+- `SteamError` — 错误码 `NETWORK`/`TIMEOUT`/`RATE_LIMIT`/`AUTH_EXPIRED`/`LOGIN_REQUIRED`/`FORBIDDEN`/`NOT_FOUND`/`INVALID_URL`/`INVALID_CREDENTIALS`/`TWO_FACTOR_REQUIRED`/`TWO_FACTOR_FAILED`/`CONFIGURATION`/`UNKNOWN`,消息脱敏
+- SteamID 工具:`parseSteamId` / `steamId64ToAccountId` / `accountIdToSteamId64` / `steamId64ToSteamId2|3` / `accountIdToSteamId2|3`(BigInt 精确运算,steamID64 超出 JS Number 安全范围)
+- 登录协议自研(RSA 密码加密 → IAuthenticationService 全流程 → finalizelogin web cookie),零第三方登录依赖
+- `amechan-steam` CLI:`login`(密码/QR/cookie 导入)/ `status` / `logout` / `user` / `owned-games` / `achievements` / `price` / `search` / `inventory` / `my-listings`,JSON 输出,零写操作;skill 手册 [`skills/steam-cli/SKILL.md`](../skills/steam-cli/SKILL.md)
+
+**剩余(P5):** 用户确认后提交推送 → CI 发布 → `pnpm verify:published @sakurachiyo0v0/steam` 消费验证。
+
+**在仓库内的验证方式:**
+
+```powershell
+pnpm --filter @sakurachiyo0v0/steam typecheck   # 类型检查
+pnpm --filter @sakurachiyo0v0/steam test        # 单测(mock 四台主机走真实 HTTP 协议路径,含 RSA 密码往返)
+pnpm --filter @sakurachiyo0v0/steam build       # 构建 ESM + CJS + d.ts
+```
+
+**更多细节:** [`packages/steam/README.md`](../packages/steam/README.md)
+
 ### `@sakurachiyo0v0/dsh-sdk-tools`
 
 DSH(DeepSeek Harness)host 插件,把本仓库功能包包装成 agent 工具,通过 **Agent 预设**按需暴露——选中 `ts-dev-kits` 预设的会话才拥有这些工具,其余会话零污染、0 token 开销。设计文档 [`docs/superpowers/specs/2026-08-23-dsh-sdk-tools-design.md`](superpowers/specs/2026-08-23-dsh-sdk-tools-design.md)。
 
-**适用环境：** Node.js 20+ 且已安装 DSH(`@deepseek-ai/dsh`,对齐 `0.1.1-rc.2`);各功能包真实前置条件依旧生效(lol 需本机客户端、email 需配置 SMTP、bilibili/网易云需登录态)。
+**适用环境：** Node.js 20+ 且已安装 DSH(`@deepseek-ai/dsh`,对齐 `0.1.1-rc.2`);各功能包真实前置条件依旧生效(lol 需本机客户端、email 需配置 SMTP、bilibili/网易云/vrchat 需登录态)。
 
 **机制：** 插件不设 `dsh.bundle`,是普通 profile 依赖;工具由预设的 `agent.cordis.yml` 声明挂载,注册落在该预设的 scope 层,只有加入该预设的 agent 可见。每包有 `enabled` 开关,未启用即不注册 → 不进 system prompt。
 
@@ -460,6 +629,7 @@ DSH(DeepSeek Harness)host 插件,把本仓库功能包包装成 agent 工具,通
 - ffmpeg:`ffmpeg_probe` / `ffmpeg_transcode` / `ffmpeg_extract_audio` / `ffmpeg_thumbnail`
 - email:`email_verify` / `email_send`(默认关,配置 SMTP 后启用)
 - lol:`lol_summoner` / `lol_match_history` / `lol_ranked`
+- vrchat:`vrchat_whoami` / `vrchat_user` / `vrchat_worlds_search`(默认关,需本地 VRChat 登录态 auth.json)
 
 **安全与合规：** SMTP 密码等敏感配置只存在于 host 端预设 config;工具返回与错误消息脱敏;netease 的试听拦截/权限拒绝硬规则在 SDK 层强制,工具层不绕过。
 

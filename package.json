@@ -7,7 +7,7 @@
                     "node":  "\u003e=20"
                 },
     "scripts":  {
-                    "build":  "pnpm --filter @sakurachiyo0v0/cli-utils build \u0026\u0026 pnpm --filter @sakurachiyo0v0/account build \u0026\u0026 pnpm --filter @sakurachiyo0v0/email build \u0026\u0026 pnpm --filter @sakurachiyo0v0/ffmpeg build \u0026\u0026 pnpm --filter @sakurachiyo0v0/netease-music build \u0026\u0026 pnpm --filter @sakurachiyo0v0/bilibili build \u0026\u0026 pnpm --filter @sakurachiyo0v0/chat-platforms build \u0026\u0026 pnpm --filter @sakurachiyo0v0/lol build \u0026\u0026 pnpm --filter @sakurachiyo0v0/dsh-sdk-tools build",
+                    "build":  "pnpm --filter @sakurachiyo0v0/cli-utils build \u0026\u0026 pnpm --filter @sakurachiyo0v0/account build \u0026\u0026 pnpm --filter @sakurachiyo0v0/email build \u0026\u0026 pnpm --filter @sakurachiyo0v0/ffmpeg build \u0026\u0026 pnpm --filter @sakurachiyo0v0/netease-music build \u0026\u0026 pnpm --filter @sakurachiyo0v0/booth build \u0026\u0026 pnpm --filter @sakurachiyo0v0/bilibili build \u0026\u0026 pnpm --filter @sakurachiyo0v0/chat-platforms build \u0026\u0026 pnpm --filter @sakurachiyo0v0/lol build \u0026\u0026 pnpm --filter @sakurachiyo0v0/vrchat build \u0026\u0026 pnpm --filter @sakurachiyo0v0/steam build \u0026\u0026 pnpm --filter @sakurachiyo0v0/dsh-sdk-tools build",
                     "typecheck":  "pnpm -r --if-present typecheck",
                     "test":  "pnpm -r --if-present test",
                     "check":  "pnpm typecheck \u0026\u0026 pnpm test \u0026\u0026 pnpm build \u0026\u0026 node scripts/check-skill-staleness.mjs",

@@ -12,6 +12,8 @@
 | `@sakurachiyo0v0/bilibili` | B 站视频下载 SDK(解析/取流/下载/ffmpeg 合并) | 可用(投稿视频) |
 | `@sakurachiyo0v0/chat-platforms` | 统一聊天平台接入 SDK(消息模型/适配器注册表,当前飞书) | 可用 |
 | `@sakurachiyo0v0/lol` | 英雄联盟 LCU 本地能力 SDK | 开发中(未发布) |
+| `@sakurachiyo0v0/vrchat` | VRChat 官方 REST API SDK(认证/用户/世界/头像/实例/好友/通知) | 开发中(未发布) |
+| `@sakurachiyo0v0/steam` | Steam SDK(查询向):Web API / Storefront / Community,登录态支持(密码+Guard/TOTP/QR/cookie),零写操作 | 开发中(未发布) |
 
 所有包(除 lol)已发布到 GitHub Packages,详见下方「发布流程」。
 
@@ -61,7 +63,7 @@ pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/e
 
 ## 发布流程(GitHub Packages + CI 自动发布)
 
-所有包发布到 **GitHub Packages**(`npm.pkg.github.com`,仓库公开,安装方无需 token)。发布由 **CI 自动完成**:push 到 `main` 时,`.github/workflows/publish.yml` 会检测各包本地版本与已发布版本,有变化的按依赖顺序(`cli-utils → account → email → ffmpeg → lol → netease-music → bilibili → chat-platforms → dsh-sdk-tools`)自动发布,并把 `workspace:*` 依赖转成实际版本号。
+所有包发布到 **GitHub Packages**(`npm.pkg.github.com`,仓库公开,安装方无需 token)。发布由 **CI 自动完成**:push 到 `main` 时,`.github/workflows/publish.yml` 会检测各包本地版本与已发布版本,有变化的按依赖顺序(`cli-utils → account → email → ffmpeg → lol → netease-music → booth → bilibili → chat-platforms → vrchat → steam → dsh-sdk-tools`)自动发布,并把 `workspace:*` 依赖转成实际版本号。
 
 ### ⚠️ 更新包必须按需 bump 版本号
 
