@@ -1,0 +1,71 @@
+name: repo-structure-sync
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths:
+      - "repo-structure.html"
+      - "scripts/gen-repo-structure.mjs"
+      - ".github/workflows/repo-structure.yml"
+  workflow_dispatch:
+
+jobs:
+  # PR 守卫:repo-structure.html 必须与仓库现状一致,过期即失败
+  check-fresh:
+    name: 检查结构页是否过期
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Regenerate (ignore timestamp)
+        run: node scripts/gen-repo-structure.mjs --no-stamp
+
+      - name: Fail if stale
+        run: |
+          if [ -n "$(git status --porcelain -- repo-structure.html)" ]; then
+            echo "::error::repo-structure.html 与仓库现状不一致(过期/缺失/未提交)—— 请先运行 pnpm gen:structure 并提交该文件"
+            exit 1
+          fi
+          echo "结构页是最新的 ✓"
+
+  # main 自动同步:push 到 main 后如有结构变化,自动重生成并提交
+  auto-sync:
+    name: 自动同步结构页
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Regenerate and commit if changed
+        run: |
+          # 先忽略时间戳比对结构:仅时间戳变化不算过期
+          node scripts/gen-repo-structure.mjs --no-stamp
+          if [ -z "$(git status --porcelain -- repo-structure.html)" ]; then
+            echo "结构页已是最新,无需提交"
+            exit 0
+          fi
+          # 确实有结构变化:带时间戳再生成一次,然后提交
+          node scripts/gen-repo-structure.mjs
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add repo-structure.html
+          git commit -m "chore: sync repo-structure.html with repository structure"
+          git push
