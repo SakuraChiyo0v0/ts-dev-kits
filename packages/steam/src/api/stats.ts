@@ -112,7 +112,7 @@ export class StatsApi {
     };
   }
 
-  /** 全局成就解锁百分比(GetGlobalAchievementPercentagesForApp/v2,需 key;参数名为 gameid)。 */
+  /** 全局成就解锁百分比(GetGlobalAchievementPercentagesForApp/v2,无需 key;参数名为 gameid)。 */
   async getGlobalAchievementPercentages(appid: number): Promise<AchievementPercentage[]> {
     const body = await this.transport.request<{
       achievementpercentages: { achievements: AchievementPercentage[] };
@@ -120,7 +120,6 @@ export class StatsApi {
       host: "api",
       path: SteamEndpoints.api.globalAchievementPercentages,
       params: { gameid: appid },
-      withKey: true,
     });
     return body.achievementpercentages.achievements;
   }

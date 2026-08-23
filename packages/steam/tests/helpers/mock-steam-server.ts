@@ -142,7 +142,8 @@ export async function startMockSteamServer(): Promise<MockSteamServer> {
     switch (url.pathname) {
       /* ---- P0 ---- */
       case "/ISteamWebAPIUtil/GetServerInfo/v1/":
-        send(res, 200, { response: { servertime: 1700000000, servertimestring: "test" } });
+        // 与真实接口一致:GetServerInfo 返回顶层字段,无 response 包装。
+        send(res, 200, { servertime: 1700000000, servertimestring: "test" });
         return;
       case "/ISteamWebAPIUtil/GetSupportedAPIList/v1/":
         if (!["TEST_KEY", "PUB_KEY"].includes(req.headers["x-webapi-key"] as string)) {

@@ -107,11 +107,12 @@ export function createSteamClient(options: SteamClientOptions = {}): SteamClient
     workshop,
     trade,
     async probe() {
-      const result = await transport.request<{ response: ServerInfo }>({
+      // GetServerInfo/v1 真实响应为顶层 { servertime, servertimestring },无 response 包装。
+      const result = await transport.request<ServerInfo>({
         host: "api",
         path: SteamEndpoints.api.serverInfo,
       });
-      return result.response;
+      return result;
     },
     async getSupportedApiList() {
       if (transport.apiKey === undefined && transport.publisherKey === undefined) {
