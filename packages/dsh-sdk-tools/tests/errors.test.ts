@@ -22,6 +22,12 @@ describe("describeError", () => {
     expect(describeError(sdkError("CLIENT_NOT_RUNNING", "no client"))).toBe(
       "英雄联盟客户端未运行,请先启动游戏客户端",
     );
+    // INVALID_URL 是多平台共用码(netease / bilibili),文案不得绑定单一平台。
+    const invalidUrlMessage = describeError(sdkError("INVALID_URL", "bad link"));
+    expect(invalidUrlMessage).toContain("无法解析该链接");
+    expect(invalidUrlMessage).not.toContain("B 站链接");
+    expect(invalidUrlMessage).toContain("B 站");
+    expect(invalidUrlMessage).toContain("网易云");
   });
 
   it("falls back to the SDK message with code for unknown codes", () => {

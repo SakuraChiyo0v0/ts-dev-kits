@@ -28,8 +28,8 @@ const ERROR_MESSAGE: Readonly<Record<string, string>> = {
   PROCESS_ERROR: "ffmpeg 进程执行失败,请检查输入文件与参数",
   TIMEOUT: "操作超时,已取消",
   CANCELLED: "操作已取消",
-  // bilibili
-  INVALID_URL: "无法解析该链接,请确认是有效的 B 站链接",
+  // 链接解析(多平台共用:netease / bilibili 都会抛 INVALID_URL)
+  INVALID_URL: "无法解析该链接,请确认链接格式正确且为受支持的平台(B 站 / 网易云音乐)",
   DOWNLOAD_FAILED: "下载失败,请检查网络或磁盘空间后重试",
   MERGE_FAILED: "音视频合并失败,请确认已安装 ffmpeg",
   UNSUPPORTED_TYPE: "该链接类型暂不支持",
