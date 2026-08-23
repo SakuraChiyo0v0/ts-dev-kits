@@ -1,0 +1,818 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ts-dev-kits · 仓库结构总览</title>
+<style>
+  :root {
+    --bg: #0b1220;
+    --surface: #111a2e;
+    --surface-2: #16213a;
+    --surface-3: #1c2a47;
+    --border: #263555;
+    --border-soft: #1e2c49;
+    --text: #e8eef8;
+    --text-2: #a8b8d4;
+    --muted: #7d8fb0;
+    --accent: #38bdf8;
+    --accent-2: #a78bfa;
+    --green: #34d399;
+    --amber: #fbbf24;
+    --red: #f87171;
+    --code-bg: #0a1120;
+    --shadow: 0 10px 30px rgba(0,0,0,.35);
+    --radius: 12px;
+    --mono: ui-monospace, "Cascadia Code", "JetBrains Mono", Consolas, "Courier New", monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  }
+  html[data-theme="light"] {
+    --bg: #f4f7fb;
+    --surface: #ffffff;
+    --surface-2: #f0f4fa;
+    --surface-3: #e6edf7;
+    --border: #d7e0ee;
+    --border-soft: #e3eaf4;
+    --text: #101828;
+    --text-2: #45536e;
+    --muted: #6b7a95;
+    --accent: #0284c7;
+    --accent-2: #7c3aed;
+    --green: #047857;
+    --amber: #b45309;
+    --red: #b91c1c;
+    --code-bg: #0d1526;
+    --shadow: 0 10px 30px rgba(16,24,40,.10);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); }
+  ::selection { background: rgba(56,189,248,.3); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+  .skip-link {
+    position: absolute; left: -999px; top: 8px; z-index: 100;
+    background: var(--accent); color: #04121f; padding: 8px 14px; border-radius: 8px; font-weight: 600;
+  }
+  .skip-link:focus { left: 8px; }
+
+  /* ---------- topbar ---------- */
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 12px 24px;
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .brand svg { flex: none; }
+  .brand-name { font-weight: 700; font-size: 17px; letter-spacing: .2px; }
+  .brand-name code { color: var(--accent); font-family: var(--mono); }
+  .repo-tag {
+    font-family: var(--mono); font-size: 12px; color: var(--muted);
+    border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px; white-space: nowrap;
+  }
+  .topbar-actions { display: flex; align-items: center; gap: 10px; }
+  .icon-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 38px; height: 38px; border-radius: 10px;
+    background: var(--surface); color: var(--text-2);
+    border: 1px solid var(--border); cursor: pointer;
+    transition: background .18s ease, border-color .18s ease, transform .12s ease;
+  }
+  .icon-btn:hover { background: var(--surface-2); color: var(--text); border-color: var(--accent); }
+  .icon-btn:active { transform: scale(.94); }
+  .gh-link {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 8px 14px; border-radius: 10px; text-decoration: none;
+    background: var(--surface); color: var(--text-2); border: 1px solid var(--border);
+    font-size: 14px; font-weight: 500; font-family: var(--mono);
+    transition: background .18s ease, border-color .18s ease, color .18s ease;
+  }
+  .gh-link:hover { color: var(--text); border-color: var(--accent); background: var(--surface-2); }
+
+  main { max-width: 1160px; margin: 0 auto; padding: 28px 24px 60px; }
+
+  /* ---------- hero ---------- */
+  .hero { text-align: center; padding: 36px 0 8px; }
+  .hero h1 { font-size: clamp(26px, 4vw, 38px); margin: 14px 0 6px; letter-spacing: .3px; }
+  .hero h1 .grad {
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .hero p.sub { color: var(--text-2); max-width: 720px; margin: 0 auto 26px; font-size: 16px; }
+  .stats {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 14px; margin: 0 auto 22px; max-width: 980px;
+  }
+  .stat {
+    background: var(--surface); border: 1px solid var(--border-soft); border-radius: var(--radius);
+    padding: 16px 12px;
+  }
+  .stat b { display: block; font-size: 30px; font-family: var(--mono); line-height: 1.15; }
+  .stat span { font-size: 13px; color: var(--muted); }
+  .stat svg { vertical-align: -2px; margin-right: 4px; }
+  .commands {
+    max-width: 680px; margin: 0 auto 26px; text-align: left;
+    background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 14px 18px; overflow-x: auto;
+  }
+  .commands .cmd-line { font-family: var(--mono); font-size: 13.5px; color: #c7d5ef; white-space: pre; }
+  .commands .cmd-line .cm { color: #f472b6; }   /* comment */
+  .commands .cmd-line .pm { color: #38bdf8; }   /* prompt */
+  .conventions {
+    display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; max-width: 980px; margin: 0 auto 10px;
+  }
+  .conv-chip {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-family: var(--mono); font-size: 12.5px; color: var(--text-2);
+    background: var(--surface); border: 1px solid var(--border-soft); border-radius: 999px; padding: 6px 12px;
+  }
+  .conv-chip svg { color: var(--accent); }
+
+  /* ---------- sections ---------- */
+  section { margin-top: 52px; }
+  .sec-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 18px; }
+  .sec-head h2 { margin: 0; font-size: 22px; display: flex; align-items: center; gap: 10px; }
+  .sec-head h2 svg { color: var(--accent); }
+  .sec-head .hint { font-size: 13px; color: var(--muted); font-family: var(--mono); }
+
+  /* ---------- dependency graph ---------- */
+  .graph-wrap {
+    background: var(--surface); border: 1px solid var(--border-soft); border-radius: var(--radius);
+    padding: 18px 8px 10px; overflow-x: auto;
+  }
+  .graph-wrap svg { display: block; margin: 0 auto; min-width: 640px; }
+  .graph-wrap .layer { font-size: 11px; fill: var(--muted); font-family: var(--mono); letter-spacing: .5px; }
+  .edge { fill: none; stroke: var(--border); stroke-width: 1.5; transition: stroke .18s ease, stroke-width .18s ease, opacity .18s ease; }
+  .edge.hl { stroke: var(--accent); stroke-width: 2.2; }
+  .edge.hl.src { stroke: var(--amber); }
+  .gnode { cursor: pointer; transition: opacity .18s ease; }
+  .gnode rect { transition: filter .18s ease; }
+  .gnode:hover rect, .gnode:focus rect { filter: drop-shadow(0 0 6px currentColor); }
+  .gnode.dim { opacity: .32; }
+  .gnode .n-name { font-size: 12.5px; font-weight: 600; font-family: var(--mono); }
+  .gnode .n-ver { font-size: 10px; font-family: var(--mono); opacity: .85; }
+  .graph-note { font-size: 13px; color: var(--muted); margin: 12px 2px 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .build-order { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 12px; font-family: var(--mono); font-size: 12.5px; }
+  .build-order .bo { background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; padding: 3px 8px; color: var(--text-2); }
+  .build-order .arw { color: var(--accent); }
+
+  /* ---------- tree ---------- */
+  .tree-panel { background: var(--surface); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 14px; }
+  .tree-toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  #treeSearch {
+    flex: 1 1 260px; min-width: 200px;
+    background: var(--code-bg); color: var(--text); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 14px; font-family: var(--mono); font-size: 13.5px;
+  }
+  #treeSearch::placeholder { color: var(--muted); }
+  .tree-actions { display: flex; gap: 8px; }
+  .btn {
+    background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 9px 14px; font-size: 13px; cursor: pointer; font-family: var(--sans);
+    transition: background .16s ease, color .16s ease, border-color .16s ease;
+  }
+  .btn:hover { color: var(--text); border-color: var(--accent); }
+  .tree-list { list-style: none; margin: 0; padding: 0 0 0 20px; }
+  #treeRoot > .tree-list { padding-left: 0; }
+  #treeRoot li { position: relative; }
+  .tree-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 3px 8px; border-radius: 7px; font-family: var(--mono); font-size: 13.5px;
+    min-height: 30px;
+  }
+  li.tree-dir > .tree-item { cursor: pointer; font-weight: 600; color: var(--text-2); }
+  li.tree-dir > .tree-item:hover { background: var(--surface-2); color: var(--text); }
+  .tree-icon { display: inline-flex; flex: none; }
+  .tree-toggle {
+    position: absolute; left: -2px; top: 50%; transform: translateY(-50%) rotate(-90deg);
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; border: none; background: none; cursor: pointer;
+    color: var(--muted); padding: 0; border-radius: 5px;
+    transition: transform .18s ease, color .16s ease;
+  }
+  li.tree-dir.open > .tree-toggle { transform: translateY(-50%) rotate(0deg); color: var(--accent); }
+  .tree-toggle:hover { color: var(--accent); background: var(--surface-2); }
+  li.tree-dir.collapsed > ul { display: none; }
+  li.tree-dir .tree-count {
+    margin-left: auto; font-size: 10.5px; color: var(--muted);
+    background: var(--surface-3); border-radius: 999px; padding: 1px 8px; font-weight: 400;
+  }
+  .tree-file .tree-name { color: var(--text-2); }
+  li.hidden { display: none; }
+  .tree-empty { color: var(--muted); font-size: 14px; padding: 18px 8px; text-align: center; }
+
+  /* ---------- packages ---------- */
+  .pkg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 16px; }
+  .pkg-card {
+    background: var(--surface); border: 1px solid var(--border-soft); border-radius: var(--radius);
+    padding: 18px; display: flex; flex-direction: column; gap: 10px;
+    transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease;
+    scroll-margin-top: 80px;
+  }
+  .pkg-card:hover { transform: translateY(-2px); border-color: var(--border); box-shadow: var(--shadow); }
+  .pkg-head { display: flex; align-items: center; gap: 10px; }
+  .pkg-dot { width: 12px; height: 12px; border-radius: 4px; flex: none; }
+  .pkg-name { font-family: var(--mono); font-weight: 700; font-size: 15px; color: var(--text); }
+  .pkg-name code { color: inherit; }
+  .pkg-ver { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .pkg-status { margin-left: auto; font-size: 11.5px; font-weight: 600; border-radius: 999px; padding: 3px 10px; }
+  .pkg-status.ok { color: var(--green); background: color-mix(in srgb, var(--green) 14%, transparent); border: 1px solid color-mix(in srgb, var(--green) 40%, transparent); }
+  .pkg-desc { font-size: 14px; color: var(--text-2); margin: 0; min-height: 42px; }
+  .pkg-deps { display: flex; align-items: flex-start; gap: 8px; flex-wrap: wrap; font-size: 12.5px; }
+  .pkg-deps .lbl { color: var(--muted); font-size: 12px; padding-top: 2px; }
+  .dep-chip {
+    font-family: var(--mono); font-size: 12px; color: var(--text-2);
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px;
+    padding: 2px 9px; text-decoration: none; cursor: pointer;
+    transition: border-color .16s ease, color .16s ease;
+  }
+  .dep-chip:hover { border-color: var(--accent); color: var(--text); }
+  .pkg-foot { display: flex; gap: 14px; font-family: var(--mono); font-size: 12px; color: var(--muted); border-top: 1px dashed var(--border-soft); padding-top: 10px; margin-top: auto; }
+  .pkg-foot b { color: var(--text-2); font-weight: 600; }
+
+  /* ---------- meta ---------- */
+  .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+  .meta-card { background: var(--surface); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 18px; }
+  .meta-card h3 { display: flex; align-items: center; gap: 9px; margin: 0 0 12px; font-size: 16px; }
+  .meta-card h3 svg { color: var(--accent); }
+  .meta-card ul { list-style: none; margin: 0; padding: 0; }
+  .meta-card li {
+    display: flex; align-items: center; gap: 9px;
+    font-family: var(--mono); font-size: 13px; color: var(--text-2);
+    padding: 5px 4px; border-radius: 6px;
+  }
+  .meta-card li:hover { background: var(--surface-2); }
+  .meta-card li .ic { flex: none; display: inline-flex; }
+  .meta-card li .sub { margin-left: auto; font-size: 11px; color: var(--muted); }
+
+  footer {
+    text-align: center; padding: 30px 16px 40px; color: var(--muted); font-size: 13px;
+    border-top: 1px solid var(--border-soft); margin-top: 60px;
+  }
+  footer code { font-family: var(--mono); color: var(--text-2); }
+
+  @media (max-width: 640px) {
+    .repo-tag { display: none; }
+    .pkg-grid { grid-template-columns: 1fr; }
+    main { padding: 20px 14px 50px; }
+    .stat b { font-size: 24px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; animation: none !important; }
+    html { scroll-behavior: auto; }
+  }
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main">跳到主要内容</a>
+
+<header class="topbar">
+  <div class="brand">
+    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="url(#lg)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <defs><linearGradient id="lg" x1="0" y1="0" x2="24" y2="24"><stop offset="0" stop-color="#38bdf8"/><stop offset="1" stop-color="#a78bfa"/></linearGradient></defs>
+      <rect x="3" y="3" width="18" height="18" rx="4"/>
+      <path d="M8 15l2.5-6 2.5 4 2-3 1 5"/>
+    </svg>
+    <span class="brand-name"><code>ts-dev-kits</code></span>
+    <span class="repo-tag">SakuraChiyo0v0/ts-dev-kits</span>
+  </div>
+  <div class="topbar-actions">
+    <button id="themeToggle" class="icon-btn" aria-label="切换明暗主题" title="切换明暗主题">
+      <svg id="iconMoon" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      <svg id="iconSun" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:none"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+    </button>
+    <a class="gh-link" href="https://github.com/SakuraChiyo0v0/ts-dev-kits" target="_blank" rel="noreferrer">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.56 0-.27-.01-1.17-.02-2.12-3.2.7-3.87-1.36-3.87-1.36-.52-1.33-1.28-1.68-1.28-1.68-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.19 1.76 1.19 1.03 1.76 2.69 1.25 3.35.96.1-.75.4-1.25.72-1.54-2.55-.29-5.23-1.28-5.23-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.41-2.69 5.38-5.25 5.67.41.35.77 1.05.77 2.12 0 1.53-.01 2.76-.01 3.14 0 .31.21.68.8.56A11.51 11.51 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5z"/></svg>
+      GitHub
+    </a>
+  </div>
+</header>
+
+<main id="main">
+  <section class="hero">
+    <h1>个人 TypeScript 开发工具 <span class="grad">Monorepo</span></h1>
+    <p class="sub">pnpm workspace 组织的多包仓库 —— 以 <code>@sakurachiyo0v0/*</code> 命名的一组可复用 Node.js SDK(媒体处理 / 邮件 / 音乐与视频下载 / 聊天平台 / 游戏客户端 / DSH 插件),私有托管于 GitHub。</p>
+    <div class="stats" id="statGrid"></div>
+    <div class="commands" aria-label="常用命令">
+      <div class="cmd-line"><span class="cm"># Node.js ≥ 20 · pnpm 11(packageManager 已锁定)</span></div>
+      <div class="cmd-line"><span class="pm">$</span> pnpm install</div>
+      <div class="cmd-line"><span class="pm">$</span> pnpm check          <span class="cm"># typecheck + test + build 全仓验证</span></div>
+      <div class="cmd-line"><span class="pm">$</span> pnpm --filter @sakurachiyo0v0/email test &amp;&amp; build</div>
+      <div class="cmd-line"><span class="pm">$</span> pnpm verify:email-package   <span class="cm"># pack 后从临时消费项目验证导入</span></div>
+    </div>
+    <div class="conventions">
+      <span class="conv-chip"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/><path d="M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg>构建产出 ESM + CJS + .d.ts</span>
+      <span class="conv-chip"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>license UNLICENSED · 不发布公共 npm</span>
+      <span class="conv-chip"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3v18M19 3v18M5 12h14"/></svg>包间依赖 workspace:* · 单向无环</span>
+      <span class="conv-chip"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12H4M12 4v16"/></svg>CI 自动发布 GitHub Packages</span>
+    </div>
+  </section>
+
+  <section id="graph">
+    <div class="sec-head">
+      <h2><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5" cy="6" r="2.5"/><circle cx="19" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M7.2 7.3L10.8 16M16.8 7.3L13.2 16M7.5 6h9"/></svg>包依赖图</h2>
+      <span class="hint" id="edgeCount"></span>
+    </div>
+    <div class="graph-wrap">
+      <svg id="depGraph" viewBox="0 0 900 400" role="img" aria-label="包依赖关系图:基础层包指向上层 SDK,最终汇入 dsh-sdk-tools 聚合层"></svg>
+    </div>
+    <p class="graph-note">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
+      方向:基础工具层 → 领域 SDK → dsh-sdk-tools 聚合层;依赖图保持单向无环,被依赖包先 build。悬停节点高亮相关边,点击节点跳转到对应包卡片。
+    </p>
+    <div class="build-order" id="buildOrder" aria-label="构建顺序">
+      <span style="color:var(--muted)">构建顺序</span>
+    </div>
+  </section>
+
+  <section id="tree">
+    <div class="sec-head">
+      <h2><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M4 6V4M4 10h6a2 2 0 0 1 2 2v8M20 20V8M20 4v4M20 8h-6a2 2 0 0 0-2 2"/></svg>目录结构</h2>
+      <span class="hint" id="treeCount"></span>
+    </div>
+    <div class="tree-panel">
+      <div class="tree-toolbar">
+        <input id="treeSearch" type="search" placeholder="搜索文件名… 如 weapi / test / rollup / tsconfig" aria-label="搜索目录结构">
+        <div class="tree-actions">
+          <button id="expandAll" class="btn" type="button">全部展开</button>
+          <button id="collapseAll" class="btn" type="button">全部折叠</button>
+        </div>
+      </div>
+      <div id="treeRoot" role="tree" aria-label="仓库目录树"></div>
+    </div>
+  </section>
+
+  <section id="packages">
+    <div class="sec-head">
+      <h2><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>包清单</h2>
+      <span class="hint" id="pkgCount"></span>
+    </div>
+    <div class="pkg-grid" id="pkgGrid"></div>
+  </section>
+
+  <section id="meta">
+    <div class="sec-head">
+      <h2><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>文档 · 脚本 · 技能</h2>
+    </div>
+    <div class="meta-grid" id="metaGrid"></div>
+  </section>
+</main>
+
+<footer>
+  由仓库实际目录扫描生成 · 静态自包含页面,可直接双击打开 · 已排除 <code>.git</code> / <code>node_modules</code> / <code>dist</code><br>
+  数据快照生成于 <code id="genAt">2026-08-23 07:23:57</code> · 仓库结构变化后,在根目录运行 <code>pnpm gen:structure</code> 即可刷新本页
+</footer>
+
+<script>
+"use strict";
+/* ===================== 图标 ===================== */
+const IC = {
+  chevron: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>',
+  folder:  '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
+  file:    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>',
+  code:    '<path d="m10 12-2 2 2 2M14 12l2 2-2 2"/>',
+  check:   '<path d="m9 12.5 2 2 4-4.5"/>',
+  md:      '<path d="M8 16V10l2.5 3 2.5-3v6"/>',
+  braces:  '<path d="M10 9.5 7.5 12 10 14.5M14 9.5 16.5 12 14 14.5"/>',
+  lambda:  '<path d="m9 9.5 3 4 3-4"/>',
+  js:      '<path d="M14 9.5h3.5v5H14M9.5 9.5h3v1.5h-3V12h3v3h-3"/>',
+  gear:    '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
+  star:    '<path d="m12 3 2.7 5.5 6 .9-4.3 4.2 1 6-5.4-2.9L6.6 19.6l1-6L3.3 9.4l6-.9z"/>',
+  box:     '<path d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><path d="M3 8l9 5 9-5M12 13v8"/>'
+};
+function fileIcon(name) {
+  const svg = (p) => IC.file.replace('</svg>', p + '</svg>');
+  if (/\.test\.ts$/.test(name)) return { svg: svg(IC.check), color: 'var(--green)' };
+  if (/\.ts$/.test(name))      return { svg: svg(IC.code),  color: '#38bdf8' };
+  if (/^SKILL\.md$/i.test(name)) return { svg: svg(IC.star), color: '#e879f9' };
+  if (/\.md$/.test(name))      return { svg: svg(IC.md),    color: 'var(--muted)' };
+  if (/^package\.json$/.test(name)) return { svg: svg(IC.box), color: 'var(--amber)' };
+  if (/^(tsconfig|rollup|pnpm-workspace|\.gitignore|\.npmrc)/.test(name)) return { svg: svg(IC.gear), color: '#fb923c' };
+  if (/\.json$/.test(name))    return { svg: svg(IC.braces), color: '#facc15' };
+  if (/\.ya?ml$/.test(name))   return { svg: svg(IC.lambda), color: 'var(--red)' };
+  if (/\.mjs$/.test(name))     return { svg: svg(IC.js), color: 'var(--accent-2)' };
+  return { svg: svg(''), color: 'var(--muted)' };
+}
+const esc = (s) => s.replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ===================== 树数据(由扫描脚本注入) ===================== */
+const TREE_RAW = "dir|.github\r\n  dir|workflows\r\n    file|publish.yml\r\n    file|repo-structure.yml\r\ndir|docs\r\n  dir|superpowers\r\n    dir|plans\r\n      file|2026-08-03-email-sdk.md\r\n    dir|specs\r\n      file|2026-08-03-email-sdk-design.md\r\n      file|2026-08-13-bilibili-login-design.md\r\n      file|2026-08-22-lol-sdk-design.md\r\n      file|2026-08-23-dsh-sdk-tools-design.md\r\n      file|2026-08-23-netease-music-sdk-design.md\r\n  file|GITHUB_PACKAGES.md\r\n  file|package-template.md\r\n  file|packages-index.md\r\ndir|packages\r\n  dir|account\r\n    dir|scripts\r\n      file|clean.mjs\r\n    dir|src\r\n      file|errors.ts\r\n      file|index.ts\r\n      file|paths.ts\r\n      file|qr-flow.ts\r\n      file|store.ts\r\n      file|types.ts\r\n    dir|tests\r\n      file|qr-flow.test.ts\r\n      file|store.test.ts\r\n    file|package.json\r\n    file|README.md\r\n    file|rollup.config.mjs\r\n    file|tsconfig.base.json\r\n    file|tsconfig.build.json\r\n    file|tsconfig.bundle.json\r\n    file|tsconfig.json\r\n  dir|bilibili\r\n    dir|scripts\r\n      file|clean.mjs\r\n    dir|src\r\n      dir|cli\r\n        file|bilibili.ts\r\n      dir|parsers\r\n        file|aggregate.ts\r\n        file|audio.ts\r\n        file|bangumi.ts\r\n        file|cheese.ts\r\n        file|video.ts\r\n      file|client.ts\r\n      file|download.ts\r\n      file|errors.ts\r\n      file|index.ts\r\n      file|network.ts\r\n      file|streams.ts\r\n      file|types.ts\r\n      file|url.ts\r\n    dir|tests\r\n      dir|helpers\r\n        file|mock-api.ts\r\n        file|mock-file.ts\r\n      file|client-auth.test.ts\r\n      file|client.test.ts\r\n      file|download.test.ts\r\n      file|parsers-v2.test.ts\r\n      file|url.test.ts\r\n    file|package.json\r\n    file|README.md\r\n    file|rollup.config.mjs\r\n    file|tsconfig.base.json\r\n    file|tsconfig.build.json\r\n    file|tsconfig.bundle.json\r\n    file|tsconfig.cli.json\r\n    file|tsconfig.json\r\n  dir|bilibili-auth\r\n    dir|scripts\r\n      file|clean.mjs\r\n    dir|src\r\n      file|cookie.ts\r\n      file|errors.ts\r\n      file|index.ts\r\n      file|login.ts\r\n      file|refresh.ts\r\n      file|store.ts\r\n    dir|tests\r\n      file|auth-login.test.ts\r\n      file|auth-refresh.test.ts\r\n      file|auth-store.test.ts\r\n    file|package.json\r\n    file|README.md\r\n    file|rollup.config.mjs\r\n    file|tsconfig.base.json\r\n    file|tsconfig.build.json\r\n    file|tsconfig.bundle.json\r\n    file|tsconfig.json\r\n  dir|chat-platforms\r\n    dir|scripts\r\n      file|clean.mjs\r\n    dir|src\r\n      dir|providers\r\n        dir|feishu\r\n          file|feishu-provider.ts\r\n          file|feishu-types.ts\r\n          file|index.ts\r\n      file|card-command.ts\r\n      file|client.ts\r\n      file|errors.ts\r\n      file|index.ts\r\n      file|policy-checker.ts\r\n      file|policy.ts\r\n      file|registry.ts\r\n      file|types.ts\r\n    dir|tests\r\n      file|card-command.test.ts\r\n      file|client.test.ts\r\n      file|feishu-card.test.ts\r\n      file|feishu.test.ts\r\n      file|policy.test.ts\r\n    file|package.json\r\n    file|README.md\r\n    file|rollup.config.mjs\r\n    file|tsconfig.base.json\r\n    file|tsconfig.build.json\r\n    file|tsconfig.bundle.json\r\n    file|tsconfig.json\r\n  dir|cli-utils\r\n    dir|scripts\r\n      file|clean.mjs\r\n    dir|src\r\n      file|args.ts\r\n      file|index.ts\r\n      file|output.ts\r\n    dir|tests\r\n      file|args.test.ts\r\n    file|package.json\r\n    file|rollup.config.mjs\r\n    file|tsconfig.base.json\r\n    file|tsconfig.build.json\r\n    file|tsconfig.bundle.json\r\n    file|tsconfig.json\r\n  dir|dsh-sdk-tools\r\n    dir|presets\r\n      dir|ts-dev-kits\r\n        file|agent.cordis.yml\r\n        file|preset.yml\r\n    dir|scripts\r\n      file|clean.mjs\r\n    dir|src\r\n      dir|tools\r\n        file|bilibili.ts\r\n        file|email.ts\r\n        file|ffmpeg.ts\r\n        file|lol.ts\r\n        file|netease.ts\r\n      file|capabilities.ts\r\n      file|config.ts\r\n      file|errors.ts\r\n      file|index.ts\r\n      file|path.ts\r\n    dir|tests\r\n      file|config.test.ts\r\n      file|errors.test.ts\r\n      file|preset.test.ts\r\n    file|package.json\r\n    file|README.md\r\n    file|rollup.config.mjs\r\n    file|tsconfig.base.json\r\n    file|tsconfig.build.json\r\n    file|tsconfig.bundle.json\r\n    file|tsconfig.json\r\n  dir|email\r\n    dir|scripts\r\n      file|clean.mjs\r\n    dir|src\r\n      dir|cli\r\n        file|email.ts\r\n      dir|providers\r\n        dir|smtp\r\n          file|index.ts\r\n          file|smtp-provider.ts\r\n          file|smtp-types.ts\r\n      file|client.ts\r\n      file|errors.ts\r\n      file|index.ts\r\n      file|types.ts\r\n    dir|tests\r\n      dir|helpers\r\n        file|smtp-test-server.ts\r\n      file|client.test.ts\r\n      file|errors.test.ts\r\n      file|smtp-provider.test.ts\r\n    file|package.json\r\n    file|README.md\r\n    file|rollup.config.mjs\r\n    file|tsconfig.base.json\r\n    file|tsconfig.build.json\r\n    file|tsconfig.bundle.json\r\n    file|tsconfig.cli.json\r\n    file|tsconfig.json\r\n  dir|ffmpeg\r\n    dir|scripts\r\n      file|clean.mjs\r\n    dir|src\r\n      dir|cli\r\n        file|ffmpeg.ts\r\n      file|client.ts\r\n      file|errors.ts\r\n      file|index.ts\r\n      file|runner.ts\r\n      file|types.ts\r\n    dir|tests\r\n      file|ffmpeg.test.ts\r\n      file|helpers.test.ts\r\n      file|progress.test.ts\r\n    file|package.json\r\n    file|README.md\r\n    file|rollup.config.mjs\r\n    file|tsconfig.base.json\r\n    file|tsconfig.build.json\r\n    file|tsconfig.bundle.json\r\n    file|tsconfig.cli.json\r\n    file|tsconfig.json\r\n  dir|lol\r\n    dir|scripts\r\n      file|clean.mjs\r\n    dir|src\r\n      dir|data\r\n        file|champion-names.ts\r\n      dir|endpoints\r\n        file|champ-select.ts\r\n        file|chat.ts\r\n        file|game-data.ts\r\n        file|gameflow.ts\r\n        file|lobby.ts\r\n        file|match-history.ts\r\n        file|profile.ts\r\n        file|ranked.ts\r\n        file|summoner.ts\r\n      dir|parsers\r\n        file|index.ts\r\n        file|match.ts\r\n        file|rank.ts\r\n      file|champion-names.ts\r\n      file|client.ts\r\n      file|discovery.ts\r\n      file|errors.ts\r\n      file|events.ts\r\n      file|http-transport.ts\r\n      file|index.ts\r\n      file|live-client.ts\r\n      file|sgp.ts\r\n      file|transport.ts\r\n      file|types.ts\r\n    dir|tests\r\n      dir|helpers\r\n        file|mock-lcu-server.ts\r\n      file|champion-names.test.ts\r\n      file|client.test.ts\r\n      file|discovery.test.ts\r\n      file|e2e.test.ts\r\n      file|endpoints.test.ts\r\n      file|events.test.ts\r\n      file|live-client.test.ts\r\n      file|parsers.test.ts\r\n      file|transport.test.ts\r\n    file|package.json\r\n    file|README.md\r\n    file|rollup.config.mjs\r\n    file|tsconfig.base.json\r\n    file|tsconfig.build.json\r\n    file|tsconfig.bundle.json\r\n    file|tsconfig.json\r\n  dir|netease-music\r\n    dir|scripts\r\n      file|clean.mjs\r\n    dir|src\r\n      dir|api\r\n        file|playlist.ts\r\n        file|session.ts\r\n        file|song.ts\r\n        file|user.ts\r\n      dir|auth\r\n        file|adapter.ts\r\n      dir|cli\r\n        file|netease.ts\r\n      dir|download\r\n        file|stream.ts\r\n      dir|parsers\r\n        file|url.ts\r\n      dir|weapi\r\n        file|encrypt.ts\r\n      file|client.ts\r\n      file|errors.ts\r\n      file|index.ts\r\n      file|types.ts\r\n    dir|tests\r\n      dir|helpers\r\n        file|mock-api.ts\r\n      file|cli.test.ts\r\n      file|client.test.ts\r\n      file|smoke.test.ts\r\n      file|url.test.ts\r\n      file|user.test.ts\r\n      file|weapi-encrypt.test.ts\r\n    file|package.json\r\n    file|README.md\r\n    file|rollup.config.mjs\r\n    file|tsconfig.base.json\r\n    file|tsconfig.build.json\r\n    file|tsconfig.bundle.json\r\n    file|tsconfig.cli.json\r\n    file|tsconfig.json\r\ndir|scripts\r\n  file|gen-repo-structure.mjs\r\n  file|publish-packages.mjs\r\n  file|verify-email-git-package.mjs\r\n  file|verify-email-package.mjs\r\n  file|verify-lol-package.mjs\r\ndir|skills\r\n  dir|bilibili-cli\r\n    file|SKILL.md\r\n  dir|email-cli\r\n    file|SKILL.md\r\n  dir|ffmpeg-cli\r\n    file|SKILL.md\r\nfile|.gitignore\r\nfile|AGENTS.md\r\nfile|package.json\r\nfile|pnpm-workspace.yaml\r\nfile|README.md\r\nfile|repo-structure.html\r\nfile|tsconfig.base.json";
+
+/* ===================== 包元数据 ===================== */
+const PACKAGES = [
+  {
+    "id": "cli-utils",
+    "name": "cli-utils",
+    "version": "0.1.1",
+    "color": "#38bdf8",
+    "deps": [],
+    "desc": "各 SDK CLI 共享的解析 / 输出 / 错误工具,是多数包的公共底座。"
+  },
+  {
+    "id": "account",
+    "name": "account",
+    "version": "0.1.0",
+    "color": "#fb923c",
+    "deps": [],
+    "desc": "跨平台账号认证底座:登录态存储、扫码登录骨架与公共错误模型,不感知具体平台。"
+  },
+  {
+    "id": "bilibili-auth",
+    "name": "bilibili-auth",
+    "version": "0.1.0",
+    "color": "#fbbf24",
+    "deps": [],
+    "desc": "B 站扫码登录:二维码弹窗、登录态存储、refresh_token 自动续期。"
+  },
+  {
+    "id": "email",
+    "name": "email",
+    "version": "0.1.0",
+    "color": "#f472b6",
+    "deps": [
+      "cli-utils"
+    ],
+    "desc": "与供应商解耦的 Node.js 邮件 SDK:统一消息模型 + SMTP 适配器,错误消息脱敏。"
+  },
+  {
+    "id": "ffmpeg",
+    "name": "ffmpeg",
+    "version": "0.1.0",
+    "color": "#22d3ee",
+    "deps": [
+      "cli-utils"
+    ],
+    "desc": "FFmpeg / ffprobe 进程封装 + 视频 / 音频 / 图片处理高层函数,带进度回调。"
+  },
+  {
+    "id": "netease-music",
+    "name": "netease-music",
+    "version": "0.1.0",
+    "color": "#f87171",
+    "deps": [
+      "account",
+      "cli-utils",
+      "ffmpeg"
+    ],
+    "desc": "网易云音乐下载 SDK:自研 weapi 加密、二维码登录、权限感知品质、试听拦截硬规则。"
+  },
+  {
+    "id": "bilibili",
+    "name": "bilibili",
+    "version": "0.1.0",
+    "color": "#60a5fa",
+    "deps": [
+      "bilibili-auth",
+      "cli-utils",
+      "ffmpeg"
+    ],
+    "desc": "B 站视频下载 SDK:链接解析、DASH 取流、可配置下载器、ffmpeg 合并,内置 WBI 签名。"
+  },
+  {
+    "id": "chat-platforms",
+    "name": "chat-platforms",
+    "version": "0.1.0",
+    "color": "#34d399",
+    "deps": [],
+    "desc": "统一聊天平台接入 SDK:消息模型 + 适配器注册表,当前内置飞书适配器(WebSocket / Webhook)。"
+  },
+  {
+    "id": "lol",
+    "name": "lol",
+    "version": "0.1.0",
+    "color": "#a78bfa",
+    "deps": [],
+    "desc": "英雄联盟 LCU 本地能力 SDK:召唤师 / 战绩 / 段位 / 对局流程 / 选人 / 游戏数据 / 事件订阅。"
+  },
+  {
+    "id": "dsh-sdk-tools",
+    "name": "dsh-sdk-tools",
+    "version": "0.1.2",
+    "color": "#e879f9",
+    "deps": [
+      "bilibili",
+      "email",
+      "ffmpeg",
+      "lol",
+      "netease-music"
+    ],
+    "desc": "DSH host 插件:把各功能包包装成 agent 工具,经 Agent 预设按需暴露,其余会话零污染。"
+  }
+];
+const PKG = Object.fromEntries(PACKAGES.map(p => [p.id, p]));
+
+/* ===================== 构建顺序(由生成脚本注入) ===================== */
+const BUILD_ORDER = ["cli-utils","account","bilibili-auth","email","ffmpeg","netease-music","bilibili","chat-platforms","lol","dsh-sdk-tools"];
+(function renderBuildOrder() {
+  const el = document.getElementById('buildOrder');
+  if (!el) return;
+  const bo = Array.isArray(BUILD_ORDER) ? BUILD_ORDER : [];
+  let s = '';
+  bo.forEach((id, i) => {
+    const last = i === bo.length - 1;
+    s += `<span class="bo"${last ? ' style="border-color:var(--accent);color:var(--accent)"' : ''}>${esc(id)}</span>`;
+    if (!last) s += '<span class="arw">→</span>';
+  });
+  el.insertAdjacentHTML('beforeend', s || '<span style="color:var(--muted)">(未解析)</span>');
+})();
+const theme = () => document.documentElement.dataset.theme;
+const lightColor = {
+  'cli-utils':'#0369a1','bilibili-auth':'#b45309','account':'#c2410c','chat-platforms':'#047857',
+  'lol':'#6d28d9','email':'#be185d','ffmpeg':'#0e7490','bilibili':'#1d4ed8','netease-music':'#b91c1c','dsh-sdk-tools':'#a21caf'
+};
+function pkgColor(id) { return theme() === 'light' ? (lightColor[id] || '#0369a1') : (PKG[id].color); }
+function hexRgba(hex, a) {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;
+}
+
+/* ===================== 树解析与渲染 ===================== */
+function parseTree(raw) {
+  const root = { name: '.', type: 'dir', children: [] };
+  const stack = [{ depth: -1, node: root }];
+  raw.split(/\r?\n/).forEach(line => {
+    if (!line.trim()) return;
+    const m = line.match(/^(\s*)(dir|file)\|(.+)$/);
+    if (!m) return;
+    const depth = Math.floor(m[1].length / 2);
+    const node = { name: m[3], type: m[2], children: m[2] === 'dir' ? [] : undefined };
+    while (stack.length && stack[stack.length - 1].depth >= depth) stack.pop();
+    stack[stack.length - 1].node.children.push(node);
+    stack.push({ depth, node });
+  });
+  return root;
+}
+function countFiles(node) {
+  let n = 0;
+  (node.children || []).forEach(c => n += c.type === 'file' ? 1 : countFiles(c));
+  return n;
+}
+const TREE = parseTree(TREE_RAW);
+
+function toggleDir(li, force) {
+  const open = force !== undefined ? force : li.classList.contains('collapsed');
+  li.classList.toggle('collapsed', !open);
+  li.classList.toggle('open', open);
+  const btn = li.querySelector('.tree-toggle');
+  if (btn) btn.setAttribute('aria-expanded', String(open));
+}
+function buildLi(node, prefix) {
+  const li = document.createElement('li');
+  li.dataset.path = prefix + node.name;
+  li.dataset.type = node.type;
+  if (node.type === 'dir') {
+    li.classList.add('tree-dir', 'collapsed');
+    const cnt = countFiles(node);
+    li.innerHTML =
+      `<button class="tree-toggle" aria-expanded="false" aria-label="展开 ${esc(node.name)}">${IC.chevron}</button>` +
+      `<span class="tree-item" tabindex="0" role="button">` +
+        `<span class="tree-icon" style="color:var(--accent)">${IC.folder}</span>` +
+        `<span class="tree-name">${esc(node.name)}</span>` +
+        (cnt ? `<span class="tree-count">${cnt} 项</span>` : '') +
+      `</span>`;
+    const ul = document.createElement('ul');
+    ul.className = 'tree-list';
+    (node.children || []).forEach(c => ul.appendChild(buildLi(c, prefix + node.name + '/')));
+    li.appendChild(ul);
+    const toggle = () => toggleDir(li);
+    li.querySelector('.tree-toggle').addEventListener('click', (e) => { e.stopPropagation(); toggle(); });
+    li.querySelector('.tree-item').addEventListener('click', toggle);
+    li.querySelector('.tree-item').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+    });
+  } else {
+    const fi = fileIcon(node.name);
+    li.classList.add('tree-file');
+    li.innerHTML = `<span class="tree-item"><span class="tree-icon" style="color:${fi.color}">${fi.svg}</span><span class="tree-name">${esc(node.name)}</span></span>`;
+  }
+  return li;
+}
+function renderTree(root, container) {
+  container.innerHTML = '';
+  const ul = document.createElement('ul');
+  ul.className = 'tree-list';
+  (root.children || []).forEach(c => ul.appendChild(buildLi(c, '')));
+  container.appendChild(ul);
+}
+const treeRoot = document.getElementById('treeRoot');
+renderTree(TREE, treeRoot);
+
+document.getElementById('expandAll').addEventListener('click', () => {
+  treeRoot.querySelectorAll('li.tree-dir').forEach(li => toggleDir(li, true));
+});
+document.getElementById('collapseAll').addEventListener('click', () => {
+  treeRoot.querySelectorAll('li.tree-dir').forEach(li => toggleDir(li, false));
+});
+
+/* ---------- 搜索过滤 ---------- */
+const searchBox = document.getElementById('treeSearch');
+let searchTimer = null;
+searchBox.addEventListener('input', () => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(applyFilter, 120);
+});
+function applyFilter() {
+  const q = searchBox.value.trim().toLowerCase();
+  if (!q) { renderTree(TREE, treeRoot); return; }
+  const all = Array.from(treeRoot.querySelectorAll('li'));
+  const match = new Set();
+  all.forEach(li => { if (li.dataset.path.toLowerCase().includes(q)) match.add(li); });
+  const vis = new Map();
+  function compute(li) {
+    if (!li.classList.contains('tree-dir')) { const v = match.has(li); vis.set(li, v); return v; }
+    const kids = Array.from(li.querySelectorAll(':scope > ul > li'));
+    const v = kids.some(compute) || match.has(li);
+    vis.set(li, v); return v;
+  }
+  Array.from(treeRoot.querySelectorAll(':scope > ul > li')).forEach(compute);
+  all.forEach(li => {
+    li.classList.toggle('hidden', !vis.get(li));
+    if (!li.classList.contains('hidden') && li.classList.contains('tree-dir') && li.classList.contains('collapsed')) {
+      toggleDir(li, true);
+    }
+  });
+  const empty = document.querySelector('.tree-empty');
+  if (!all.some(li => !li.classList.contains('hidden'))) {
+    if (!empty) {
+      const p = document.createElement('p');
+      p.className = 'tree-empty';
+      p.textContent = '没有匹配的文件';
+      treeRoot.appendChild(p);
+    }
+  } else if (empty) empty.remove();
+}
+
+/* ===================== 统计 ===================== */
+function countUnder(dir) {
+  const node = (TREE.children || []).find(c => c.name === dir);
+  return node ? countFiles(node) : 0;
+}
+function pkgStat(id, sub) {
+  const node = (TREE.children.find(c => c.name === 'packages') || { children: [] })
+    .children.find(c => c.name === id);
+  if (!node) return 0;
+  const s = (node.children || []).find(c => c.name === sub);
+  return s ? countFiles(s) : 0;
+}
+const totalFiles = countFiles(TREE);
+const srcFiles  = PACKAGES.reduce((n, p) => n + pkgStat(p.id, 'src'), 0);
+const testFiles = PACKAGES.reduce((n, p) => n + pkgStat(p.id, 'tests'), 0);
+
+function statCard(label, val, color) {
+  return `<div class="stat"><b style="color:${color}">${val}</b><span>${label}</span></div>`;
+}
+document.getElementById('statGrid').innerHTML =
+  statCard('可复用依赖包', PACKAGES.length, 'var(--accent)') +
+  statCard('src 源码文件', srcFiles, 'var(--green)') +
+  statCard('测试文件', testFiles, 'var(--amber)') +
+  statCard('文档(design docs)', countUnder('docs'), 'var(--text-2)') +
+  statCard('仓库级脚本', countUnder('scripts'), 'var(--accent-2)') +
+  statCard('agent 技能', countUnder('skills'), '#e879f9') +
+  statCard('全部文件(不含构建产物)', totalFiles, 'var(--muted)');
+document.getElementById('treeCount').textContent = `共 ${totalFiles} 个文件`;
+document.getElementById('pkgCount').textContent = `${PACKAGES.length} 个 @sakurachiyo0v0/* 包`;
+
+/* ===================== 依赖图(节点/边/分层由生成脚本自动布局后注入) ===================== */
+const GRAPH = {"nodes":[{"id":"cli-utils","x":40,"y":56,"w":150},{"id":"account","x":40,"y":124,"w":150},{"id":"bilibili-auth","x":40,"y":191,"w":150},{"id":"chat-platforms","x":40,"y":259,"w":150},{"id":"lol","x":40,"y":326,"w":150},{"id":"email","x":260,"y":56,"w":150},{"id":"ffmpeg","x":260,"y":326,"w":150},{"id":"netease-music","x":480,"y":56,"w":150},{"id":"bilibili","x":480,"y":326,"w":150},{"id":"dsh-sdk-tools","x":700,"y":178,"w":150}],"edges":[["cli-utils","email"],["cli-utils","ffmpeg"],["account","netease-music"],["cli-utils","netease-music"],["ffmpeg","netease-music"],["bilibili-auth","bilibili"],["cli-utils","bilibili"],["ffmpeg","bilibili"],["bilibili","dsh-sdk-tools"],["email","dsh-sdk-tools"],["ffmpeg","dsh-sdk-tools"],["lol","dsh-sdk-tools"],["netease-music","dsh-sdk-tools"]],"layers":[{"x":115,"label":"基础层"},{"x":335,"label":"SDK 层"},{"x":555,"label":"领域 SDK"},{"x":775,"label":"DSH 聚合"}],"width":890};
+const H = 44;
+function buildGraph() {
+  const svg = document.getElementById('depGraph');
+  const { nodes, edges, layers, width } = GRAPH || { nodes: [], edges: [], layers: [], width: 900 };
+  svg.setAttribute('viewBox', `0 0 ${width} 400`);
+  let s = `<defs><marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#44587d"/></marker></defs>`;
+  (layers || []).forEach(l => { s += `<text class="layer" x="${l.x}" y="18" text-anchor="middle">${l.label}</text>`; });
+  (edges || []).forEach(([from, to]) => {
+    const a = nodes.find(n => n.id === from), b = nodes.find(n => n.id === to);
+    if (!a || !b) return;
+    const sx = a.x + a.w, sy = a.y + H / 2;
+    const tx = b.x, ty = b.y + H / 2;
+    const dx = (tx - sx) / 2;
+    s += `<path class="edge" data-from="${from}" data-to="${to}" d="M${sx},${sy} C${sx + dx},${sy} ${tx - dx},${ty} ${tx},${ty}" marker-end="url(#arrow)"/>`;
+  });
+  (nodes || []).forEach(n => {
+    const col = pkgColor(n.id);
+    const cx = n.x + n.w / 2, cy = n.y + H / 2;
+    const fill = theme() === 'light' ? hexRgba(pkgColor(n.id), 0.09) : hexRgba(pkgColor(n.id), 0.14);
+    s += `<g class="gnode" data-id="${n.id}" tabindex="0" role="button" aria-label="包 ${n.id}" style="color:${col}">` +
+      `<title>${n.id} v${PKG[n.id]?.version || ''}</title>` +
+      `<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${H}" rx="10" fill="${fill}" stroke="${col}" stroke-width="1.4"/>` +
+      `<text class="n-name" x="${cx}" y="${cy - 2}" text-anchor="middle" fill="${col}">${n.id}</text>` +
+      `<text class="n-ver" x="${cx}" y="${cy + 12}" text-anchor="middle" fill="${col}">v${PKG[n.id]?.version || ''}</text>` +
+      `</g>`;
+  });
+  svg.innerHTML = s;
+  svg.querySelectorAll('.gnode').forEach(g => {
+    const id = g.dataset.id;
+    const hi = (on) => {
+      svg.querySelectorAll('.edge').forEach(e => e.classList.toggle('hl', on && (e.dataset.from === id || e.dataset.to === id)));
+      svg.querySelectorAll('.edge').forEach(e => e.classList.toggle('src', on && e.dataset.from === id));
+      svg.querySelectorAll('.gnode').forEach(o => o.classList.toggle('dim', on && o.dataset.id !== id));
+    };
+    g.addEventListener('mouseenter', () => hi(true));
+    g.addEventListener('mouseleave', () => hi(false));
+    g.addEventListener('focus', () => hi(true));
+    g.addEventListener('blur', () => hi(false));
+    g.addEventListener('click', () => document.getElementById('pkg-' + id).scrollIntoView({ behavior: 'smooth', block: 'center' }));
+  });
+  document.getElementById('edgeCount').textContent = `${(edges || []).length} 条依赖关系`;
+}
+buildGraph();
+
+/* ===================== 包卡片 ===================== */
+function pkgCard(p) {
+  const col = pkgColor(p.id);
+  const deps = p.deps.length
+    ? p.deps.map(d => `<a class="dep-chip" href="#pkg-${d}">${d}</a>`).join('')
+    : '<span style="font-size:12px;color:var(--muted)">无内部依赖(基础包)</span>';
+  const srcN = pkgStat(p.id, 'src'), tstN = pkgStat(p.id, 'tests');
+  return `<article class="pkg-card" id="pkg-${p.id}">
+    <div class="pkg-head">
+      <span class="pkg-dot" style="background:${col};box-shadow:0 0 8px ${hexRgba(col, .55)}"></span>
+      <span class="pkg-name"><code>@sakurachiyo0v0/${p.name}</code></span>
+      <span class="pkg-ver">v${p.version}</span>
+      <span class="pkg-status ok">可用</span>
+    </div>
+    <p class="pkg-desc">${p.desc}</p>
+    <div class="pkg-deps"><span class="lbl">依赖</span>${deps}</div>
+    <div class="pkg-foot">
+      <span>src <b>${srcN}</b></span>
+      <span>tests <b>${tstN}</b></span>
+      <span>构建产物 <b>ESM + CJS + d.ts</b></span>
+    </div>
+  </article>`;
+}
+document.getElementById('pkgGrid').innerHTML = PACKAGES.map(pkgCard).join('');
+
+/* ===================== 文档 / 脚本 / 技能 ===================== */
+function fileRow(name, sub, color) {
+  const fi = fileIcon(name);
+  return `<li><span class="ic" style="color:${color || fi.color}">${fi.svg}</span><span>${esc(name)}</span>${sub ? `<span class="sub">${sub}</span>` : ''}</li>`;
+}
+function collectUnder(pathArr, pred) {
+  let cur = TREE;
+  for (const seg of pathArr) {
+    cur = (cur.children || []).find(c => c.name === seg);
+    if (!cur) return [];
+  }
+  const out = [];
+  (function walk(n, rel) {
+    if (n.type === 'file') { if (!pred || pred(rel)) out.push({ name: n.name, rel }); return; }
+    (n.children || []).forEach(c => walk(c, rel ? rel + '/' + c.name : c.name));
+  })(cur, '');
+  return out;
+}
+const docsAll = collectUnder(['docs']);
+const docsMain = docsAll.filter(d => d.rel.split('/').length === 1);
+const docsSpec = docsAll.filter(d => d.rel.includes('specs/'));
+const docsPlan = docsAll.filter(d => d.rel.includes('plans/'));
+const scriptsAll = collectUnder(['scripts']);
+const skillsAll = collectUnder(['skills']);
+
+document.getElementById('metaGrid').innerHTML = `
+  <div class="meta-card">
+    <h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>docs / 设计文档</h3>
+    <ul>
+      ${docsMain.map(d => fileRow(d.name, '根文档')).join('')}
+      ${docsSpec.map(d => fileRow(d.name, 'specs')).join('')}
+      ${docsPlan.map(d => fileRow(d.name, 'plans')).join('')}
+    </ul>
+  </div>
+  <div class="meta-card">
+    <h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m13 2-2 7h7l-9 13 2-8H4z"/></svg>scripts / 仓库脚本</h3>
+    <ul>${scriptsAll.map(d => fileRow(d.name, 'mjs')).join('')}</ul>
+  </div>
+  <div class="meta-card">
+    <h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 2.7 5.5 6 .9-4.3 4.2 1 6-5.4-2.9L6.6 19.6l1-6L3.3 9.4l6-.9z"/></svg>skills / Agent 技能</h3>
+    <ul>${skillsAll.map(d => fileRow(d.name, 'SKILL.md', '#e879f9')).join('')}</ul>
+  </div>`;
+
+/* ===================== 主题切换 ===================== */
+const themeBtn = document.getElementById('themeToggle');
+function setTheme(t) {
+  document.documentElement.dataset.theme = t;
+  document.getElementById('iconMoon').style.display = t === 'dark' ? '' : 'none';
+  document.getElementById('iconSun').style.display = t === 'dark' ? 'none' : '';
+  try { localStorage.setItem('tsdk-theme', t); } catch (e) {}
+  buildGraph();          // 重绘以匹配主题配色
+  document.getElementById('pkgGrid').innerHTML = PACKAGES.map(pkgCard).join('');
+}
+themeBtn.addEventListener('click', () => setTheme(theme() === 'dark' ? 'light' : 'dark'));
+try {
+  const saved = localStorage.getItem('tsdk-theme');
+  if (saved === 'light' || saved === 'dark') setTheme(saved);
+  else setTheme('dark');
+} catch (e) { setTheme('dark'); }
+</script>
+</body>
+</html>

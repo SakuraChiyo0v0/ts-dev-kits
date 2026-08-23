@@ -11,6 +11,7 @@
                     "typecheck":  "pnpm -r --if-present typecheck",
                     "test":  "pnpm -r --if-present test",
                     "check":  "pnpm typecheck \u0026\u0026 pnpm test \u0026\u0026 pnpm build",
+                    "gen:structure":  "node scripts/gen-repo-structure.mjs",
                     "verify:email-package":  "node scripts/verify-email-package.mjs",
                     "verify:email-git-package":  "node scripts/verify-email-git-package.mjs",
                     "verify:lol-package":  "node scripts/verify-lol-package.mjs"
