@@ -14,7 +14,8 @@
                     "gen:structure":  "node scripts/gen-repo-structure.mjs",
                     "verify:email-package":  "node scripts/verify-email-package.mjs",
                     "verify:email-git-package":  "node scripts/verify-email-git-package.mjs",
-                    "verify:lol-package":  "node scripts/verify-lol-package.mjs"
+                    "verify:lol-package":  "node scripts/verify-lol-package.mjs",
+                    "verify:published":  "node scripts/verify-published-package.mjs"
                 },
     "devDependencies":  {
                             "@types/node":  "^26.1.2",

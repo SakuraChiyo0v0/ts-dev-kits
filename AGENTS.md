@@ -26,7 +26,14 @@ pnpm --filter @sakurachiyo0v0/ffmpeg test   # ffmpeg 包测试
 pnpm --filter @sakurachiyo0v0/ffmpeg build  # ffmpeg 包构建
 pnpm verify:email-package            # pack 后从临时消费项目验证导入
 pnpm verify:email-git-package        # git 子目录依赖方式验证安装
+pnpm verify:published @sakurachiyo0v0/<name>  # 发布后从 GitHub Packages 消费验证
 ```
+
+## 功能开发流程
+
+新增/修改 SDK 功能时按 **`docs/sdk-development-workflow.md`** 走完整流程:
+设计 spec → 实现 → 测试 → 文档 → CLI+skill 同步 → 版本 bump → `pnpm check`
+→ 提交(守卫自动拦)→ push → CI 发布 → `pnpm verify:published` 消费验证。
 
 ## 关键约定
 
@@ -60,10 +67,21 @@ pnpm verify:email-git-package        # git 子目录依赖方式验证安装
 ## 文档索引
 
 - `README.md` — 项目总览、快速开始、版本约定
+- `docs/sdk-development-workflow.md` — SDK 功能开发一条龙流程(设计→实现→测试→文档→skill→发布→验证)
 - `docs/packages-index.md` — 依赖包总览表 + 每包详情
 - `docs/package-template.md` — 新增依赖包的目录/文件/接线模板
-- `docs/superpowers/` — 设计与实现文档(方案、验收条件)
+- `docs/superpowers/` — 设计与实现文档(方案、验收条件);`specs/spec-template.md` 是 spec 模板
+- `skills/` — CLI 使用手册(`<name>-cli/SKILL.md`),给 AI 的 CLI 操作指南
 - 新增可复用包时:按模板创建,并更新 `docs/packages-index.md`。
+
+## CLI 与 skill 联动
+
+- 每个带 CLI 的包(`packages/<name>/src/cli/*.ts`)对应一个 `skills/<name>-cli/SKILL.md`。
+- **改了 CLI 命令(新增/改名/删除/参数/语义)必须同步 skill**,否则:
+  - pre-commit 的 `scripts/check-skill-staleness.mjs` 会因命令集不一致**阻止提交**;
+  - 参数/语义变化(命令名不变)会触发 mtime **警告**,需人工检查。
+- 对照表(如编码 id)以源码 `types.ts` 枚举为权威,skill 只引用不另造。
+- 确认为临时跳过可用 `git commit --no-verify`,但 skill 长期不同步会导致 AI 按旧手册操作出错。
 
 ## 已知环境注意事项
 
