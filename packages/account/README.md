@@ -1,6 +1,6 @@
 # @sakurachiyo0v0/account
 
-跨平台账号认证底座:登录态存储、扫码登录骨架与公共错误模型。**不感知具体平台**——网易云、B 站、酷狗、QQ 音乐等平台的登录方式差异收敛在各自的 `QrLoginAdapter` 实现里,登录流程、存储、CLI 全复用。
+跨平台账号认证底座:登录态存储、扫码登录骨架、密码登录骨架与公共错误模型。**不感知具体平台**——网易云、B 站、酷狗、QQ 音乐等平台的登录方式差异收敛在各自的适配器实现里,登录流程、存储、CLI 全复用。
 
 ## 安装
 
@@ -77,10 +77,51 @@ interface QrLoginAdapter {
 
 新平台接入 = 实现这 5 个方法(扫码登录平台)或仅 `serialize`/`deserialize`(直接注入凭证的平台),登录窗口、轮询、存储、错误模型全部复用。
 
+### `passwordLogin(options)` → `Promise<LoginResult>`
+
+密码登录骨架(与 `qrcodeLogin` 平行),支持 2FA 交互:
+
+| 选项 | 说明 | 默认 |
+| --- | --- | --- |
+| `adapter` | 平台适配器(必填,见下) | — |
+| `username` / `password` | 用户名与密码(必填) | — |
+| `onNeedCode` | 需要 2FA 时取验证码的回调 `({ method, message, attempt }) => string` | 无(缺省抛 `TWO_FACTOR_REQUIRED`) |
+| `store` | 登录态存储;登录成功自动持久化 | 不持久化 |
+| `maxCodeAttempts` | 2FA 验证码最大重试次数 | `3` |
+| `fetchImpl` | 注入 fetch(测试用) | 全局 fetch |
+| `onStatus` | 进度回调 `{ state, message }`(`submitting` / `need_code` / `success` / `failed`) | — |
+
+流程:`adapter.login(username, password)` → 若 `need_code` 循环取码验证 → 成功可选落盘。验证码超过 `maxCodeAttempts` 或取码为空抛 `AccountError("TWO_FACTOR_FAILED")`。
+
+### `PasswordLoginAdapter`(密码登录平台适配器契约)
+
+```ts
+interface PasswordLoginAdapter {
+  platform: string;                     // 决定 AuthStore 默认路径
+  login(
+    { username, password },
+    fetchImpl,
+  ): Promise<
+    | { status: "success"; credentials: PlatformCredentials }
+    | { status: "need_code"; challengeId: string; method: string; message: string }
+  >;
+  verifyCode(
+    { challengeId, method },
+    code,
+    fetchImpl,
+  ): Promise<PasswordLoginStep>;       // 成功或新的 need_code(重试)
+  refresh?(credentials, fetchImpl): Promise<PlatformCredentials>;  // 可选续期
+  serialize(credentials, savedAt): AuthPayload;
+  deserialize(payload): PlatformCredentials | null;
+}
+```
+
+新密码登录平台接入 = 实现这 5 个方法(VRChat 即如此,见 `@sakurachiyo0v0/vrchat`),2FA 交互、重试上限、存储、错误模型全部复用。
+
 ### 其它
 
 - `resolveConfigRoot()` / `defaultAuthPath(platform)` — 配置目录解析(Windows `%APPDATA%` / macOS `~/Library/Application Support` / Linux `$XDG_CONFIG_HOME`,支持 `AMECHAN_CONFIG_HOME` 覆盖)
-- `AccountError` — 错误码 `NETWORK` / `API_ERROR` / `AUTH_EXPIRED` / `LOGIN_REQUIRED` / `UNKNOWN`,消息不泄露凭据
+- `AccountError` — 错误码 `NETWORK` / `API_ERROR` / `AUTH_EXPIRED` / `LOGIN_REQUIRED` / `UNKNOWN` / `INVALID_CREDENTIALS` / `TWO_FACTOR_REQUIRED` / `TWO_FACTOR_FAILED`,消息不泄露凭据
 
 ## 验证
 

@@ -21,3 +21,11 @@ export type {
   QrLoginAdapter,
   QrLoginOptions,
 } from "./types.js";
+
+// 密码登录骨架(追加,不修改现有导出)
+export { passwordLogin } from "./password-flow.js";
+export type {
+  PasswordLoginAdapter,
+  PasswordLoginOptions,
+  PasswordLoginStep,
+} from "./password-flow.js";

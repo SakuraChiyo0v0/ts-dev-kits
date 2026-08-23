@@ -4,7 +4,11 @@ export type AccountErrorCode =
   | "API_ERROR"
   | "AUTH_EXPIRED"
   | "LOGIN_REQUIRED"
-  | "UNKNOWN";
+  | "UNKNOWN"
+  // 密码登录骨架新增(追加,不修改现有行)
+  | "INVALID_CREDENTIALS"
+  | "TWO_FACTOR_REQUIRED"
+  | "TWO_FACTOR_FAILED";
 
 /** 认证底座统一错误类型。 */
 export class AccountError extends Error {
