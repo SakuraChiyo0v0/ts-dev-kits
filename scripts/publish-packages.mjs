@@ -17,6 +17,17 @@ import { readFileSync } from "node:fs";
 const REGISTRY = "https://npm.pkg.github.com/";
 const NPM = process.platform === "win32" ? "npm.cmd" : "npm";
 
+/**
+ * 运行命令:参数走数组(不拼接 shell 字符串,避免 DEP0190 与注入风险)。
+ * Windows 上 .cmd 包装器需经 cmd /c 显式执行。
+ */
+function spawnCommand(command, args, options = {}) {
+  if (process.platform === "win32") {
+    return spawnSync("cmd", ["/c", command, ...args], options);
+  }
+  return spawnSync(command, args, options);
+}
+
 // [包名, 目录] —— 依赖图单向无环,被依赖者先发布。
 const PACKAGES = [
   ["@sakurachiyo0v0/cli-utils", "packages/cli-utils"],
@@ -33,10 +44,10 @@ const PACKAGES = [
 
 /** 查询包在 registry 上已发布的版本;未发布返回 undefined。 */
 function publishedVersion(name) {
-  const result = spawnSync(
+  const result = spawnCommand(
     NPM,
     ["view", name, "version", "--registry", REGISTRY],
-    { encoding: "utf8", shell: true },
+    { encoding: "utf8" },
   );
   if (result.status !== 0) {
     return undefined; // 404:从未发布
@@ -57,9 +68,8 @@ for (const [name, directory] of PACKAGES) {
   }
 
   console.log(`\n=== publishing ${name}@${local} (remote: ${remote ?? "none"}) ===`);
-  const result = spawnSync("pnpm", ["--filter", name, "publish", "--no-git-checks"], {
+  const result = spawnCommand("pnpm", ["--filter", name, "publish", "--no-git-checks"], {
     stdio: "inherit",
-    shell: true,
   });
   if (result.status !== 0) {
     console.error(`FAILED: ${name} (exit ${result.status ?? "signal"})`);
