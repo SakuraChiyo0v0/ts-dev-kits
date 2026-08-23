@@ -32,3 +32,9 @@ fi
 if [ -f scripts/check-package-bumps.mjs ]; then
   node scripts/check-package-bumps.mjs
 fi
+
+# CLI skill 同步守卫:CLI 命令变化但 skills/*/SKILL.md 未同步 -> 阻止提交
+# 确认为临时跳过可用 git commit --no-verify
+if [ -f scripts/check-skill-staleness.mjs ]; then
+  node scripts/check-skill-staleness.mjs
+fi
