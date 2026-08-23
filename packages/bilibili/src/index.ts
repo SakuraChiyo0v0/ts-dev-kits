@@ -9,6 +9,7 @@ export {
   ApiSession,
   WbiSigner,
 } from "./network.js";
+export { bilibiliQrAdapter, parseCookieString, type BilibiliCredentials } from "./auth/index.js";
 export { downloadStream, filterPcdnUrls, resolveDownloadUrl } from "./download.js";
 export { VideoParser } from "./parsers/video.js";
 export { BangumiParser } from "./parsers/bangumi.js";

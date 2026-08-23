@@ -11,7 +11,8 @@ import {
   printHelp,
   requireString,
 } from "@sakurachiyo0v0/cli-utils";
-import { AuthStore, qrcodeLogin } from "@sakurachiyo0v0/bilibili-auth";
+import { AuthStore, qrcodeLogin } from "@sakurachiyo0v0/account";
+import { bilibiliQrAdapter } from "../auth/index.js";
 import { createBilibiliClient } from "../index.js";
 
 const USAGE = "Usage: amechan-bilibili <command> [options]";
@@ -70,27 +71,33 @@ async function main(): Promise<void> {
 
     case "login": {
       const authPath = getString(args, "auth-path") ?? process.env.BILI_AUTH_PATH;
-      const store = new AuthStore(authPath);
+      const store = new AuthStore({
+        platform: "bilibili",
+        ...(authPath !== undefined ? { path: authPath } : {}),
+      });
       const noBrowser = getBool(args, "no-browser");
       const timeoutSec = getNumber(args, "timeout");
       outputText(noBrowser ? "登录:打印二维码地址,请手动打开扫码" : "登录:正在打开浏览器窗口,请用哔哩哔哩 App 扫码...");
       const result = await qrcodeLogin({
+        adapter: bilibiliQrAdapter(),
+        store,
         autoOpenBrowser: !noBrowser,
         ...(timeoutSec !== undefined ? { timeoutMs: timeoutSec * 1000 } : {}),
       });
-      const savedAt = new Date().toISOString();
-      await store.save({
-        cookies: result.cookies,
-        refreshToken: result.refreshToken,
-        savedAt,
-      });
-      outputJson({ ok: true, authPath: store.path, savedAt });
+      if (result.saved) {
+        outputJson({ ok: true, authPath: store.path, savedAt: new Date().toISOString() });
+      } else {
+        outputJson({ ok: true, credentials: result.credentials });
+      }
       return;
     }
 
     case "logout": {
       const authPath = getString(args, "auth-path") ?? process.env.BILI_AUTH_PATH;
-      const store = new AuthStore(authPath);
+      const store = new AuthStore({
+        platform: "bilibili",
+        ...(authPath !== undefined ? { path: authPath } : {}),
+      });
       await store.clear();
       outputJson({ ok: true, authPath: store.path });
       return;
@@ -98,9 +105,12 @@ async function main(): Promise<void> {
 
     case "status": {
       const authPath = getString(args, "auth-path") ?? process.env.BILI_AUTH_PATH;
-      const store = new AuthStore(authPath);
-      const data = await store.load();
-      if (data === null) {
+      const store = new AuthStore({
+        platform: "bilibili",
+        ...(authPath !== undefined ? { path: authPath } : {}),
+      });
+      const payload = await store.load();
+      if (payload === null) {
         outputJson({ ok: true, loggedIn: false, authPath: store.path });
         return;
       }
@@ -108,8 +118,8 @@ async function main(): Promise<void> {
         ok: true,
         loggedIn: true,
         authPath: store.path,
-        savedAt: data.savedAt,
-        ...(data.expiresAt !== undefined ? { expiresAt: data.expiresAt } : {}),
+        savedAt: payload.savedAt,
+        ...(payload.expiresAt !== undefined ? { expiresAt: payload.expiresAt } : {}),
       });
       return;
     }

@@ -6,7 +6,7 @@
 
 个人 TypeScript 开发工具 monorepo,用 pnpm workspace 组织。私有 GitHub 仓库 `SakuraChiyo0v0/ts-dev-kits`,暂不发布到公共 npm registry。
 
-- `packages/*` — 可复用依赖包(`@sakurachiyo0v0/<name>`;当前有 `cli-utils`、`bilibili-auth`、`email`、`ffmpeg`、`bilibili`、`chat-platforms`、`lol`)
+- `packages/*` — 可复用依赖包(`@sakurachiyo0v0/<name>`;当前有 `cli-utils`、`account`、`email`、`ffmpeg`、`bilibili`、`netease-music`、`chat-platforms`、`lol`、`dsh-sdk-tools`)
 - `docs/` — 设计文档、规范、包索引与模板
 - `scripts/` — 仓库级验证脚本
 

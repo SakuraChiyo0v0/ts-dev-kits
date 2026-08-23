@@ -69,7 +69,7 @@ amechan-bilibili logout    # 清除登录态
 
 SDK 侧,`createBilibiliClient` 未传 `cookie` 时自动从登录态存储加载(显式 `cookie` 优先),可用 `authPath` 指定存储文件。
 
-> 登录实现(二维码/状态机/存储/续期)在独立包 [`@sakurachiyo0v0/bilibili-auth`](../../bilibili-auth/README.md):`qrcodeLogin()` / `AuthStore` / `refreshCookies()` 等可直接调用。
+> 登录实现内聚于本包:扫码登录适配器 `bilibiliQrAdapter()` 复用 [`@sakurachiyo0v0/account`](../../account/README.md) 的通用底座(`qrcodeLogin` / `AuthStore` / 续期钩子),与网易云音乐共用同一套登录态管理逻辑。
 
 ## 下载器配置
 

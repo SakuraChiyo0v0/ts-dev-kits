@@ -45,7 +45,6 @@ const PKG_DIR = join(ROOT, 'packages');
 /** 新增包时在此补一行描述(不补则用兜底文案)。 */
 const DESCRIPTIONS = {
   'cli-utils': '各 SDK CLI 共享的解析 / 输出 / 错误工具,是多数包的公共底座。',
-  'bilibili-auth': 'B 站扫码登录:二维码弹窗、登录态存储、refresh_token 自动续期。',
   'account': '跨平台账号认证底座:登录态存储、扫码登录骨架与公共错误模型,不感知具体平台。',
   'chat-platforms': '统一聊天平台接入 SDK:消息模型 + 适配器注册表,当前内置飞书适配器(WebSocket / Webhook)。',
   'lol': '英雄联盟 LCU 本地能力 SDK:召唤师 / 战绩 / 段位 / 对局流程 / 选人 / 游戏数据 / 事件订阅。',
@@ -57,7 +56,7 @@ const DESCRIPTIONS = {
 };
 /** 新增包时可在 COLORS 里指定主题色,否则从 FALLBACK_COLORS 顺序取色。 */
 const COLORS = {
-  'cli-utils': '#38bdf8', 'bilibili-auth': '#fbbf24', 'account': '#fb923c',
+  'cli-utils': '#38bdf8', 'account': '#fb923c',
   'chat-platforms': '#34d399', 'lol': '#a78bfa', 'email': '#f472b6',
   'ffmpeg': '#22d3ee', 'bilibili': '#60a5fa', 'netease-music': '#f87171',
   'dsh-sdk-tools': '#e879f9'

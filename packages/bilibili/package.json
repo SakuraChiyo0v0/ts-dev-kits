@@ -35,7 +35,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@sakurachiyo0v0/bilibili-auth": "workspace:*",
+    "@sakurachiyo0v0/account": "workspace:*",
     "@sakurachiyo0v0/cli-utils": "workspace:*",
     "@sakurachiyo0v0/ffmpeg": "workspace:*"
   },

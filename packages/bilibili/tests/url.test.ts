@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseCookieString } from "@sakurachiyo0v0/bilibili-auth";
+import { parseCookieString } from "../src/auth/cookie.js";
 import { parseUrl } from "../src/index.js";
 
 describe("parseUrl", () => {

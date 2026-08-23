@@ -28,7 +28,11 @@ async function tempAuthFile(data: {
   const file = path.join(dir, "auth.json");
   await fs.writeFile(
     file,
-    JSON.stringify({ ...data, savedAt: new Date().toISOString() }),
+    JSON.stringify({
+      platform: "bilibili",
+      credentials: { cookies: data.cookies, refreshToken: data.refreshToken },
+      savedAt: new Date().toISOString(),
+    }),
     "utf-8",
   );
   return file;
@@ -105,6 +109,43 @@ describe("createBilibiliClient 登录态自动加载", () => {
     });
     const items = await client.parse("https://www.bilibili.com/video/BV1xx411c7mD");
     expect(items[0]?.title).toBe("测试视频");
+  });
+
+  it("兼容老格式 auth.json(顶层 cookies/refreshToken)并迁移为新格式", async () => {
+    // 老格式:bilibili-auth 的 AuthData,凭证在顶层。
+    const dir = await fs.mkdtemp(path.join(tmpdir(), "bili-client-auth-"));
+    tempDirs.push(dir);
+    const file = path.join(dir, "auth.json");
+    await fs.writeFile(
+      file,
+      JSON.stringify({
+        cookies: "SESSDATA=legacy-sess; bili_jct=legacy-jct",
+        refreshToken: "legacy-rt",
+        savedAt: new Date().toISOString(),
+      }),
+      "utf-8",
+    );
+    mock = await startMockApi({
+      "/x/web-interface/nav": () => ({
+        wbi_img: {
+          img_url: "https://i0.hdslb.com/bfs/wbi/7cd0849410c1a048bf5d4e47a4e1e1c9.png",
+          sub_url: "https://i0.hdslb.com/bfs/wbi/4932caff0ff746eab6f01bf08b70ac45.png",
+        },
+      }),
+      "/x/web-interface/wbi/view": () => videoData,
+    });
+    const client = createBilibiliClient({ authPath: file, baseUrl: mock.url });
+    const items = await client.parse("https://www.bilibili.com/video/BV1xx411c7mD");
+    expect(items[0]?.title).toBe("测试视频");
+    const viewRequest = mock.requests.find((r) => r.path.includes("/x/web-interface/wbi/view"));
+    expect(viewRequest?.headers.cookie).toContain("SESSDATA=legacy-sess");
+    // 迁移后文件被改写为新格式。
+    const migrated = JSON.parse(await fs.readFile(file, "utf-8")) as {
+      platform?: string;
+      credentials?: { cookies?: string };
+    };
+    expect(migrated.platform).toBe("bilibili");
+    expect(migrated.credentials?.cookies).toContain("SESSDATA=legacy-sess");
   });
 });
 

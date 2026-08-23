@@ -1,5 +1,8 @@
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import path from "node:path";
+import { AuthStore, type AuthPayload } from "@sakurachiyo0v0/account";
 import { createFfmpegClient } from "@sakurachiyo0v0/ffmpeg";
-import { AuthStore, refreshCookies, type AuthData } from "@sakurachiyo0v0/bilibili-auth";
+import { bilibiliQrAdapter, type BilibiliCredentials } from "./auth/index.js";
 import { BilibiliError } from "./errors.js";
 import { ApiSession } from "./network.js";
 import { downloadStream } from "./download.js";
@@ -47,31 +50,44 @@ export class BilibiliClient {
     Pick<BilibiliClientOptions, "download">;
 
   constructor(options: BilibiliClientOptions = {}) {
-    // 显式 cookie 优先;未传时从登录态存储自动加载。
+    // 显式 cookie 优先;未传时从登录态存储自动加载(复用 account 底座)。
+    const adapter = bilibiliQrAdapter();
     let cookie = options.cookie;
     let authStore: AuthStore | undefined;
-    let authData: AuthData | null = null;
+    let credentials: BilibiliCredentials | null = null;
     if (cookie === undefined) {
-      authStore = new AuthStore(options.authPath);
-      authData = authStore.loadSync();
-      cookie = authData?.cookies;
+      authStore = new AuthStore({
+        platform: "bilibili",
+        ...(options.authPath !== undefined ? { path: options.authPath } : {}),
+      });
+      let payload = authStore.loadSync();
+      if (payload === null && authStore.exists()) {
+        // 兼容老格式(bilibili-auth AuthData 顶层字段):迁移为新 AuthPayload 并写回。
+        payload = migrateLegacyAuthFile(authStore.path);
+      }
+      credentials =
+        payload === null ? null : (adapter.deserialize(payload) as BilibiliCredentials | null);
+      cookie = credentials?.cookies;
     }
     this.#session = new ApiSession({
       ...(cookie !== undefined ? { cookie } : {}),
       ...(options.userAgent !== undefined ? { userAgent: options.userAgent } : {}),
       ...(options.baseUrl !== undefined ? { baseUrl: options.baseUrl } : {}),
     });
-    if (authStore !== undefined && authData !== null) {
+    if (authStore !== undefined && credentials !== null) {
       // 登录态失效(-101)时自动续期一次并重试。
       const store = authStore;
       this.#session.onAuthFailure = async () => {
-        const current = authData;
+        const current = credentials;
         if (current === null) return false;
         try {
-          const refreshed = await refreshCookies(current);
+          const refreshed = (await adapter.refresh?.(current, fetch)) as
+            | BilibiliCredentials
+            | undefined;
+          if (refreshed === undefined) return false;
           this.#session.setCookie(refreshed.cookies);
-          await store.save(refreshed);
-          authData = refreshed;
+          await store.save(adapter.serialize(refreshed, new Date().toISOString()));
+          credentials = refreshed;
           return true;
         } catch {
           return false;
@@ -238,4 +254,60 @@ function sanitizeFilename(name: string): string {
 /** 便捷工厂。 */
 export function createBilibiliClient(options?: BilibiliClientOptions): BilibiliClient {
   return new BilibiliClient(options);
+}
+
+/**
+ * 兼容老格式 auth.json(bilibili-auth 的 AuthData:顶层 cookies/refreshToken 字段),
+ * 迁移为新 AuthPayload 并原子写回。返回新 payload;文件不存在/不是老格式返回 null。
+ */
+function migrateLegacyAuthFile(filePath: string): AuthPayload | null {
+  let text: string;
+  try {
+    text = readFileSync(filePath, "utf-8");
+  } catch {
+    return null;
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text) as unknown;
+  } catch {
+    return null;
+  }
+  const record = (typeof parsed === "object" && parsed !== null ? parsed : {}) as Record<
+    string,
+    unknown
+  >;
+  if (
+    typeof record.cookies !== "string" ||
+    record.cookies === "" ||
+    typeof record.refreshToken !== "string" ||
+    record.refreshToken === ""
+  ) {
+    return null;
+  }
+  const payload: AuthPayload = {
+    platform: "bilibili",
+    credentials: {
+      cookies: record.cookies,
+      refreshToken: record.refreshToken,
+      ...(typeof record.buvid3 === "string" && record.buvid3 !== ""
+        ? { buvid3: record.buvid3 }
+        : {}),
+    },
+    savedAt: typeof record.savedAt === "string" ? record.savedAt : new Date().toISOString(),
+    ...(typeof record.expiresAt === "string" && record.expiresAt !== ""
+      ? { expiresAt: record.expiresAt }
+      : {}),
+  };
+  // 原子写回新格式(tmp + rename),失败不阻塞(下次 login 会重写)。
+  try {
+    const dir = path.dirname(filePath);
+    mkdirSync(dir, { recursive: true });
+    const tmp = `${filePath}.${process.pid}.tmp`;
+    writeFileSync(tmp, JSON.stringify(payload, null, 2), "utf-8");
+    renameSync(tmp, filePath);
+  } catch {
+    // 写回失败仅影响下次读取,忽略。
+  }
+  return payload;
 }
