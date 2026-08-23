@@ -7,7 +7,6 @@
 | 名称 | 用途 | 状态 |
 | --- | --- | --- |
 | `@sakurachiyo0v0/cli-utils` | 各 SDK CLI 共享的解析/输出/错误工具 | 可用 |
-| `@sakurachiyo0v0/bilibili-auth` | B 站扫码登录(二维码弹窗/登录态存储/refresh_token 续期) | 可用 |
 | `@sakurachiyo0v0/ffmpeg` | FFmpeg/ffprobe 进程封装与媒体处理函数 | 可用 |
 | `@sakurachiyo0v0/email` | 与供应商解耦的 Node.js 邮件 SDK | SMTP 适配器可用 |
 | `@sakurachiyo0v0/bilibili` | B 站视频下载 SDK(解析/取流/下载/ffmpeg 合并) | 可用(投稿视频) |
@@ -62,7 +61,7 @@ pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/e
 
 ## 发布流程(GitHub Packages + CI 自动发布)
 
-所有包发布到 **GitHub Packages**(`npm.pkg.github.com`,仓库公开,安装方无需 token)。发布由 **CI 自动完成**:push 到 `main` 时,`.github/workflows/publish.yml` 会检测各包本地版本与已发布版本,有变化的按依赖顺序(`cli-utils → bilibili-auth → ffmpeg → email → bilibili → chat-platforms`)自动发布,并把 `workspace:*` 依赖转成实际版本号。
+所有包发布到 **GitHub Packages**(`npm.pkg.github.com`,仓库公开,安装方无需 token)。发布由 **CI 自动完成**:push 到 `main` 时,`.github/workflows/publish.yml` 会检测各包本地版本与已发布版本,有变化的按依赖顺序(`cli-utils → account → email → ffmpeg → lol → netease-music → bilibili → chat-platforms → dsh-sdk-tools`)自动发布,并把 `workspace:*` 依赖转成实际版本号。
 
 ### ⚠️ 更新包必须按需 bump 版本号
 
@@ -84,7 +83,7 @@ git push origin main     # CI 自动检测并发布
 ```
 
 ```powershell
-pnpm add @sakurachiyo0v0/bilibili          # 自动带上 bilibili-auth / cli-utils / ffmpeg
+pnpm add @sakurachiyo0v0/bilibili          # 自动带上 account / cli-utils / ffmpeg
 pnpm add @sakurachiyo0v0/email
 ```
 

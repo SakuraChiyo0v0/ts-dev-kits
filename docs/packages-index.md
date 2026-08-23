@@ -13,8 +13,7 @@
 | --- | --- | --- | --- | --- |
 | `@sakurachiyo0v0/email` | 0.1.0 | 与供应商解耦的 Node.js 邮件 SDK | 可用（SMTP 适配器） | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/email` |
 | `@sakurachiyo0v0/ffmpeg` | 0.1.0 | FFmpeg/ffprobe 进程封装 + 媒体处理高层函数 | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/ffmpeg` |
-| `@sakurachiyo0v0/bilibili` | 0.1.0 | B 站视频下载 SDK(解析/取流/下载/ffmpeg 合并) | 可用(投稿视频) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/bilibili` |
-| `@sakurachiyo0v0/bilibili-auth` | 0.1.0 | B 站扫码登录(二维码弹窗/登录态存储/refresh_token 续期) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/bilibili-auth` |
+| `@sakurachiyo0v0/bilibili` | 0.1.0 | B 站视频下载 SDK(解析/取流/下载/ffmpeg 合并,扫码登录内聚复用 account 底座) | 可用(投稿视频) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/bilibili` |
 | `@sakurachiyo0v0/chat-platforms` | 0.1.0 | 统一聊天平台接入 SDK(消息模型/适配器注册表,当前飞书) | 可用(飞书, websocket/webhook) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/chat-platforms` |
 | `@sakurachiyo0v0/lol` | 0.1.0 | 英雄联盟 LCU 本地能力 SDK(召唤师/战绩/段位/对局流程/游戏数据/事件) | 可用(查询+对局感知, 国服 SGP) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/lol` |
 | `@sakurachiyo0v0/account` | 0.1.0 | 跨平台账号认证底座(登录态存储/扫码登录骨架/错误模型) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/account` |
@@ -169,14 +168,15 @@ B 站视频下载 SDK。解析视频信息、获取播放流、可配置下载�
 
 **核心接口：**
 
-- `createBilibiliClient({ cookie?, authPath?, download?, merge? })` — 创建客户端;未传 cookie 时自动从登录态存储加载(`authPath` 来自 `@sakurachiyo0v0/bilibili-auth`)
+- `createBilibiliClient({ cookie?, authPath?, download?, merge? })` — 创建客户端;未传 cookie 时自动从登录态存储加载(`authPath` 复用 `@sakurachiyo0v0/account` 底座,默认 `<配置根>/amechan/bilibili/auth.json`)
 - `client.parse(url)` — 解析 B 站链接,返回 `MediaItem[]`(第一版支持投稿视频/BV/av,其余类型第二版)
 - `client.getStreams(item, { quality?, codec? })` — 获取 DASH/MP4 播放流,支持清晰度与编码选择
 - `client.download(item, { outputDir, quality?, onProgress? })` — 下载并合并,返回文件路径
+- `bilibiliQrAdapter()` — B 站扫码登录适配器(`QrLoginAdapter` 实现,复用 `@sakurachiyo0v0/account` 的扫码骨架/存储/续期)
 - 下载器可配置:并发数/分块大小/重试/限速/断点续传/CDN 过滤
-- `BilibiliError` — 统一错误码:`NETWORK` / `API_ERROR` / `INVALID_URL` / `LOGIN_REQUIRED` / `DOWNLOAD_FAILED` / `MERGE_FAILED` / `UNSUPPORTED_TYPE`
+- `BilibiliError` — 统一错误码:`NETWORK` / `API_ERROR` / `INVALID_URL` / `LOGIN_REQUIRED` / `AUTH_EXPIRED` / `DOWNLOAD_FAILED` / `MERGE_FAILED` / `UNSUPPORTED_TYPE`
 
-**WBI 签名内置**,自动处理 img_key/sub_key 获取与签名;高画质需登录,扫码登录见 [`@sakurachiyo0v0/bilibili-auth`](#amechanbilibili-auth)。
+**WBI 签名内置**,自动处理 img_key/sub_key 获取与签名;高画质需登录。扫码登录内聚于本包:`bilibiliQrAdapter()` 配合 account 的 `qrcodeLogin`(本地窗口 + 浏览器弹窗 + 自动落盘),登录态失效时自动 `refresh` 续期。兼容旧版独立登录包(bilibili-auth)留下的老格式 auth.json,首次读取自动迁移为新格式。
 
 **安装方式：**
 
@@ -209,45 +209,6 @@ pnpm --filter @sakurachiyo0v0/bilibili build  # 构建 ESM + CJS + d.ts
 ```
 
 **更多细节：** [`packages/bilibili/README.md`](../packages/bilibili/README.md)
-
-### `@sakurachiyo0v0/bilibili-auth`
-
-B 站扫码登录模块,与视频解析/下载解耦的独立包。核心流程:本地 HTTP 页面 + 系统浏览器弹窗展示二维码 → 手机 App 扫码确认 → 自动收集 Set-Cookie 与 refresh_token → 持久化到平台用户配置目录(权限 600)→ 后续用 refresh_token 自动续期,无需重复扫码。
-
-**适用环境：** Node.js 20+,桌面环境(需要打开浏览器);无头环境可用 `autoOpenBrowser: false` 仅打印扫码链接。
-
-**核心接口：**
-
-- `qrcodeLogin({ autoOpenBrowser?, timeoutMs?, fetchImpl?, onStatus? })` — 执行扫码登录,返回 `{ cookies, refreshToken }`
-- `AuthStore` — 登录态持久化:`save()` / `load()` / `loadSync()` / `clear()`,默认路径 `<配置根>/amechan/bilibili/auth.json`
-- `defaultAuthPath()` / `resolveConfigRoot()` — 平台配置目录解析(Windows `%APPDATA%` / macOS `~/Library/Application Support` / Linux `$XDG_CONFIG_HOME`,支持 `AMECHAN_CONFIG_HOME` 覆盖)
-- `refreshCookies(data, fetchImpl?)` — 用 refresh_token 换新 cookie 并合并返回
-- `BilibiliAuthError` — 错误码:`NETWORK` / `API_ERROR` / `AUTH_EXPIRED` / `LOGIN_REQUIRED` / `UNKNOWN`
-
-`@sakurachiyo0v0/bilibili` 的 `createBilibiliClient` 未传 cookie 时自动用 `AuthStore` 加载登录态,API 失效(-101)时自动 `refreshCookies` 续期并重试一次。
-
-**安装方式：**
-
-GitHub Packages(推荐,需配置一次 `.npmrc`,见 [`GITHUB_PACKAGES.md`](GITHUB_PACKAGES.md)):
-
-```powershell
-pnpm add @sakurachiyo0v0/bilibili-auth
-```
-
-同一 pnpm workspace 内:
-
-```powershell
-pnpm add @sakurachiyo0v0/bilibili-auth@workspace:*
-```
-
-**在仓库内的验证方式：**
-
-```powershell
-pnpm --filter @sakurachiyo0v0/bilibili-auth test   # mock passport 验证登录状态机/存储/续期
-pnpm --filter @sakurachiyo0v0/bilibili-auth build  # 构建 ESM + CJS + d.ts
-```
-
-**更多细节：** [`packages/bilibili-auth/README.md`](../packages/bilibili-auth/README.md)
 
 ### `@sakurachiyo0v0/chat-platforms`
 

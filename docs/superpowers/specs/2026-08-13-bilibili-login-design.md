@@ -1,6 +1,6 @@
 # `@sakurachiyo0v0/bilibili` 扫码登录模块设计
 
-状态:用户已批准
+状态:用户已批准(2026-08-13);**2026-08-23 已迁移**:登录实现迁入 bilibili 包并复用 `@sakurachiyo0v0/account` 底座,独立包 `bilibili-auth` 已删除,见 [`2026-08-23-bilibili-login-migration-design.md`](2026-08-23-bilibili-login-migration-design.md)
 日期:2026-08-13
 
 ## 1. 当前问题与目标

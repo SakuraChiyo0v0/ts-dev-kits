@@ -2,6 +2,7 @@
 
 状态:用户已批准
 日期:2026-08-23
+> **2026-08-23 更新**:§11 预告的 bilibili 登录迁移已完成——bilibili 登录适配为 account 的 `QrLoginAdapter`(含 `refresh?` 续期钩子)并内聚于 bilibili 包,独立包 `bilibili-auth` 已删除,详见 [`2026-08-23-bilibili-login-migration-design.md`](2026-08-23-bilibili-login-migration-design.md)。
 
 ## 1. 当前问题与目标
 

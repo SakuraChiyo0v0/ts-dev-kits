@@ -5,7 +5,7 @@
 
 ## 1. 当前问题与目标
 
-仓库已有 9 个功能包(`@sakurachiyo0v0/*`:bilibili、netease-music、ffmpeg、email、lol、account、bilibili-auth、chat-platforms、cli-utils),都是 Node SDK,能力完整但没有接入 DeepSeek Harness(DSH)。用户在 DSH 里想让 agent 直接调用这些 SDK,但**大部分功能只有特定场景才用,不希望常驻工具列表干扰上下文、消耗 token**。
+仓库已有 8 个功能包(`@sakurachiyo0v0/*`:bilibili、netease-music、ffmpeg、email、lol、account、chat-platforms、cli-utils),都是 Node SDK,能力完整但没有接入 DeepSeek Harness(DSH)。用户在 DSH 里想让 agent 直接调用这些 SDK,但**大部分功能只有特定场景才用,不希望常驻工具列表干扰上下文、消耗 token**。
 
 经与用户确认,方案定为 **Agent 预设(方案 A)**:新建一个 DSH 插件包,把本仓库功能包包装成 agent 工具;再提供一个专门的预设,选中该预设的会话才拥有全套功能包工具,其余会话(默认"标准模式")完全不受影响、零额外 token。
 
@@ -14,7 +14,7 @@
 - `packages/dsh-sdk-tools` — DSH host 插件包:把 bilibili、netease-music、ffmpeg、email、lol 包装成 `defineTool` 工具;
 - 随包分发一个预设模板 `ts-dev-kits`:挂载 dsh-sdk-tools 并启用全部功能包,作为"专门使用本仓库包能力的 agent"组合。
 
-**明确不做(首期):** 会话内动态启用(`enable_capability` 管理器)、client/Web 面、修改 DSH 本体、改造 chat-platforms / cli-utils / account / bilibili-auth 为独立工具(它们是底座或被依赖方,见 §4.3)。
+**明确不做(首期):** 会话内动态启用(`enable_capability` 管理器)、client/Web 面、修改 DSH 本体、改造 chat-platforms / cli-utils / account 为独立工具(它们是底座或被依赖方,见 §4.3)。
 
 ## 2. 用户可见的前后变化
 
@@ -23,7 +23,7 @@
 | DSH 里没有任何本仓库能力 | 新建会话时可选择 `ts-dev-kits` 预设,该会话拥有 bilibili / 网易云 / ffmpeg / lol 工具(以及配置 SMTP 后启用的 email 工具) |
 | 功能包能力不可被 agent 直接调用 | agent 可直接调 `bilibili_download`、`netease_download`、`email_send`、`ffmpeg_transcode`、`lol_match_history` 等 |
 | 担心工具常驻耗 token | 不选 `ts-dev-kits` 预设的会话(标准模式)完全看不到这些工具,0 token 开销 |
-| 登录态/配置散落 | 复用各 SDK 既有登录态存储(account/bilibili-auth 的 AuthStore);SMTP 等敏感配置只进 host 端预设 config |
+| 登录态/配置散落 | 复用各 SDK 既有登录态存储(account 的 AuthStore);SMTP 等敏感配置只进 host 端预设 config |
 
 ## 3. 方案选择
 
@@ -82,14 +82,14 @@ packages/dsh-sdk-tools/
 ### 4.3 依赖方向(单向无环)
 
 ```
-dsh-sdk-tools ──workspace:*──▶ bilibili ──▶ bilibili-auth, ffmpeg
+dsh-sdk-tools ──workspace:*──▶ bilibili ──▶ account, ffmpeg
                           ──▶ netease-music ──▶ account, ffmpeg
                           ──▶ ffmpeg
                           ──▶ email
                           ──▶ lol
 ```
 
-- account / bilibili-auth 是**底座**,被 bilibili / netease-music 内部复用(登录态自动加载、-101 自动续期),不单独暴露为工具;
+- account 是**认证底座**,被 bilibili / netease-music 内部复用(登录态自动加载、自动续期),不单独暴露为工具;
 - chat-platforms(服务端长连接)、cli-utils(CLI 解析辅助)首期不做工具;
 - 被依赖 SDK 先 `build`(仓库根 build 已按依赖顺序排列);dsh-sdk-tools 的构建加入根 `build` 脚本末尾。
 
@@ -98,7 +98,7 @@ dsh-sdk-tools ──workspace:*──▶ bilibili ──▶ bilibili-auth, ffmpe
 ```
 agent 调 bilibili_download(url)
  → createBilibiliClient({ download: { outputDir: <config.outputDir> } })
-   (未传 cookie 时自动从 bilibili-auth AuthStore 加载;API -101 自动 refreshCookies 续期)
+   (未传 cookie 时自动从 account AuthStore(platform=bilibili)加载;API -101 自动续期)
  → client.parse(url) → MediaItem[]
  → client.download(item, { outputDir, quality, onProgress })
  → 返回 { filePath } → output.render 输出模型可读文本(文件路径、时长、清晰度)
@@ -201,7 +201,7 @@ export const Config = z.object({
 - 会话内动态启用(`enable_capability` 管理器工具);
 - client/Web 可视化(工具开关 UI、预设管理 UI);
 - 修改 DSH 本体 / 打补丁;
-- chat-platforms、cli-utils、account、bilibili-auth 首期不做独立工具(底座或被依赖方);
+- chat-platforms、cli-utils、account 首期不做独立工具(底座或被依赖方);
 - 每包多组工具精细拆解(lol 全量 API 只取查询三件套;ffmpeg 只取高频四件);
 - 预设自动安装脚本(首期用复制命令,README 说明;后续可评估 `dsh plugin` 扩展或安装脚本)。
 

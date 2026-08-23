@@ -16,9 +16,8 @@
 然后:
 
 ```powershell
-pnpm add @sakurachiyo0v0/bilibili          # 自动带上 bilibili-auth / cli-utils / ffmpeg
+pnpm add @sakurachiyo0v0/bilibili          # 自动带上 account / cli-utils / ffmpeg
 pnpm add @sakurachiyo0v0/email
-pnpm add @sakurachiyo0v0/bilibili-auth     # 也可只装登录模块
 ```
 
 > 其它依赖(如 `qrcode`、`nodemailer`)仍走公共 npm,无需额外配置。
@@ -42,7 +41,7 @@ GitHub → 头像 → `Settings` → `Developer settings` → `Personal access t
 node scripts/publish-packages.mjs
 ```
 
-脚本按依赖顺序发布(`cli-utils → bilibili-auth → ffmpeg → email → account → lol → netease-music → bilibili → chat-platforms → dsh-sdk-tools`),发布时自动把 `workspace:*` 依赖转为实际版本号。
+脚本按依赖顺序发布(`cli-utils → account → email → ffmpeg → lol → netease-music → bilibili → chat-platforms → dsh-sdk-tools`),发布时自动把 `workspace:*` 依赖转为实际版本号。
 
 - 首次发布版本 `0.1.0`;后续发新版需手动 bump 对应包的 `version` 字段
 - 同版本重复发布会失败,需先 bump 或删除已发布版本
