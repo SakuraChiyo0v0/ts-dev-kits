@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/lol",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "League of Legends LCU local capability SDK (summoner/match history/ranked/gameflow/champ select)",
   "license": "UNLICENSED",
   "type": "module",
