@@ -23,6 +23,7 @@
 | `@sakurachiyo0v0/steam` | 0.5.1 | Steam SDK(查询向):Web API/Storefront/Community 三套接口,登录态支持,写操作仅激活码兑换一项 | 可用(全阶段交付) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/steam` |
 | `@sakurachiyo0v0/xiaoheihe` | 0.1.0 | 小黑盒 SDK:扫码登录 + hkey/nonce 签名 + 只读查询(帖子/评论/feed/@消息/用户) | 可用(P0 只读) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/xiaoheihe` |
 | `@sakurachiyo0v0/dsh-sdk-tools` | 0.2.0 | DSH host 插件:把 bilibili/netease-music/ffmpeg/email/lol/vrchat 包装成 agent 工具,经 Agent 预设按需暴露 | 可用 | `pnpm add @sakurachiyo0v0/dsh-sdk-tools`(GitHub Packages) |
+| `@sakurachiyo0v0/database` | 0.1.0 | 统一数据访问抽象层:一套 API 访问本地 SQLite 与远程 PostgreSQL/MySQL,配置切换后端 | 可用(SQLite 全量,远程可选) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/database` |
 
 ## 包详情
 
@@ -719,3 +720,50 @@ pnpm --filter @sakurachiyo0v0/dsh-sdk-tools build
 ```
 
 **更多细节：** [`packages/dsh-sdk-tools/README.md`](../packages/dsh-sdk-tools/README.md)
+
+### `@sakurachiyo0v0/database`
+
+统一数据访问抽象层 SDK:一套 async API(`query` / `execute` / `transaction` / `ping` / `close`)同时访问本地 SQLite 与远程 PostgreSQL / MySQL,切换后端只改配置。设计文档 [`docs/superpowers/specs/2026-08-24-database-sdk-design.md`](superpowers/specs/2026-08-24-database-sdk-design.md)。
+
+**适用环境：** Node.js 20+,可信任的服务端进程;SQLite 基于 better-sqlite3(原生模块,主流平台有预编译二进制)。
+
+**核心接口：**
+
+- `createDataStore({ dialect, ... })` — 创建统一数据源;`sqlite` 传 `path`(支持 `:memory:`),`postgres`/`mysql` 传 `url`(可选 `maxConnections`,默认 10)
+- `store.query<T>(sql, params?)` — 查询,参数化防注入,返回行数组
+- `store.execute(sql, params?)` — 增删改/DDL,返回 `{ affectedRows }`
+- `store.transaction(fn)` — 事务,失败自动回滚;嵌套调用抛 `TRANSACTION_ACTIVE`
+- `store.ping()` / `store.close()` — 探活 / 释放连接(幂等)
+- `DataError` — 统一错误码 `CONFIGURATION` / `CONNECTION` / `QUERY_SYNTAX` / `CONSTRAINT` / `TRANSACTION_ACTIVE` / `CLOSED` / `TIMEOUT` / `UNKNOWN`,消息脱敏
+
+**占位符规则：** 上层统一 `?`;PG 自动转 `$n`(跳过单引号字符串内 `?`),JSONB 多字符操作符 `?|`/`?&` 原样保留,单 `?` 用 `??` 转义(`data ?? 'key'`);SQLite/MySQL 原生直传。
+
+**安装方式：**
+
+```powershell
+pnpm add @sakurachiyo0v0/database@workspace:*   # workspace 内
+pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/database"  # 其他机器
+```
+
+**API 示例：**
+
+```ts
+import { createDataStore } from "@sakurachiyo0v0/database";
+
+const local = createDataStore({ dialect: "sqlite", path: "./data.db" });
+const remote = createDataStore({ dialect: "postgres", url: "postgresql://user:***@host:5432/db" });
+
+await local.execute("INSERT INTO users (name, age) VALUES (?, ?)", ["alice", 30]);
+const users = await local.query("SELECT * FROM users WHERE age > ?", [18]);
+await local.close();
+```
+
+**在仓库内的验证方式：**
+
+```powershell
+pnpm --filter @sakurachiyo0v0/database typecheck   # 类型检查
+pnpm --filter @sakurachiyo0v0/database test        # 单测(SQLite 内存库全量;PG/MySQL 需环境变量启用)
+pnpm --filter @sakurachiyo0v0/database build       # 构建 ESM + CJS + d.ts
+```
+
+**更多细节：** [`packages/database/README.md`](../packages/database/README.md)

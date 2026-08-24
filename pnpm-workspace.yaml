@@ -5,3 +5,4 @@ allowBuilds:
   protobufjs: true
 minimumReleaseAgeExclude:
   - tsx@4.23.5
+  - mysql2@3.24.1

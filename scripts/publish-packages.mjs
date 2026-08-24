@@ -43,6 +43,7 @@ const PACKAGES = [
   ["@sakurachiyo0v0/steam", "packages/steam"],
   ["@sakurachiyo0v0/xiaoheihe", "packages/xiaoheihe"],
   ["@sakurachiyo0v0/dsh-sdk-tools", "packages/dsh-sdk-tools"],
+  ["@sakurachiyo0v0/database", "packages/database"],
 ];
 
 /** 查询包在 registry 上已发布的版本;未发布返回 undefined。 */
