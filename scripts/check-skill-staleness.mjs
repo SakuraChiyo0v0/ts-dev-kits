@@ -24,6 +24,11 @@ import { join } from "node:path";
 /** skill 目录名 → CLI 源码相对路径 + bin 名。 */
 const SKILL_MAP = [
   {
+    skill: "webdav-cli",
+    cli: "packages/webdav/src/cli/webdav.ts",
+    bin: "amechan-webdav",
+  },
+  {
     skill: "bilibili-cli",
     cli: "packages/bilibili/src/cli/bilibili.ts",
     bin: "amechan-bilibili",

@@ -24,6 +24,7 @@
 | `@sakurachiyo0v0/xiaoheihe` | 0.1.0 | 小黑盒 SDK:扫码登录 + hkey/nonce 签名 + 只读查询(帖子/评论/feed/@消息/用户) | 可用(P0 只读) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/xiaoheihe` |
 | `@sakurachiyo0v0/dsh-sdk-tools` | 0.2.0 | DSH host 插件:把 bilibili/netease-music/ffmpeg/email/lol/vrchat 包装成 agent 工具,经 Agent 预设按需暴露 | 可用 | `pnpm add @sakurachiyo0v0/dsh-sdk-tools`(GitHub Packages) |
 | `@sakurachiyo0v0/database` | 0.1.1 | 统一数据访问抽象层:一套 API 访问本地 SQLite 与远程 PostgreSQL/MySQL,配置切换后端 | 可用(SQLite 全量,远程可选) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/database` |
+| `@sakurachiyo0v0/webdav` | 0.1.0 | WebDAV 配置存取 SDK:基础文件操作 + ConfigStore(原子写/自动备份) + CLI | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/webdav` |
 
 ## 包详情
 
@@ -770,3 +771,44 @@ pnpm --filter @sakurachiyo0v0/database build       # 构建 ESM + CJS + d.ts
 ```
 
 **更多细节：** [`packages/database/README.md`](../packages/database/README.md)
+
+### `@sakurachiyo0v0/webdav`
+
+WebDAV 配置存取 SDK:基础文件操作(读/写/列/删/建目录/移动/复制)+ 配置文件存储高层 API(原子写 + 自动备份),带 CLI(`amechan-webdav`)。适合存配置文件、多端同步的轻量场景。设计文档 [`docs/superpowers/specs/2026-08-24-webdav-sdk-design.md`](superpowers/specs/2026-08-24-webdav-sdk-design.md)。
+
+**适用环境：** Node.js 20+,支持 Basic 认证的 WebDAV 服务(坚果云/Nextcloud 等)。
+
+**核心接口：**
+
+- `createWebdavClient({ url, username?, password?, timeoutMs? })` — 创建客户端;`ping/list/get/put/mkdir/remove/move/copy/exists`
+- `createConfigStore(client, { basePath?, format?, backupCount? })` — 配置存储;`load/save/list/remove`;`save` 原子写(临时文件+move)+ 旧版自动滚动备份(`.bak.1/2/3`);`format` 支持 `json`/`text`
+- `WebdavError` — 统一错误码 `AUTHENTICATION` / `CONNECTION` / `NOT_FOUND` / `CONFLICT` / `VALIDATION` / `UNKNOWN`,消息脱敏
+- CLI `amechan-webdav`:`ping/list/get/put/delete/mkdir/rmdir/move/config-load/config-save`,连接参数 `--url/--username/--password` 或环境变量 `WEBDAV_URL/WEBDAV_USERNAME/WEBDAV_PASSWORD`
+
+**安装方式：**
+
+```powershell
+pnpm add @sakurachiyo0v0/webdav@workspace:*   # workspace 内
+pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/webdav"  # 其他机器
+```
+
+**API 示例：**
+
+```ts
+import { createWebdavClient, createConfigStore } from "@sakurachiyo0v0/webdav";
+
+const wd = createWebdavClient({ url: "https://dav.jianguoyun.com/dav/", username: "u", password: "p" });
+const store = createConfigStore({ client: wd, basePath: "/configs", format: "json" });
+await store.save("app.json", { theme: "dark" });
+const cfg = await store.load("app.json");
+```
+
+**在仓库内的验证方式：**
+
+```powershell
+pnpm --filter @sakurachiyo0v0/webdav typecheck   # 类型检查
+pnpm --filter @sakurachiyo0v0/webdav test        # 单测(本地 webdav-server 真实协议路径)
+pnpm --filter @sakurachiyo0v0/webdav build       # 构建 ESM + CJS + d.ts + CLI
+```
+
+**更多细节：** [`packages/webdav/README.md`](../packages/webdav/README.md)
