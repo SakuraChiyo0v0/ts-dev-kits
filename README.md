@@ -14,6 +14,7 @@
 | `@sakurachiyo0v0/lol` | 英雄联盟 LCU 本地能力 SDK | 可用(查询+对局感知,国服 SGP) |
 | `@sakurachiyo0v0/vrchat` | VRChat 官方 REST API SDK(认证/用户/世界/头像/实例/好友/通知/收藏/群组/文件/经济/审核) | 可用(全功能覆盖) |
 | `@sakurachiyo0v0/steam` | Steam SDK(查询向):Web API / Storefront / Community 三套接口,登录态支持(密码+Guard/TOTP/QR/cookie),写操作仅激活码兑换 | 可用(全阶段交付) |
+| `@sakurachiyo0v0/xiaoheihe` | 小黑盒 SDK:扫码登录 + hkey/nonce 签名 + 只读查询(帖子/评论/feed/@消息/用户) | 可用(P0 只读) |
 
 所有包已发布到 GitHub Packages,详见下方「发布流程」。
 
@@ -63,7 +64,7 @@ pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/e
 
 ## 发布流程(GitHub Packages + CI 自动发布)
 
-所有包发布到 **GitHub Packages**(`npm.pkg.github.com`,仓库公开,安装方无需 token)。发布由 **CI 自动完成**:push 到 `main` 时,`.github/workflows/publish.yml` 会检测各包本地版本与已发布版本,有变化的按依赖顺序(`cli-utils → account → email → ffmpeg → lol → netease-music → booth → bilibili → chat-platforms → vrchat → steam → dsh-sdk-tools`)自动发布,并把 `workspace:*` 依赖转成实际版本号。
+所有包发布到 **GitHub Packages**(`npm.pkg.github.com`,仓库公开,安装方无需 token)。发布由 **CI 自动完成**:push 到 `main` 时,`.github/workflows/publish.yml` 会检测各包本地版本与已发布版本,有变化的按依赖顺序(`cli-utils → account → email → ffmpeg → lol → netease-music → booth → bilibili → chat-platforms → vrchat → steam → xiaoheihe → dsh-sdk-tools`)自动发布,并把 `workspace:*` 依赖转成实际版本号。
 
 ### ⚠️ 更新包必须按需 bump 版本号
 

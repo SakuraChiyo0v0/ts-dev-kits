@@ -53,6 +53,11 @@ const SKILL_MAP = [
     cli: "packages/steam/src/cli/steam.ts",
     bin: "amechan-steam",
   },
+  {
+    skill: "xiaoheihe-cli",
+    cli: "packages/xiaoheihe/src/cli/xiaoheihe.ts",
+    bin: "amechan-xiaoheihe",
+  },
 ];
 
 /**

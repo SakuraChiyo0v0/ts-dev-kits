@@ -21,6 +21,7 @@
 | `@sakurachiyo0v0/booth` | 0.1.0 | BOOTH(booth.pm)领取/购买 SDK:登录态管理/商品解析/免费领取/付费下单/文件下载 | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/booth` |
 | `@sakurachiyo0v0/vrchat` | 0.2.1 | VRChat 官方 REST API SDK(认证/用户/世界/头像/实例/好友/通知/收藏/群组/文件/权限/系统/经济/审核) | 可用(全功能覆盖) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/vrchat` |
 | `@sakurachiyo0v0/steam` | 0.5.1 | Steam SDK(查询向):Web API/Storefront/Community 三套接口,登录态支持,写操作仅激活码兑换一项 | 可用(全阶段交付) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/steam` |
+| `@sakurachiyo0v0/xiaoheihe` | 0.1.0 | 小黑盒 SDK:扫码登录 + hkey/nonce 签名 + 只读查询(帖子/评论/feed/@消息/用户) | 可用(P0 只读) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/xiaoheihe` |
 | `@sakurachiyo0v0/dsh-sdk-tools` | 0.2.0 | DSH host 插件:把 bilibili/netease-music/ffmpeg/email/lol/vrchat 包装成 agent 工具,经 Agent 预设按需暴露 | 可用 | `pnpm add @sakurachiyo0v0/dsh-sdk-tools`(GitHub Packages) |
 
 ## 包详情
@@ -614,6 +615,67 @@ pnpm --filter @sakurachiyo0v0/steam build       # 构建 ESM + CJS + d.ts
 ```
 
 **更多细节:** [`packages/steam/README.md`](../packages/steam/README.md)
+
+### `@sakurachiyo0v0/xiaoheihe`
+
+小黑盒(xiaoheihe.cn)SDK:扫码登录(复用 `@sakurachiyo0v0/account` 骨架)+ hkey/nonce 签名 + **只读查询**(帖子/评论/feed/@消息/用户)。P0 只读,写操作(回复评论)属红线扩展(P1,待拍板)。协议层提炼自 Go 参考实现 [xhhRobot](https://github.com/qingkongfeixing/xhhRobot)(xhh/ 包),仅取协议、不含机器人逻辑。设计文档 [`docs/superpowers/specs/2026-08-24-xiaoheihe-sdk-design.md`](superpowers/specs/2026-08-24-xiaoheihe-sdk-design.md)。
+
+**适用环境:** Node.js 20+;登录态经 account AuthStore 持久化(`<配置根>/amechan/xiaoheihe/auth.json`);小黑盒 API 为逆向协议,签名算法可能随版本更新失效(集中在 `src/sign.ts`)。
+
+**核心接口:**
+
+- `createXiaoheiheClient({ cookie?, authPath?, baseUrl?, deviceId?, fetchImpl? })` — 客户端工厂;显式 cookie 优先,否则自动从 AuthStore 加载
+- `client.feeds.list()` — 首页帖子流(`GET /bbs/app/feeds`)
+- `client.links.getDetail({ linkId, page?, limit? })` — 帖子详情 + 评论区单页(`/bbs/app/link/tree`,正文解析为段落数组)
+- `client.links.getSubComments({ rootCommentId, lastval? })` — 子评论游标翻页(`/bbs/app/comment/sub/comments`)
+- `client.messages.listAt({ offset?, limit? })` — @消息列表(`/bbs/app/user/message`,需登录)
+- `client.user.getProfile(userId)` — 用户资料(`/bbs/app/user/profile`,需登录)
+- `client.auth.status()` / `logout()` — 登录态校验 / 清除
+- `xiaoheiheQrAdapter()` — 扫码登录适配器(`QrLoginAdapter` 实现,复用 account 的 `qrcodeLogin`)
+- 签名自动注入:每请求携带 `hkey`(7 字符混淆签名)/`_time`/`nonce` + 固定公共参数(`os_type=web`、`version=999.0.4`、`web_version=2.5` 等)
+- `XiaoheiheError` — 错误码:`NETWORK`/`API_ERROR`/`LOGIN_REQUIRED`/`AUTH_EXPIRED`/`CAPTCHA`/`RATE_LIMIT`/`TIMEOUT`/`INVALID_URL`/`CONFIGURATION`/`UNKNOWN`,消息脱敏
+
+**风控只感知不规避:** 响应含 `captcha`/`ticket` 或 `status` 为 `show_captcha`/`error_captcha` → 抛 `CAPTCHA`,不做验证码破解/冷却切换/影子检测/备用号(参考实现中的机器人规避逻辑一律不包含)。
+
+**安装方式:**
+
+同一 pnpm workspace 内:
+
+```powershell
+pnpm add @sakurachiyo0v0/xiaoheihe@workspace:*
+```
+
+从私有 GitHub monorepo 安装(需授权 `@sakurachiyo0v0/xiaoheihe` 与 `@sakurachiyo0v0/account` 构建脚本):
+
+```powershell
+pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/xiaoheihe"
+```
+
+**API 示例:**
+
+```ts
+import { createXiaoheiheClient, xiaoheiheQrAdapter } from "@sakurachiyo0v0/xiaoheihe";
+import { AuthStore, qrcodeLogin } from "@sakurachiyo0v0/account";
+
+await qrcodeLogin({ adapter: xiaoheiheQrAdapter(), store: new AuthStore({ platform: "xiaoheihe" }) });
+const client = createXiaoheiheClient();
+const links = await client.feeds.list();
+const detail = await client.links.getDetail({ linkId: links[0]!.linkid });
+```
+
+**CLI:** `amechan-xiaoheihe login|status|logout|feed|link|comments|messages|user`(JSON 输出;`--no-browser` 关自动开浏览器);skill 手册 [`skills/xiaoheihe-cli/SKILL.md`](../skills/xiaoheihe-cli/SKILL.md)。
+
+**在仓库内的验证方式:**
+
+```powershell
+pnpm --filter @sakurachiyo0v0/xiaoheihe typecheck   # 类型检查
+pnpm --filter @sakurachiyo0v0/xiaoheihe test        # 37 单测(mock 服务器真实协议路径)
+pnpm --filter @sakurachiyo0v0/xiaoheihe build       # 构建 ESM + CJS + d.ts + CLI
+```
+
+真实 API 冒烟(需登录态,不入测试套件)已验证:feeds / link/tree / 子评论翻页均通过,签名算法被真实服务接受。
+
+**更多细节:** [`packages/xiaoheihe/README.md`](../packages/xiaoheihe/README.md)
 
 ### `@sakurachiyo0v0/dsh-sdk-tools`
 

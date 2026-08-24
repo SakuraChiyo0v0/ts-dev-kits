@@ -5,7 +5,7 @@
  * 行为:
  *   - 已发布过且版本相同 → 跳过(可重复安全执行,本地/CI 通用)
  *   - 本地 version 与已发布版本不同 → 发布
- *   - 按依赖图单向顺序(cli-utils → account → email → ffmpeg → lol → netease-music → booth → bilibili → chat-platforms → vrchat → steam → dsh-sdk-tools)
+ *   - 按依赖图单向顺序(cli-utils → account → email → ffmpeg → lol → netease-music → booth → bilibili → chat-platforms → vrchat → steam → xiaoheihe → dsh-sdk-tools)
  *
  * 前置:用户目录 .npmrc 已配置 //npm.pkg.github.com/:_authToken(或 CI 注入 NODE_AUTH_TOKEN)。
  *
@@ -41,6 +41,7 @@ const PACKAGES = [
   ["@sakurachiyo0v0/chat-platforms", "packages/chat-platforms"],
   ["@sakurachiyo0v0/vrchat", "packages/vrchat"],
   ["@sakurachiyo0v0/steam", "packages/steam"],
+  ["@sakurachiyo0v0/xiaoheihe", "packages/xiaoheihe"],
   ["@sakurachiyo0v0/dsh-sdk-tools", "packages/dsh-sdk-tools"],
 ];
 
