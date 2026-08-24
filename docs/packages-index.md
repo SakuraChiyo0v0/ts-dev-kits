@@ -19,8 +19,8 @@
 | `@sakurachiyo0v0/account` | 0.2.0 | 跨平台账号认证底座(登录态存储/扫码+密码登录骨架/错误模型) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/account` |
 | `@sakurachiyo0v0/netease-music` | 0.1.0 | 网易云音乐下载 SDK(weapi 加密/二维码登录/权限感知品质/试听拦截) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/netease-music` |
 | `@sakurachiyo0v0/booth` | 0.1.0 | BOOTH(booth.pm)领取/购买 SDK:登录态管理/商品解析/免费领取/付费下单/文件下载 | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/booth` |
-| `@sakurachiyo0v0/vrchat` | 0.2.0 | VRChat 官方 REST API SDK(认证/用户/世界/头像/实例/好友/通知/收藏/群组/文件/权限/系统/经济/审核) | 可用(全功能覆盖) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/vrchat` |
-| `@sakurachiyo0v0/steam` | 0.4.2 | Steam SDK(查询向):Web API/Storefront/Community 三套接口,登录态支持,写操作仅激活码兑换一项 | 开发中(P0-P3 + 评测/价格监控/兑换已交付) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/steam` |
+| `@sakurachiyo0v0/vrchat` | 0.2.1 | VRChat 官方 REST API SDK(认证/用户/世界/头像/实例/好友/通知/收藏/群组/文件/权限/系统/经济/审核) | 可用(全功能覆盖) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/vrchat` |
+| `@sakurachiyo0v0/steam` | 0.5.1 | Steam SDK(查询向):Web API/Storefront/Community 三套接口,登录态支持,写操作仅激活码兑换一项 | 可用(全阶段交付) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/steam` |
 | `@sakurachiyo0v0/dsh-sdk-tools` | 0.2.0 | DSH host 插件:把 bilibili/netease-music/ffmpeg/email/lol/vrchat 包装成 agent 工具,经 Agent 预设按需暴露 | 可用 | `pnpm add @sakurachiyo0v0/dsh-sdk-tools`(GitHub Packages) |
 
 ## 包详情
@@ -603,7 +603,7 @@ Steam SDK(查询向):官方 Web API(`api.steampowered.com`)+ Storefront(`store.s
 - 登录协议自研(RSA 密码加密 → IAuthenticationService 全流程 → finalizelogin web cookie),零第三方登录依赖
 - `amechan-steam` CLI:`login`(密码/QR/cookie 导入)/ `status` / `logout` / `user` / `owned-games` / `achievements` / `price` / `search` / `inventory` / `my-listings` / `reviews` / `redeem` / `watch`,JSON 输出;写操作仅 `redeem`;skill 手册 [`skills/steam-cli/SKILL.md`](../skills/steam-cli/SKILL.md)
 
-**剩余(P5):** 用户确认后提交推送 → CI 发布 → `pnpm verify:published @sakurachiyo0v0/steam` 消费验证。
+**P5 收尾状态:** README / packages-index / CLI / skill / 版本 bump 均已交付(v0.5.1 已发布,CI publish success);剩余发布后消费验证 `pnpm verify:published @sakurachiyo0v0/steam`(前置:本机 `.npmrc` 配置 GitHub Packages token)。
 
 **在仓库内的验证方式:**
 

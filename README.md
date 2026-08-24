@@ -12,8 +12,8 @@
 | `@sakurachiyo0v0/bilibili` | B 站视频下载 SDK(解析/取流/下载/ffmpeg 合并) | 可用(投稿视频) |
 | `@sakurachiyo0v0/chat-platforms` | 统一聊天平台接入 SDK(消息模型/适配器注册表,当前飞书) | 可用 |
 | `@sakurachiyo0v0/lol` | 英雄联盟 LCU 本地能力 SDK | 开发中(未发布) |
-| `@sakurachiyo0v0/vrchat` | VRChat 官方 REST API SDK(认证/用户/世界/头像/实例/好友/通知) | 开发中(未发布) |
-| `@sakurachiyo0v0/steam` | Steam SDK(查询向):Web API / Storefront / Community,登录态支持(密码+Guard/TOTP/QR/cookie),零写操作 | 开发中(未发布) |
+| `@sakurachiyo0v0/vrchat` | VRChat 官方 REST API SDK(认证/用户/世界/头像/实例/好友/通知/收藏/群组/文件/经济/审核) | 可用(全功能覆盖) |
+| `@sakurachiyo0v0/steam` | Steam SDK(查询向):Web API / Storefront / Community 三套接口,登录态支持(密码+Guard/TOTP/QR/cookie),写操作仅激活码兑换 | 可用(全阶段交付) |
 
 所有包(除 lol)已发布到 GitHub Packages,详见下方「发布流程」。
 
