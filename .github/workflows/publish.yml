@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - "packages/**"
+      - "package.json"
+      - "pnpm-workspace.yaml"
       - "scripts/publish-packages.mjs"
       - "scripts/check-package-bumps.mjs"
       - ".github/workflows/publish.yml"
