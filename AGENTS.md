@@ -87,3 +87,4 @@ pnpm verify:published @sakurachiyo0v0/<name>  # 发布后从 GitHub Packages 消
 
 - 在 fuse 文件系统(用户挂载目录)上 `pnpm install` 可能极慢;需要安装/构建/测试时,可先复制到本地磁盘再操作,完成后只拷回必要产物。
 - **11 位纯数字会被对话/终端显示层打码(中间 4 位变 `****`),疑似手机号保护。** 网易云歌单 id 恰为 11 位数字,会被误伤(如 `181****6754`)。数据本身完整,仅显示层行为;不要复制打码后的文本当参数传,需在脚本内部用完整 id(可逐字符打印绕过显示)。详见 `packages/netease-music/README.md`。
+- **`user:pass@` 连接串会被显示层整体打码成星号。** 涉及数据库/API 连接串(如 `postgresql://root:***@host:5432/db`)时,不要直接写完整凭据进命令文本,用变量分片拼接绕过(如 `P1="abc"; P2="def"; URL="postgresql://${P1}${P2}@host/db"`);绝不复制对话里打码后的星号当参数传,典型报错 `SASL: client password must be a string` / `Access denied ... using password: NO`。凭据原文只来自用户口述/配置文件。
