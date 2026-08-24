@@ -38,6 +38,19 @@ pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/d
 }
 ```
 
+### pnpm 11 消费者必需配置(supply-chain)
+
+本包依赖 `better-sqlite3`(原生模块)。**pnpm 11 默认拦截依赖构建脚本**,消费项目不配置会报
+`ERR_PNPM_IGNORED_BUILDS: Ignored build scripts: better-sqlite3`。请在消费项目根目录的 `pnpm-workspace.yaml` 放行:
+
+```yaml
+allowBuilds:
+  better-sqlite3: true
+```
+
+配置后再执行 `pnpm install` 即可。
+```
+
 ## 快速开始
 
 ```ts

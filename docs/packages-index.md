@@ -23,7 +23,7 @@
 | `@sakurachiyo0v0/steam` | 0.5.1 | Steam SDK(查询向):Web API/Storefront/Community 三套接口,登录态支持,写操作仅激活码兑换一项 | 可用(全阶段交付) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/steam` |
 | `@sakurachiyo0v0/xiaoheihe` | 0.1.0 | 小黑盒 SDK:扫码登录 + hkey/nonce 签名 + 只读查询(帖子/评论/feed/@消息/用户) | 可用(P0 只读) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/xiaoheihe` |
 | `@sakurachiyo0v0/dsh-sdk-tools` | 0.2.0 | DSH host 插件:把 bilibili/netease-music/ffmpeg/email/lol/vrchat 包装成 agent 工具,经 Agent 预设按需暴露 | 可用 | `pnpm add @sakurachiyo0v0/dsh-sdk-tools`(GitHub Packages) |
-| `@sakurachiyo0v0/database` | 0.1.0 | 统一数据访问抽象层:一套 API 访问本地 SQLite 与远程 PostgreSQL/MySQL,配置切换后端 | 可用(SQLite 全量,远程可选) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/database` |
+| `@sakurachiyo0v0/database` | 0.1.1 | 统一数据访问抽象层:一套 API 访问本地 SQLite 与远程 PostgreSQL/MySQL,配置切换后端 | 可用(SQLite 全量,远程可选) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/database` |
 
 ## 包详情
 
