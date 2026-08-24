@@ -118,6 +118,40 @@ interface PasswordLoginAdapter {
 
 新密码登录平台接入 = 实现这 5 个方法(VRChat 即如此,见 `@sakurachiyo0v0/vrchat`),2FA 交互、重试上限、存储、错误模型全部复用。
 
+### `browserLogin(options)` → `Promise<LoginResult>`
+
+浏览器登录骨架(与 `qrcodeLogin` / `passwordLogin` 平行),适用于**无公开登录 API、只能靠网页浏览器会话**的平台(如 BOOTH):
+
+| 选项 | 说明 | 默认 |
+| --- | --- | --- |
+| `adapter` | 平台适配器(必填,见下) | — |
+| `store` | 登录态存储;登录成功自动持久化 | 不持久化 |
+| `browserPath` | Chrome/Edge 可执行文件路径 | 自动检测本机 |
+| `reuseBrowserProfile` | 复用日常浏览器 profile 的登录态(免重新输账号密码;需先关闭该浏览器) | `false`(临时隔离 profile) |
+| `profileDir` | 显式指定 profile 目录(覆盖推断;不会被删除) | — |
+| `useCdp` | 是否 CDP 自动浏览器登录;`false` 走捕获页(无头/测试环境) | `true` |
+| `loginUrl` | 登录页 URL(覆盖 `adapter.loginUrl`) | adapter 值 |
+| `timeoutMs` | 等待用户登录的总超时 | `300000`(5 分钟) |
+| `openBrowser` / `onLog` / `fetchImpl` / `onStatus` | 浏览器打开器(捕获页)/日志回调/注入 fetch/进度回调 | — |
+
+流程:CDP 弹出独立 Chrome 窗口 → 用户登录 → 轮询 `Storage.getCookies` 捕获会话 cookie(含 HttpOnly) → 平台校验 → 可选落盘;无可用浏览器时回退"捕获页"(用户从 F12 复制 Cookie 头粘贴回传,仅走本机回环)。CDP 只在本机回环通信,凭证不经过任何第三方。返回 `{ credentials: { cookieHeader }, saved }`。
+
+### `BrowserLoginAdapter`(浏览器登录平台适配器契约)
+
+```ts
+interface BrowserLoginAdapter {
+  platform: string;                       // 决定 AuthStore 默认路径
+  loginUrl: string;                       // 登录页 URL(在弹起的 Chrome 窗口中打开)
+  cookieDomains: string[];                // 只收集这些域的 cookie(如 ["booth.pm"])
+  sessionCookieNames: string[];           // 出现任一即视为登录成功的 cookie 名
+  validate?(cookieHeader, fetchImpl): Promise<void>;  // 可选:登录后校验(抛错 = 会话无效)
+  serialize(credentials, savedAt): AuthPayload;
+  deserialize(payload): PlatformCredentials | null;
+}
+```
+
+新"网页登录型"平台接入 = 实现这 6 项(BOOTH 即如此,见 `@sakurachiyo0v0/booth` 的 `boothBrowserAdapter`),CDP 捕获、捕获页回退、校验、存储、错误模型全部复用。配套导出 `detectBrowser()` / `defaultBrowserProfileDir()`(定位本机 Chrome/Edge 及其日常 profile)。
+
 ### 其它
 
 - `resolveConfigRoot()` / `defaultAuthPath(platform)` — 配置目录解析(Windows `%APPDATA%` / macOS `~/Library/Application Support` / Linux `$XDG_CONFIG_HOME`,支持 `AMECHAN_CONFIG_HOME` 覆盖)

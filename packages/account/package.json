@@ -1,7 +1,7 @@
 {
   "name": "@sakurachiyo0v0/account",
-  "version": "0.2.0",
-  "description": "Cross-platform account auth base: login-state store, QR-code/password login flow skeletons and shared error model for music/video platforms",
+  "version": "0.3.0",
+  "description": "Cross-platform account auth base: login-state store, QR-code/password/browser login flow skeletons and shared error model",
   "license": "UNLICENSED",
   "publishConfig": {
     "registry": "https://npm.pkg.github.com/"

@@ -16,9 +16,9 @@
 | `@sakurachiyo0v0/bilibili` | 0.2.1 | B 站 SDK:视频下载(解析/取流/下载/ffmpeg 合并)+ 平台控制(收藏夹/关注/分组/互动/动态/稍后再看/历史) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/bilibili` |
 | `@sakurachiyo0v0/chat-platforms` | 0.1.0 | 统一聊天平台接入 SDK(消息模型/适配器注册表,当前飞书) | 可用(飞书, websocket/webhook) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/chat-platforms` |
 | `@sakurachiyo0v0/lol` | 0.1.1 | 英雄联盟 LCU 本地能力 SDK(召唤师/战绩/段位/对局流程/游戏数据/事件) | 可用(查询+对局感知, 国服 SGP) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/lol` |
-| `@sakurachiyo0v0/account` | 0.2.0 | 跨平台账号认证底座(登录态存储/扫码+密码登录骨架/错误模型) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/account` |
+| `@sakurachiyo0v0/account` | 0.3.0 | 跨平台账号认证底座(登录态存储/扫码+密码+浏览器登录骨架/错误模型) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/account` |
 | `@sakurachiyo0v0/netease-music` | 0.1.0 | 网易云音乐下载 SDK(weapi 加密/二维码登录/权限感知品质/试听拦截) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/netease-music` |
-| `@sakurachiyo0v0/booth` | 0.1.0 | BOOTH(booth.pm)领取/购买 SDK:登录态管理/商品解析/免费领取/付费下单/文件下载 | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/booth` |
+| `@sakurachiyo0v0/booth` | 0.2.0 | BOOTH(booth.pm)领取/购买 SDK:登录态管理/商品解析/免费领取/付费下单/文件下载 | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/booth` |
 | `@sakurachiyo0v0/vrchat` | 0.2.1 | VRChat 官方 REST API SDK(认证/用户/世界/头像/实例/好友/通知/收藏/群组/文件/权限/系统/经济/审核) | 可用(全功能覆盖) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/vrchat` |
 | `@sakurachiyo0v0/steam` | 0.5.1 | Steam SDK(查询向):Web API/Storefront/Community 三套接口,登录态支持,写操作仅激活码兑换一项 | 可用(全阶段交付) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/steam` |
 | `@sakurachiyo0v0/xiaoheihe` | 0.1.0 | 小黑盒 SDK:扫码登录 + hkey/nonce 签名 + 只读查询(帖子/评论/feed/@消息/用户) | 可用(P0 只读) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/xiaoheihe` |
@@ -347,7 +347,7 @@ pnpm --filter @sakurachiyo0v0/lol build       # 构建 ESM + CJS + d.ts
 
 ### `@sakurachiyo0v0/account`
 
-跨平台账号认证底座(薄):登录态存储、扫码登录骨架、密码登录骨架与公共错误模型。**不感知具体平台**——网易云、B 站、酷狗、QQ 音乐等平台的登录差异收敛在各自的 `QrLoginAdapter` / `PasswordLoginAdapter` 实现里,登录流程、存储、CLI 全复用。设计文档 [`docs/superpowers/specs/2026-08-23-netease-music-sdk-design.md`](superpowers/specs/2026-08-23-netease-music-sdk-design.md)。
+跨平台账号认证底座(薄):登录态存储、扫码/密码/浏览器三种登录骨架与公共错误模型。**不感知具体平台**——网易云、B 站、酷狗、QQ 音乐等平台的登录差异收敛在各自的 `QrLoginAdapter` / `PasswordLoginAdapter` / `BrowserLoginAdapter` 实现里,登录流程、存储、CLI 全复用。设计文档 [`docs/superpowers/specs/2026-08-23-netease-music-sdk-design.md`](superpowers/specs/2026-08-23-netease-music-sdk-design.md)。
 
 **适用环境:** Node.js 20+，桌面环境（需要打开浏览器）；无头环境可用 `autoOpenBrowser: false`。
 
@@ -358,6 +358,9 @@ pnpm --filter @sakurachiyo0v0/lol build       # 构建 ESM + CJS + d.ts
 - `QrLoginAdapter` — 扫码平台适配器契约：`generateKey()` / `pollStatus()` / `refresh?()` / `serialize()` / `deserialize()`；扫码平台接入 = 实现这 5 个方法
 - `passwordLogin({ adapter, username, password, onNeedCode?, store?, ... })` — 密码登录骨架：提交用户名密码 → 若需 2FA 循环取码验证 → 成功可选持久化；2FA 交互经 `onNeedCode` 回调
 - `PasswordLoginAdapter` — 密码平台适配器契约：`login()` / `verifyCode()` / `refresh?()` / `serialize()` / `deserialize()`；密码平台（如 VRChat）接入 = 实现这 5 个方法
+- `browserLogin({ adapter, store?, browserPath?, reuseBrowserProfile?, useCdp?, ... })` — 浏览器登录骨架（CDP 弹出独立 Chrome 窗口捕获会话 cookie → 平台校验 → 可选持久化；无浏览器时回退捕获页）；适用于无公开登录 API、只能靠网页浏览器会话的平台（如 BOOTH）
+- `BrowserLoginAdapter` — 浏览器平台适配器契约：`loginUrl` / `cookieDomains` / `sessionCookieNames` / `validate?()` / `serialize()` / `deserialize()`；"网页登录型"平台接入 = 实现这 6 项
+- `detectBrowser()` / `defaultBrowserProfileDir()` — 定位本机 Chrome/Edge 及其日常 profile（供 `browserLogin` 复用日常登录态）
 - `resolveConfigRoot()` / `defaultAuthPath(platform)` — 配置目录解析（Windows `%APPDATA%` / macOS `~/Library/Application Support` / Linux `$XDG_CONFIG_HOME`，支持 `AMECHAN_CONFIG_HOME` 覆盖）
 - `AccountError` — 错误码 `NETWORK` / `API_ERROR` / `AUTH_EXPIRED` / `LOGIN_REQUIRED` / `UNKNOWN` / `INVALID_CREDENTIALS` / `TWO_FACTOR_REQUIRED` / `TWO_FACTOR_FAILED`
 
@@ -466,7 +469,7 @@ BOOTH(booth.pm,Pixiv 旗下数字商品市场)领取/购买 SDK:登录态管理�
 - `client.isOrderPaid(orderId)` — 订单支付状态(付费商品浏览器支付后确认可下载)
 - `client.getOrderFiles(orderId)` / `client.downloadOrder(orderId, { outputDir? })` — 文件清单 / 下载到 `outputDir/<orderId>/`
 - `client.claimAndDownload(input, { outputDir? })` — 领取后下载一条龙(付费待支付不下载)
-- `loginBooth({ authPath?, openBrowser? })` — 浏览器登录捕获(本地回环临时 HTTP 接收 cookie,复用 account AuthStore 持久化)
+- `loginBooth({ authPath?, openBrowser?, useCdp?, reuseBrowserProfile? })` — 浏览器登录（复用 account `browserLogin` 骨架：CDP 自动捕获会话 cookie → 捕获页回退；`--reuse` 复用日常浏览器登录态免输账号密码）
 - `BoothError` — 统一错误码:`NETWORK` / `API_ERROR` / `NOT_FOUND` / `INVALID_URL` / `LOGIN_REQUIRED` / `AUTH_EXPIRED` / `ALREADY_OWNED` / `PAYMENT_REQUIRED` / `DOWNLOAD_FAILED` / `UNKNOWN`
 
 **合规边界：** 只操作自己的账号、领取/下载自己拥有的商品;不绕过支付、不伪装会员、不代抢;付费商品仅生成待支付订单,支付永远在浏览器手动完成;批量领取默认并发 1,避免站方压力。

@@ -18,9 +18,10 @@ export { DownloadApi, sanitizeFilename, fileNameFromUrl, fileNameFromDisposition
 export type { DownloadUrlOptions } from "./api/download.js";
 export { parseBoothInput, isBoothUrl, normalizeItemId, extractItemIdFromUrl } from "./parsers/url.js";
 export type { ParsedBoothInput } from "./parsers/url.js";
-export { BoothClient, createBoothClient, loginBooth, openBrowserDefault, detectBrowser, defaultBrowserProfileDir } from "./client.js";
-export { cdpLogin } from "./cdp.js";
-export type { CdpLoginOptions, CdpLoginResult } from "./cdp.js";
+export { BoothClient, createBoothClient, loginBooth } from "./client.js";
+// 浏览器工具函数已上移到 account 骨架,此处 re-export 保持公共 API 不变。
+export { detectBrowser, defaultBrowserProfileDir, openBrowserDefault } from "@sakurachiyo0v0/account";
+export { boothBrowserAdapter, BOOTH_COOKIE_DOMAINS, BOOTH_SESSION_COOKIE_NAMES } from "./login-adapter.js";
 export type {
   BoothClientOptions,
   BoothItem,

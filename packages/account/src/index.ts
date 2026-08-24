@@ -29,3 +29,10 @@ export type {
   PasswordLoginOptions,
   PasswordLoginStep,
 } from "./password-flow.js";
+
+// 浏览器登录骨架(追加,不修改现有导出)
+export { browserLogin, detectBrowser, defaultBrowserProfileDir } from "./browser-flow.js";
+export type {
+  BrowserLoginAdapter,
+  BrowserLoginOptions,
+} from "./browser-flow.js";

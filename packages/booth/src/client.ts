@@ -3,11 +3,9 @@
  * 登录态:显式 cookie 优先,否则从 account AuthStore 自动加载。
  * 合规:付费商品只生成待支付订单,支付留在浏览器;批量默认并发 1。
  */
-import { createServer, type Server } from "node:http";
-import { randomBytes } from "node:crypto";
-import { existsSync } from "node:fs";
-import { BoothError, toBoothError } from "./errors.js";
-import { cdpLogin } from "./cdp.js";
+import { AccountError, AuthStore, browserLogin } from "@sakurachiyo0v0/account";
+import { BoothError, isBoothErrorCode, toBoothError } from "./errors.js";
+import { boothBrowserAdapter } from "./login-adapter.js";
 import type {
   BoothClientOptions,
   BoothItem,
@@ -199,244 +197,47 @@ function safeItemId(input: string): string {
 }
 
 /**
- * 浏览器登录:自动检测本机 Chrome/Edge,用 CDP 弹出独立窗口捕获会话 cookie;
- * 无可用浏览器时回退到捕获页(粘贴 Cookie 头)。
- * reuseBrowserProfile: true 时复用日常浏览器 profile 的登录态(免重新输账号密码);
- * 缺省用临时 profile(隔离,不碰日常浏览器)。
+ * 浏览器登录:复用 account 的 browserLogin 骨架(CDP 自动捕获 → 捕获页回退)。
+ * 平台差异(BOOTH 登录页、会话 cookie 特征、登录后校验)收敛在 boothBrowserAdapter。
  * 返回 { account, saved }。
  */
 export async function loginBooth(options: BoothLoginOptions = {}): Promise<{ account: string; saved: boolean }> {
-  const loginUrl = options.loginUrl ?? "https://booth.pm/users/sign_in";
-
-  // 1. 优先 CDP 自动捕获(零复制粘贴);useCdp: false 时跳过(测试/无头)。
-  const browserPath = options.useCdp === false ? undefined : detectBrowser();
-  if (browserPath !== undefined) {
-    // 复用日常浏览器 profile(登录态直接可用);找不到 profile 时回退临时 profile。
-    const profileDir = options.reuseBrowserProfile === true ? defaultBrowserProfileDir(browserPath) : undefined;
-    const result = await cdpLogin({
-      browserPath,
-      loginUrl,
-      ...(profileDir !== undefined ? { profileDir } : {}),
-      ...(options.onLog !== undefined ? { onLog: options.onLog } : {}),
-    });
-    const refreshed = new BoothSession({
-      cookie: result.cookieHeader,
-      ...(options.authPath !== undefined ? { authPath: options.authPath } : {}),
-      ...(options.fetchImpl !== undefined ? { fetchImpl: options.fetchImpl } : {}),
-    });
-    // 校验会话。
-    await validateSession(refreshed);
-    await refreshed.persist(options.authPath);
-    return { account: "booth-user", saved: true };
-  }
-
-  // 2. 回退:捕获页(用户粘贴 Cookie 头)。
-  return loginBoothWithCapturePage(options, loginUrl);
-}
-
-/** 校验会话:请求用户订单页(accounts.booth.pm/orders),确认非登录页。 */
-async function validateSession(refreshed: BoothSession): Promise<void> {
-  const check = await refreshed.request("https://accounts.booth.pm/orders", { method: "GET" });
-  if (check.status === 200) {
-    const html = await check.text();
-    if (/login/i.test(html.slice(0, 500))) {
-      throw new BoothError("AUTH_EXPIRED", "captured session is not valid (redirected to login)");
-    }
-  } else if (check.status !== 200) {
-    throw new BoothError("AUTH_EXPIRED", `session validation failed with HTTP ${check.status}`);
-  }
-}
-
-/** 回退登录:捕获页(用户从 F12 复制 Cookie 头粘贴回传)。 */
-async function loginBoothWithCapturePage(
-  options: BoothLoginOptions,
-  loginUrl: string,
-): Promise<{ account: string; saved: boolean }> {
-
-  // 生成一次性 token 防 CSRF(本地回环)。
-  const token = randomBytes(16).toString("hex");
-
-  // 捕获结果。
-  let capturedCookies: string | null = null;
-  let resolveDone: (() => void) | null = null;
-  const done = new Promise<void>((res) => {
-    resolveDone = res;
-  });
-
-  const server: Server = createServer((req, res) => {
-    const url = new URL(req.url ?? "/", "http://127.0.0.1");
-    if (url.pathname === "/done" && url.searchParams.get("token") === token) {
-      // 支持 GET(query)与 POST(form)两种回传。
-      const finish = (cookies: string): void => {
-        capturedCookies = cookies;
-        res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
-        res.end("OK, you can close this tab and return to the CLI.");
-        resolveDone?.();
-      };
-      if (req.method === "POST") {
-        let bodyText = "";
-        req.on("data", (chunk: Buffer) => {
-          bodyText += chunk.toString("utf-8");
-        });
-        req.on("end", () => {
-          const match = /cookies=([\s\S]*)$/.exec(bodyText);
-          const value = match?.[1] !== undefined ? decodeURIComponent(match[1].replace(/\+/g, " ")) : "";
-          finish(value);
-        });
-        return;
-      }
-      finish(url.searchParams.get("cookies") ?? "");
-      return;
-    }
-    if (url.pathname === "/capture.html") {
-      // 捕获页:引导用户登录 BOOTH 后,把浏览器里的 Cookie 头粘贴到输入框回传。
-      // 说明:booth.pm 的会话 cookie 只在该域有效,本机捕获页跨域读不到,
-      // 因此由用户从浏览器 F12 复制 Cookie 头(仅回传本机回环地址,不经过第三方)。
-      const html = `<!doctype html>
-<html><head><meta charset="utf-8"><title>BOOTH login capture</title></head>
-<body>
-<h2>BOOTH 登录捕获</h2>
-<p>1. 请在新标签页登录 BOOTH(Pixiv 账号)。</p>
-<p>2. 登录后,按 F12 → Network → 刷新页面 → 点任意 booth.pm 请求 → Request Headers → 复制 <b>Cookie</b> 的值。</p>
-<p>3. 把 Cookie 头内容粘贴到下面,点击「保存」。(仅发送到本机 127.0.0.1,不经过第三方。)</p>
-<form onsubmit="send(event)">
-  <textarea id="c" rows="6" cols="80" placeholder="粘贴 Cookie 头,如 _pixiv_session=...; ..."></textarea>
-  <br><button type="submit">保存</button>
-</form>
-<script>
-async function send(event) {
-  event.preventDefault();
-  const cookies = document.getElementById('c').value.trim();
-  if (cookies === '') { alert('请先粘贴 Cookie'); return; }
-  const body = new URLSearchParams({ token: '${token}', cookies }).toString();
-  const res = await fetch('/done', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
-  document.body.innerHTML = '<h2>' + await res.text() + '</h2>';
-}
-</script>
-</body></html>`;
-      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-      res.end(html);
-      return;
-    }
-    res.writeHead(404, { "Content-Type": "text/plain" });
-    res.end("not found");
-  });
-
-  const listen = new Promise<void>((res, rej) => {
-    server.once("error", rej);
-    server.listen(0, "127.0.0.1", res);
-  });
-  await listen;
-  const address = server.address();
-  const port = address !== null && typeof address === "object" ? address.port : 0;
-  const captureUrl = `http://127.0.0.1:${port}/capture.html`;
-
   try {
-    // 打开捕获页(用户在该页面跳转到 BOOTH 登录,或在新标签登录后回来点击)。
-    const open = options.openBrowser ?? openBrowserDefault;
-    await open(captureUrl);
-    void loginUrl; // 引导文案里提示用户去登录
-    await done;
-    if (capturedCookies === null) {
-      throw new BoothError("UNKNOWN", "no cookies captured");
-    }
-
-    // 用捕获的 cookie 重建会话并校验登录态。
-    const refreshed = new BoothSession({
-      cookie: capturedCookies,
-      ...(options.authPath !== undefined ? { authPath: options.authPath } : {}),
+    // booth 现有行为:登录成功始终持久化(未传 authPath 用默认 <配置根>/amechan/booth/auth.json)。
+    const result = await browserLogin({
+      adapter: boothBrowserAdapter(),
+      store: new AuthStore({
+        platform: "booth",
+        ...(options.authPath !== undefined ? { path: options.authPath } : {}),
+      }),
+      ...(options.loginUrl !== undefined ? { loginUrl: options.loginUrl } : {}),
+      ...(options.openBrowser !== undefined ? { openBrowser: options.openBrowser } : {}),
       ...(options.fetchImpl !== undefined ? { fetchImpl: options.fetchImpl } : {}),
+      ...(options.onLog !== undefined ? { onLog: options.onLog } : {}),
+      ...(options.useCdp !== undefined ? { useCdp: options.useCdp } : {}),
+      ...(options.reuseBrowserProfile !== undefined
+        ? { reuseBrowserProfile: options.reuseBrowserProfile }
+        : {}),
     });
-    const check = await refreshed.request("https://accounts.booth.pm/orders", { method: "GET" });
-    if (check.status === 200) {
-      const html = await check.text();
-      if (/login/i.test(html.slice(0, 500))) {
-        throw new BoothError("AUTH_EXPIRED", "captured session is not valid (redirected to login)");
-      }
-    } else if (check.status !== 200) {
-      throw new BoothError("AUTH_EXPIRED", `session validation failed with HTTP ${check.status}`);
+    return { account: "booth-user", saved: result.saved };
+  } catch (error) {
+    // 保持 booth 公共 API 的错误类型(BoothError);AccountError 映射为同名错误码。
+    if (error instanceof BoothError) {
+      throw error;
     }
-
-    // 持久化。
-    await refreshed.persist(options.authPath);
-    return { account: "booth-user", saved: true };
-  } finally {
-    await new Promise<void>((res) => server.close(() => res()));
-  }
-}
-
-/** 默认浏览器打开器(平台相关)。 */
-export async function openBrowserDefault(url: string): Promise<void> {
-  const { spawn } = await import("node:child_process");
-  const platform = process.platform;
-  const command =
-    platform === "win32" ? "cmd" : platform === "darwin" ? "open" : "xdg-open";
-  const args = platform === "win32" ? ["/c", "start", "", url] : [url];
-  spawn(command, args, { stdio: "ignore", detached: true }).unref();
-}
-
-/** 检测本机 Chrome/Edge 可执行文件(常见路径)。 */
-export function detectBrowser(): string | undefined {
-  const candidates: string[] = [];
-  const env = process.env;
-  const home = env.USERPROFILE ?? env.HOME ?? "";
-  if (env.PROGRAMFILES !== undefined) {
-    candidates.push(
-      pathJoin(env.PROGRAMFILES, "Google", "Chrome", "Application", "chrome.exe"),
-      pathJoin(env.PROGRAMFILES, "Microsoft", "Edge", "Application", "msedge.exe"),
-    );
-  }
-  if (env["PROGRAMFILES(X86)"] !== undefined) {
-    candidates.push(
-      pathJoin(env["PROGRAMFILES(X86)"], "Google", "Chrome", "Application", "chrome.exe"),
-      pathJoin(env["PROGRAMFILES(X86)"], "Microsoft", "Edge", "Application", "msedge.exe"),
-    );
-  }
-  if (home !== "") {
-    candidates.push(
-      pathJoin(home, "AppData", "Local", "Google", "Chrome", "Application", "chrome.exe"),
-      pathJoin(home, "AppData", "Local", "Microsoft", "Edge", "Application", "msedge.exe"),
-    );
-    candidates.push(pathJoin(home, ".cache", "ms-playwright", "chromium", "chrome-linux", "chrome"));
-  }
-  if (process.platform === "darwin") {
-    candidates.push(
-      "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-      "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
-    );
-  }
-  for (const candidate of candidates) {
-    if (candidate !== "" && existsSync(candidate)) {
-      return candidate;
+    if (error instanceof AccountError) {
+      throw new BoothError(
+        isBoothErrorCode(error.code) ? error.code : "UNKNOWN",
+        error.message,
+      );
     }
+    throw toBoothError(error);
   }
-  return undefined;
 }
 
-function pathJoin(...parts: string[]): string {
-  return parts.join("\\").replace(/\\+/g, "\\");
-}
 
-/**
- * 根据浏览器可执行文件推断其日常 profile 目录。
- * Chrome: %LOCALAPPDATA%/Google/Chrome/User Data;Edge 同理。
- * 找不到时回退 undefined(调用方退回临时 profile)。
- */
-export function defaultBrowserProfileDir(browserPath: string): string | undefined {
-  const lower = browserPath.toLowerCase();
-  const isEdge = lower.includes("msedge");
-  const isChrome = lower.includes("chrome") && !isEdge;
-  const appData = process.env.LOCALAPPDATA;
-  if (appData === undefined || appData === "") {
-    return undefined;
-  }
-  const brand = isEdge ? "Microsoft" : isChrome ? "Google" : undefined;
-  if (brand === undefined) {
-    return undefined;
-  }
-  const product = isEdge ? "Edge" : "Chrome";
-  return pathJoin(appData, brand, product, "User Data");
-}
+
+
 
 /** 创建客户端。 */
 export function createBoothClient(options?: BoothClientOptions): BoothClient {
