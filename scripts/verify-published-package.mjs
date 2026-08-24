@@ -49,6 +49,22 @@ writeFileSync(
   ),
 );
 
+// pnpm 11 supply-chain 策略默认拦截依赖构建脚本(如 better-sqlite3 等原生模块),
+// 否则安装会报 ERR_PNPM_IGNORED_BUILDS。验证场景放行仓库已知的原生模块:
+// 新增原生依赖时在此追加。
+writeFileSync(
+  join(work, "pnpm-workspace.yaml"),
+  [
+    "packages:",
+    "  - .",
+    "allowBuilds:",
+    "  better-sqlite3: true",
+    "  esbuild: true",
+    "  protobufjs: true",
+    "",
+  ].join("\n"),
+);
+
 console.log(`\n=== 安装 ${pkgName}(GitHub Packages 最新版)===\n`);
 runNpm(["add", pkgName]);
 
