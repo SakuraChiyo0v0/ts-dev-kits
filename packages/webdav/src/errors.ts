@@ -8,6 +8,8 @@ export enum WebdavErrorCode {
   NOT_FOUND = "NOT_FOUND",
   /** 冲突(409/412),如不覆盖写已存在文件 */
   CONFLICT = "CONFLICT",
+  /** 解密失败(密钥错误或数据损坏) */
+  DECRYPTION = "DECRYPTION",
   /** 参数非法(空 URL、非法路径) */
   VALIDATION = "VALIDATION",
   /** 其他未归类错误 */

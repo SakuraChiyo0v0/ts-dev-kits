@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/webdav",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "WebDAV config storage SDK: basic file operations + atomic ConfigStore with backups, plus CLI",
   "license": "UNLICENSED",
   "publishConfig": {

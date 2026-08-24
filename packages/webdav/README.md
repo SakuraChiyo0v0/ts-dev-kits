@@ -95,6 +95,27 @@ await store.remove("app.json");
 
 配置名不允许路径分隔符/`..`（防路径越界）。
 
+## 加密存储(敏感配置:cookie/密钥)
+
+`EncryptedConfigStore`:`save` 前用 **AES-256-GCM** 加密、`load` 时解密——WebDAV 云端只存密文,密钥只在本地,即使账号/传输泄露也无法还原明文。
+
+```ts
+import { createEncryptedConfigStore } from "@sakurachiyo0v0/webdav";
+
+const store = createEncryptedConfigStore({
+  client: wd,
+  basePath: "/secrets",
+  key: process.env.WEBDAV_CONFIG_KEY!, // 32字节hex/base64 或任意字符串(自动SHA-256派生)
+});
+
+await store.save("bilibili.json", { cookie: "SID=..." }); // 云端只有密文
+const creds = await store.load<{ cookie: string }>("bilibili.json");
+```
+
+- 密钥缺省读环境变量 `WEBDAV_CONFIG_KEY`;支持 32 字节 hex(64字符)/base64(44字符),其他任意字符串自动 SHA-256 派生。
+- 密钥错误/数据损坏 → `DECRYPTION`;缺密钥 → `VALIDATION`。
+- 备份(`.bak.N`)同样是密文;CLI 对应 `--encrypt` 选项(`WEBDAV_CONFIG_KEY` 或 `--key`)。
+
 ## 错误处理
 
 统一抛 `WebdavError`（带 `code`，`cause` 保留底层错误；消息脱敏）：
@@ -105,7 +126,8 @@ await store.remove("app.json");
 | `CONNECTION` | 网络/连接失败、超时 | 服务器不可达 |
 | `NOT_FOUND` | 文件/目录不存在(404) | `get` 不存在的文件 |
 | `CONFLICT` | 冲突(409/412) | 不覆盖写已存在文件 |
-| `VALIDATION` | 参数非法 | 空 URL、非法路径/配置名 |
+| `DECRYPTION` | 解密失败 | 密钥错误、密文损坏 |
+| `VALIDATION` | 参数非法 | 空 URL、非法路径/配置名、缺加密密钥 |
 | `UNKNOWN` | 其他 | 服务端 5xx |
 
 ## CLI

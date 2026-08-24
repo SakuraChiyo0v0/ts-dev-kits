@@ -24,7 +24,7 @@
 | `@sakurachiyo0v0/xiaoheihe` | 0.1.0 | 小黑盒 SDK:扫码登录 + hkey/nonce 签名 + 只读查询(帖子/评论/feed/@消息/用户) | 可用(P0 只读) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/xiaoheihe` |
 | `@sakurachiyo0v0/dsh-sdk-tools` | 0.2.0 | DSH host 插件:把 bilibili/netease-music/ffmpeg/email/lol/vrchat 包装成 agent 工具,经 Agent 预设按需暴露 | 可用 | `pnpm add @sakurachiyo0v0/dsh-sdk-tools`(GitHub Packages) |
 | `@sakurachiyo0v0/database` | 0.1.1 | 统一数据访问抽象层:一套 API 访问本地 SQLite 与远程 PostgreSQL/MySQL,配置切换后端 | 可用(SQLite 全量,远程可选) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/database` |
-| `@sakurachiyo0v0/webdav` | 0.1.0 | WebDAV 配置存取 SDK:基础文件操作 + ConfigStore(原子写/自动备份) + CLI | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/webdav` |
+| `@sakurachiyo0v0/webdav` | 0.2.0 | WebDAV 配置存取 SDK:基础文件操作 + ConfigStore(原子写/自动备份) + 加密存储 + CLI | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/webdav` |
 
 ## 包详情
 

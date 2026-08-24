@@ -20,6 +20,7 @@ import {
 } from "@sakurachiyo0v0/cli-utils";
 import { createWebdavClient } from "../client.js";
 import { createConfigStore } from "../config-store.js";
+import { createEncryptedConfigStore } from "../encrypted-config-store.js";
 import { WebdavError } from "../errors.js";
 import type { WebdavClient } from "../types.js";
 
@@ -46,6 +47,8 @@ const OPTIONS = [
   { flag: "--json <json>", desc: "config-save 直接给 JSON 对象" },
   { flag: "--base-path <dir>", desc: "config-* 远端目录(默认 /configs/)" },
   { flag: "--backup-count <n>", desc: "config-save 保留备份数(默认 3)" },
+  { flag: "--encrypt", desc: "config-* 加密存取(AES-256-GCM;密钥 --key 或环境变量 WEBDAV_CONFIG_KEY)" },
+  { flag: "--key <key>", desc: "加密密钥(默认环境变量 WEBDAV_CONFIG_KEY)" },
   { flag: "--raw", desc: "get 按文本原样输出(不 JSON 包裹)" },
 ];
 
@@ -129,14 +132,14 @@ async function run(): Promise<void> {
     }
     case "config-load": {
       const name = requirePos(args, "config-load");
-      const store = createConfigStore({ client, ...configStoreOptions(args) });
+      const store = buildStore(args, client);
       const data = await store.load(name);
       outputJson(data);
       return;
     }
     case "config-save": {
       const name = requirePos(args, "config-save");
-      const store = createConfigStore({ client, ...configStoreOptions(args) });
+      const store = buildStore(args, client);
       const file = getString(args, "file");
       const json = getString(args, "json");
       const data = file !== undefined ? readFileSync(file, "utf8") : json !== undefined ? JSON.parse(json) : readStdinOrThrow();
@@ -167,13 +170,36 @@ function readStdinOrThrow(): string {
   throw new CliError("config-save 需要 --file <本地路径> 或 --json <JSON>");
 }
 
-function configStoreOptions(args: ReturnType<typeof parseArgs>): { basePath?: string; backupCount?: number } {
+function configStoreOptions(
+  args: ReturnType<typeof parseArgs>,
+): { basePath?: string; backupCount?: number } & { encrypt?: boolean; key?: string } {
   const basePath = getString(args, "base-path");
   const backup = getString(args, "backup-count");
+  const encrypt = getBool(args, "encrypt");
+  const key = getString(args, "key");
   return {
     ...(basePath !== undefined ? { basePath } : {}),
     ...(backup !== undefined ? { backupCount: Number(backup) } : {}),
+    ...(encrypt ? { encrypt: true } : {}),
+    ...(key !== undefined ? { key } : {}),
   };
+}
+
+function buildStore(args: ReturnType<typeof parseArgs>, client: WebdavClient) {
+  const options = configStoreOptions(args);
+  if (options.encrypt) {
+    return createEncryptedConfigStore({
+      client,
+      ...(options.basePath !== undefined ? { basePath: options.basePath } : {}),
+      ...(options.backupCount !== undefined ? { backupCount: options.backupCount } : {}),
+      ...(options.key !== undefined ? { key: options.key } : {}),
+    });
+  }
+  return createConfigStore({
+    client,
+    ...(options.basePath !== undefined ? { basePath: options.basePath } : {}),
+    ...(options.backupCount !== undefined ? { backupCount: options.backupCount } : {}),
+  });
 }
 
 run().catch((err: unknown) => {

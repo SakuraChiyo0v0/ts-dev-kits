@@ -51,6 +51,17 @@ amechan-webdav config-load <name> --base-path /dir --backup-count 5  # 自定义
 - `config-save` 原子写(临时文件+move 覆盖),旧版本自动滚动备份为 `<name>.bak.1/.bak.2/...`(默认保留 3 份,`--backup-count 0` 关闭)。
 - 配置名不允许路径分隔符/`..`(防越界)。
 
+### 加密配置存取(敏感数据:cookie/密钥/token)
+
+```bash
+export WEBDAV_CONFIG_KEY="你的加密密钥"      # 32 字节 hex/base64 或任意字符串(自动派生)
+amechan-webdav config-save <name> --json '{"cookie":"..."}' --encrypt   # 加密保存
+amechan-webdav config-load <name> --encrypt                             # 解密读取
+```
+
+- 加 `--encrypt` 后云端只存 AES-256-GCM 密文,明文不出本地;密钥经 `--key` 或环境变量 `WEBDAV_CONFIG_KEY` 提供。
+- 适合存 cookie/登录态/密钥等敏感配置;密钥务必本地保管、不要放进 WebDAV。
+
 ## 错误码
 
 - `AUTHENTICATION`:认证失败(401/403)——检查 `WEBDAV_USERNAME`/`WEBDAV_PASSWORD`。
