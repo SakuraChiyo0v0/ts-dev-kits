@@ -68,7 +68,11 @@ export async function createVrchatClient(
 
   // 未显式传 cookie 时从 AuthStore 加载。
   if (options.cookie === undefined) {
-    const store = new AuthStore({ platform: "vrchat", ...(options.authPath ? { path: options.authPath } : {}) });
+    const store = new AuthStore({
+      platform: "vrchat",
+      ...(options.authPath !== undefined ? { path: options.authPath } : {}),
+      ...(options.remote !== undefined ? { remote: options.remote } : {}),
+    });
     const payload = store.loadSync();
     if (payload !== null) {
       const credentials = adapter.deserialize(payload);
@@ -130,7 +134,11 @@ export async function createVrchatClient(
           // 会话已失效也继续清理本地
         }
       }
-      const store = new AuthStore({ platform: "vrchat", ...(options.authPath ? { path: options.authPath } : {}) });
+      const store = new AuthStore({
+        platform: "vrchat",
+        ...(options.authPath !== undefined ? { path: options.authPath } : {}),
+        ...(options.remote !== undefined ? { remote: options.remote } : {}),
+      });
       await store.clear();
     },
     async close() {

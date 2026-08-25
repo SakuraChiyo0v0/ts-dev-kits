@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/steam",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "Steam SDK (query-only): Web API / Storefront / Community endpoints, login session (password+Guard / TOTP / QR / cookie import), zero write operations",
   "license": "UNLICENSED",
   "type": "module",
@@ -34,13 +34,16 @@
   "dependencies": {
     "@sakurachiyo0v0/account": "workspace:*",
     "@sakurachiyo0v0/cli-utils": "workspace:*",
+    "@sakurachiyo0v0/config": "workspace:*",
     "undici": "^7.0.0"
   },
   "devDependencies": {
+    "@sakurachiyo0v0/webdav": "workspace:*",
     "@types/node": "^26.1.2",
     "rollup": "^4.62.4",
     "tslib": "^2.8.1",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.10",
+    "webdav-server": "^2.6.3"
   }
 }

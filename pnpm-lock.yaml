@@ -109,7 +109,13 @@ importers:
       '@sakurachiyo0v0/cli-utils':
         specifier: workspace:*
         version: link:../cli-utils
+      '@sakurachiyo0v0/config':
+        specifier: workspace:*
+        version: link:../config
     devDependencies:
+      '@sakurachiyo0v0/webdav':
+        specifier: workspace:*
+        version: link:../webdav
       '@types/node':
         specifier: ^26.1.2
         version: 26.1.2
@@ -125,6 +131,9 @@ importers:
       vitest:
         specifier: ^4.1.10
         version: 4.1.10(@types/node@26.1.2)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(tsx@4.23.5))
+      webdav-server:
+        specifier: ^2.6.3
+        version: 2.6.3
 
   packages/chat-platforms:
     dependencies:
@@ -345,10 +354,16 @@ importers:
       '@sakurachiyo0v0/cli-utils':
         specifier: workspace:*
         version: link:../cli-utils
+      '@sakurachiyo0v0/config':
+        specifier: workspace:*
+        version: link:../config
       '@sakurachiyo0v0/ffmpeg':
         specifier: workspace:*
         version: link:../ffmpeg
     devDependencies:
+      '@sakurachiyo0v0/webdav':
+        specifier: workspace:*
+        version: link:../webdav
       '@types/node':
         specifier: ^26.1.2
         version: 26.1.2
@@ -364,6 +379,9 @@ importers:
       vitest:
         specifier: ^4.1.10
         version: 4.1.10(@types/node@26.1.2)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(tsx@4.23.5))
+      webdav-server:
+        specifier: ^2.6.3
+        version: 2.6.3
 
   packages/steam:
     dependencies:
@@ -373,10 +391,16 @@ importers:
       '@sakurachiyo0v0/cli-utils':
         specifier: workspace:*
         version: link:../cli-utils
+      '@sakurachiyo0v0/config':
+        specifier: workspace:*
+        version: link:../config
       undici:
         specifier: ^7.0.0
         version: 7.29.0
     devDependencies:
+      '@sakurachiyo0v0/webdav':
+        specifier: workspace:*
+        version: link:../webdav
       '@types/node':
         specifier: ^26.1.2
         version: 26.1.2
@@ -392,6 +416,9 @@ importers:
       vitest:
         specifier: ^4.1.10
         version: 4.1.10(@types/node@26.1.2)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(tsx@4.23.5))
+      webdav-server:
+        specifier: ^2.6.3
+        version: 2.6.3
 
   packages/vrchat:
     dependencies:
@@ -401,7 +428,13 @@ importers:
       '@sakurachiyo0v0/cli-utils':
         specifier: workspace:*
         version: link:../cli-utils
+      '@sakurachiyo0v0/config':
+        specifier: workspace:*
+        version: link:../config
     devDependencies:
+      '@sakurachiyo0v0/webdav':
+        specifier: workspace:*
+        version: link:../webdav
       '@types/node':
         specifier: ^26.1.2
         version: 26.1.2
@@ -417,6 +450,9 @@ importers:
       vitest:
         specifier: ^4.1.10
         version: 4.1.10(@types/node@26.1.2)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(tsx@4.23.5))
+      webdav-server:
+        specifier: ^2.6.3
+        version: 2.6.3
 
   packages/webdav:
     dependencies:

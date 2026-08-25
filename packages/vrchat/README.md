@@ -44,6 +44,33 @@ await client.close();
 
 未登录时调用 API 抛 `VrchatError("AUTH_EXPIRED", ...)`,重新 `login()` 即可。
 
+## 登录态多端同步(远程,可选)
+
+通过 [`@sakurachiyo0v0/config`](../config/README.md) 的配置中心加密命名空间,登录态双写本地 + 远程(WebDAV 加密);远程不可达时自动降级本地,不影响使用:
+
+```ts
+import { AuthStore } from "@sakurachiyo0v0/account";
+import { createConfigCenter } from "@sakurachiyo0v0/config";
+import { createVrchatClient } from "@sakurachiyo0v0/vrchat";
+
+// 1. 远程加密命名空间(配置中心,默认路径 /amechan/secrets/auth)
+const remote = createConfigCenter().namespace("auth", { encrypt: true });
+
+// 2. 登录时带 remote:登录态同时落本地 + 远程
+await client.login({
+  username: "your-username",
+  password: "your-password",
+  store: new AuthStore({ platform: "vrchat", remote }),
+});
+
+// 或直接构造带 remote 的客户端(加载本地缓存;若本地无缓存则需先 load())
+const client = await createVrchatClient({ remote });
+
+// 3. 新机还原:先 load() 从远程拉取并回写本地缓存,再构造客户端
+await new AuthStore({ platform: "vrchat", remote }).load();
+const client2 = await createVrchatClient({ remote });
+```
+
 ## 认证协议
 
 | 步骤 | 端点 | 说明 |
@@ -67,6 +94,7 @@ createVrchatClient(options?: VrchatClientOptions): Promise<VrchatClient>
 | --- | --- | --- |
 | `authPath` | `string` | AuthStore 自定义路径 |
 | `cookie` | `string` | 显式会话 cookie(优先于 AuthStore) |
+| `remote` | `ConfigNamespace` | 远程登录态命名空间(配置中心加密域);登录态双写本地+远程,远程不可达自动降级本地,新机可用 `AuthStore.load()` 还原 |
 | `baseUrl` | `string` | 覆盖 API 基地址(测试用 mock) |
 | `fetchImpl` | `typeof fetch` | 注入 fetch(测试用) |
 | `timeoutMs` | `number` | 请求超时,默认 15000 |

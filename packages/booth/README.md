@@ -65,6 +65,27 @@ await client.persistLogin();
 
 CLI 方式:`amechan-booth login` / `login --manual` / `status` / `logout`。
 
+### 远程登录态同步(多端)
+
+配置 `@sakurachiyo0v0/config` 的远程加密命名空间后,登录态**双写本地 + 远程**(WebDAV 加密域),新机可还原、远程不可达自动降级本地:
+
+```ts
+import { loginBooth, createBoothClient } from "@sakurachiyo0v0/booth";
+import { createConfigCenter } from "@sakurachiyo0v0/config";
+import { AuthStore } from "@sakurachiyo0v0/account";
+
+const remote = createConfigCenter().namespace("auth", { encrypt: true }); // /amechan/secrets/auth
+
+// 登录时透传 remote:登录态双写本地 + 远程(加密)
+await loginBooth({ remote });
+
+// 新机还原:先 await load() 从远程拉取并回写本地缓存,再构造客户端
+await new AuthStore({ platform: "booth", remote }).load();
+const client = createBoothClient({ remote });
+```
+
+`persistLogin()` 亦会经会话的 remote 配置双写(显式 cookie 手动登录时同理);远程不可达时自动降级本地,不影响使用。
+
 ## API
 
 ### `createBoothClient(options?)`
@@ -73,6 +94,7 @@ CLI 方式:`amechan-booth login` / `login --manual` / `status` / `logout`。
 | --- | --- |
 | `cookie` | 显式会话 cookie(优先于 AuthStore) |
 | `authPath` | AuthStore 自定义路径(缺省平台默认) |
+| `remote` | 远程登录态命名空间(`createConfigCenter().namespace("auth",{encrypt:true})`),登录态双写本地+远程,新机还原/远程降级见上文 |
 | `baseUrl` | 覆盖站点基地址(测试/自定义网关) |
 | `fetchImpl` | 注入 fetch(测试) |
 | `download.retries` | 单文件重试次数,默认 2 |

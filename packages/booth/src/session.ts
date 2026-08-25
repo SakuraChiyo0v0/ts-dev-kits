@@ -3,6 +3,7 @@
  * 与 netease-music 的 WeapiSession 同构,但请求不需要加密层,直接携带 cookie 发请求。
  */
 import { AuthStore } from "@sakurachiyo0v0/account";
+import type { ConfigNamespace } from "@sakurachiyo0v0/config";
 import { BoothError } from "./errors.js";
 
 const DEFAULT_BASE_URL = "https://booth.pm";
@@ -63,6 +64,8 @@ export interface BoothSessionOptions {
   baseUrl?: string;
   fetchImpl?: typeof fetch;
   authPath?: string;
+  /** 可选远程登录态命名空间(配置中心加密域);persist 双写本地+远程,clear 一并清除远程。 */
+  remote?: ConfigNamespace;
 }
 
 /** 携带 cookie 的 BOOTH 请求会话。 */
@@ -70,20 +73,29 @@ export class BoothSession {
   readonly #baseUrl: string;
   readonly #fetchImpl: typeof fetch;
   readonly #authPath: string | undefined;
+  readonly #remote: ConfigNamespace | undefined;
   #cookieMap: Record<string, string>;
 
   constructor(options: BoothSessionOptions = {}) {
     this.#baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
     this.#fetchImpl = options.fetchImpl ?? fetch;
     this.#authPath = options.authPath;
+    if (options.remote !== undefined) this.#remote = options.remote;
 
     // 显式 cookie 优先;否则从 AuthStore 加载(platform: "booth")。
     let cookie = options.cookie;
     if (cookie === undefined) {
       const store =
         options.authPath !== undefined
-          ? new AuthStore({ platform: "booth", path: options.authPath })
-          : new AuthStore({ platform: "booth" });
+          ? new AuthStore({
+              platform: "booth",
+              path: options.authPath,
+              ...(options.remote !== undefined ? { remote: options.remote } : {}),
+            })
+          : new AuthStore({
+              platform: "booth",
+              ...(options.remote !== undefined ? { remote: options.remote } : {}),
+            });
       const stored = store.loadSync();
       cookie = typeof stored?.credentials?.cookies === "string" ? stored.credentials.cookies : undefined;
     }
@@ -165,13 +177,20 @@ export class BoothSession {
     return response;
   }
 
-  /** 保存当前会话到 AuthStore(登录捕获后调用)。 */
+  /** 保存当前会话到 AuthStore(登录捕获后调用);配置 remote 时双写本地+远程。 */
   async persist(authPath?: string): Promise<void> {
     const resolved = authPath ?? this.#authPath;
     const store =
       resolved !== undefined
-        ? new AuthStore({ platform: "booth", path: resolved })
-        : new AuthStore({ platform: "booth" });
+        ? new AuthStore({
+            platform: "booth",
+            path: resolved,
+            ...(this.#remote !== undefined ? { remote: this.#remote } : {}),
+          })
+        : new AuthStore({
+            platform: "booth",
+            ...(this.#remote !== undefined ? { remote: this.#remote } : {}),
+          });
     const payload = {
       platform: "booth",
       credentials: { cookies: this.cookie } satisfies BoothCredentials,
@@ -180,13 +199,20 @@ export class BoothSession {
     await store.save(payload);
   }
 
-  /** 清除 AuthStore 中的登录态。 */
+  /** 清除 AuthStore 中的登录态(配置 remote 时一并清除远程)。 */
   async clear(authPath?: string): Promise<void> {
     const resolved = authPath ?? this.#authPath;
     const store =
       resolved !== undefined
-        ? new AuthStore({ platform: "booth", path: resolved })
-        : new AuthStore({ platform: "booth" });
+        ? new AuthStore({
+            platform: "booth",
+            path: resolved,
+            ...(this.#remote !== undefined ? { remote: this.#remote } : {}),
+          })
+        : new AuthStore({
+            platform: "booth",
+            ...(this.#remote !== undefined ? { remote: this.#remote } : {}),
+          });
     await store.clear();
   }
 }

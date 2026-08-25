@@ -64,6 +64,7 @@ amechan-netease unsubscribe <playlistId>     # 取消收藏歌单
 | --- | --- |
 | `cookie` | 显式 cookie 字符串(优先) |
 | `authPath` | 未传 cookie 时从该 AuthStore 加载登录态 |
+| `remote` | 可选远程登录态命名空间(配置中心加密域),登录态双写本地+远程,新机 `load()` 还原 |
 | `download` | 下载配置(并发/重试/默认输出目录) |
 | `baseUrl` / `fetchImpl` | 测试用覆盖 |
 
@@ -111,6 +112,25 @@ import { neteaseQrAdapter } from "@sakurachiyo0v0/netease-music";
 
 const store = new AuthStore({ platform: "netease-music" });
 await qrcodeLogin({ adapter: neteaseQrAdapter(), store });
+```
+
+### 登录态多端同步(远程加密命名空间)
+
+登录态默认只存本地(`<配置根>/amechan/netease-music/auth.json`)。传入 `remote`(配置中心加密域)后,登录态**双写本地+远程(加密)**;新机先 `await store.load()` 从远程还原并回写本地缓存,再构造客户端;远程不可达时自动降级本地,不影响使用。
+
+```ts
+import { qrcodeLogin, AuthStore } from "@sakurachiyo0v0/account";
+import { createConfigCenter } from "@sakurachiyo0v0/config";
+import { createNeteaseClient, neteaseQrAdapter } from "@sakurachiyo0v0/netease-music";
+
+const remote = createConfigCenter().namespace("auth", { encrypt: true }); // /amechan/secrets/auth
+
+// 登录(双写本地+远程)
+await qrcodeLogin({ adapter: neteaseQrAdapter(), store: new AuthStore({ platform: "netease-music", remote }) });
+
+// 新机还原:先 load() 拉取远程回写本地,再构造客户端
+await new AuthStore({ platform: "netease-music", remote }).load();
+const client = createNeteaseClient({ remote });
 ```
 
 > 协议注意点(已实测验证):匿名请求需自动附带 `os=pc; appver=8.9.70` 基础 cookie,否则被网易云风控拦截(`code -462`);weapi 加密的 `encSecKey` 是 hex(非 base64),明文为 secretKey 反转后前置补 0x00 到 128 字节。SDK 同时实现了 eapi 加密(`eapiEncrypt`/`eapiDecrypt`/`session.postEapi`),但收藏歌单接口实测老 eapi 路径已废弃(404),当前版本走 weapi 路径。

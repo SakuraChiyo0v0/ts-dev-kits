@@ -81,8 +81,19 @@ export function createSteamClient(options: SteamClientOptions = {}): SteamClient
   const workshop = new WorkshopApi(transport);
   const auth = new AuthApi(transport, {
     ...(options.sessionPath !== undefined
-      ? { store: new AuthStore({ platform: "steam", path: options.sessionPath }) }
-      : { store: new AuthStore({ platform: "steam" }) }),
+      ? {
+          store: new AuthStore({
+            platform: "steam",
+            path: options.sessionPath,
+            ...(options.remote !== undefined ? { remote: options.remote } : {}),
+          }),
+        }
+      : {
+          store: new AuthStore({
+            platform: "steam",
+            ...(options.remote !== undefined ? { remote: options.remote } : {}),
+          }),
+        }),
   });
   // 登录会话的 steamid 提供者(getOwnInventory / getTradeUrl 需要)。
   const ownSteamId = (): string | undefined => auth.status().steamid;

@@ -35,6 +35,7 @@ export class BoothClient {
     this.#session = new BoothSession({
       ...(options.cookie !== undefined ? { cookie: options.cookie } : {}),
       ...(options.authPath !== undefined ? { authPath: options.authPath } : {}),
+      ...(options.remote !== undefined ? { remote: options.remote } : {}),
       ...(options.baseUrl !== undefined ? { baseUrl: options.baseUrl } : {}),
       ...(options.fetchImpl !== undefined ? { fetchImpl: options.fetchImpl } : {}),
     });
@@ -204,11 +205,13 @@ function safeItemId(input: string): string {
 export async function loginBooth(options: BoothLoginOptions = {}): Promise<{ account: string; saved: boolean }> {
   try {
     // booth 现有行为:登录成功始终持久化(未传 authPath 用默认 <配置根>/amechan/booth/auth.json)。
+    // 传 remote 时登录态双写本地+远程(配置中心加密域),换机可还原。
     const result = await browserLogin({
       adapter: boothBrowserAdapter(),
       store: new AuthStore({
         platform: "booth",
         ...(options.authPath !== undefined ? { path: options.authPath } : {}),
+        ...(options.remote !== undefined ? { remote: options.remote } : {}),
       }),
       ...(options.loginUrl !== undefined ? { loginUrl: options.loginUrl } : {}),
       ...(options.openBrowser !== undefined ? { openBrowser: options.openBrowser } : {}),

@@ -64,10 +64,11 @@ export class NeteaseMusicClient {
     // authPath 缺省时也用默认平台路径(与 CLI login 保存位置一致)。
     let cookie = options.cookie;
     if (cookie === undefined) {
-      const store =
-        options.authPath !== undefined
-          ? new AuthStore({ platform: "netease-music", path: options.authPath })
-          : new AuthStore({ platform: "netease-music" });
+      const store = new AuthStore({
+        platform: "netease-music",
+        ...(options.authPath !== undefined ? { path: options.authPath } : {}),
+        ...(options.remote !== undefined ? { remote: options.remote } : {}),
+      });
       const stored = store.loadSync();
       cookie = typeof stored?.credentials?.cookies === "string" ? stored.credentials.cookies : undefined;
     }

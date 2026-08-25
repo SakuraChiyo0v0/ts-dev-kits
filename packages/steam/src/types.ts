@@ -4,6 +4,7 @@
  * 便于对照官方文档与调试;需要本地化的语义(如 privacyRestricted)另行标注。
  */
 import type { SteamHost } from "./endpoints.js";
+import type { ConfigNamespace } from "@sakurachiyo0v0/config";
 
 /** 客户端创建选项。 */
 export interface SteamClientOptions {
@@ -17,6 +18,11 @@ export interface SteamClientOptions {
   baseUrls?: Partial<Record<SteamHost, string>>;
   /** AuthStore 路径(P2 登录态使用),默认 <配置根>/amechan/steam/auth.json。 */
   sessionPath?: string;
+  /**
+   * 可选远程登录态命名空间(配置中心加密域,如 createConfigCenter().namespace("auth",{encrypt:true}))。
+   * 登录态双写本地+远程;新机还原:先 await new AuthStore({platform:"steam",remote}).load()。
+   */
+  remote?: ConfigNamespace;
   /** 可注入 fetch 实现(默认 undici fetch)。 */
   fetchImpl?: typeof fetch;
   /** 单请求超时(毫秒),默认 15000。 */

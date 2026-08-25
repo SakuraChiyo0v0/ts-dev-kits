@@ -109,6 +109,22 @@ await steam.auth.logout(); // 清除 cookie 与存储
 await steam.close();
 ```
 
+### 登录态多端同步(可选)
+
+`remote` 选项接入 `@sakurachiyo0v0/config` 的远程加密命名空间后,登录态双写本地+远程;新机还原时先 `load()` 拉取并回写本地缓存;远程不可达自动降级本地,不影响使用:
+
+```ts
+import { AuthStore } from "@sakurachiyo0v0/account";
+import { createConfigCenter } from "@sakurachiyo0v0/config";
+import { createSteamClient } from "@sakurachiyo0v0/steam";
+
+const remote = createConfigCenter().namespace("auth", { encrypt: true }); // /amechan/secrets/auth
+
+// 新机还原:先从远程拉取登录态回写本地,再构造客户端
+await new AuthStore({ platform: "steam", remote }).load();
+const steam = createSteamClient({ remote, sessionPath: "./steam-auth.json" });
+```
+
 ## P3 登录后只读深水区示例
 
 ```ts
@@ -200,6 +216,7 @@ amechan-steam logout
 | `proxy` | `http(s)://` 或 `socks5://` 代理(undici ProxyAgent) |
 | `baseUrls` | 覆盖四台主机(测试/镜像) |
 | `sessionPath` | AuthStore 路径(P2 登录态) |
+| `remote` | 远程登录态命名空间(配置中心加密域);登录态双写本地+远程,远程不可达降级本地 |
 | `fetchImpl` | 可注入 fetch 实现(默认 undici fetch) |
 | `timeoutMs` | 单请求超时,默认 15000 |
 | `maxRetries` | 429 最大重试次数,默认 2(尊重 `Retry-After`,上限 10s) |
