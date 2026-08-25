@@ -4,7 +4,7 @@
 
 ## 一句话流程
 
-在 `packages/<name>/` 下创建源码、测试、构建配置和 README,包通过 pnpm workspace 加入根 lockfile,用根目录脚本 `pnpm check`(typecheck + test + build)统一验证。可复用包不发布到公共 npm registry,跨机器使用走 git 子目录依赖。
+在 `packages/<name>/` 下创建源码、测试、构建配置和 README,包通过 pnpm workspace 加入根 lockfile,用根目录脚本 `pnpm check`(typecheck + test + build)统一验证。可复用包发布到 GitHub Packages(不发布到公共 npm registry),跨机器使用走 git 子目录依赖或 GitHub Packages 安装。
 
 ## 目录结构
 
@@ -95,7 +95,7 @@ Vitest 测试。真实协议路径优先(如本地 `smtp-server` 起一个仅测
 ```
 
 - `workspace:*` 始终取当前 workspace 内该包的最新版,开发时改动源码即生效,`pnpm install` 一次解析好依赖图。
-- 需要跟随版本范围时可写 `workspace:^0.1.0`,发布后 `workspace:` 前缀会被替换为实际版本号(本仓库暂不发布,无此环节)。
+- 需要跟随版本范围时可写 `workspace:^0.1.0`,发布后 `workspace:` 前缀会被替换为实际版本号(CI 发布到 GitHub Packages 时执行此替换)。
 - 只有 `packages/*` 下的 workspace 包能这样引用;外部项目不适用,应改用 git 子目录依赖。
 
 ### 依赖方向

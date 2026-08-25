@@ -20,7 +20,7 @@ BOOTH(booth.pm,Pixiv 旗下数字商品市场)SDK:登录态管理、商品解析
 pnpm add @sakurachiyo0v0/booth@workspace:*
 ```
 
-从私有 GitHub monorepo 安装(需在消费项目 `pnpm-workspace.yaml` 中授权 `@sakurachiyo0v0/booth` 与 `@sakurachiyo0v0/account` 构建脚本):
+从 GitHub monorepo 安装(需在消费项目 `pnpm-workspace.yaml` 中授权 `@sakurachiyo0v0/booth` 与 `@sakurachiyo0v0/account` 构建脚本):
 
 ```powershell
 pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/booth"

@@ -21,7 +21,7 @@ Node.js 20+。支持 Basic 认证的 WebDAV 服务（坚果云、Nextcloud、自
 pnpm add @sakurachiyo0v0/webdav@workspace:*
 ```
 
-从私有 GitHub monorepo 安装（需在消费项目 `pnpm-workspace.yaml` 中授权构建脚本）:
+从 GitHub monorepo 安装（需在消费项目 `pnpm-workspace.yaml` 中授权构建脚本）:
 
 ```powershell
 pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/webdav"

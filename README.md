@@ -1,6 +1,6 @@
 # ts-dev-kits
 
-个人 TypeScript 开发工具 monorepo。远程仓库为私有 GitHub 仓库 [`SakuraChiyo0v0/ts-dev-kits`](https://github.com/SakuraChiyo0v0/ts-dev-kits)。
+个人 TypeScript 开发工具 monorepo。远程仓库为公开 GitHub 仓库 [`SakuraChiyo0v0/ts-dev-kits`](https://github.com/SakuraChiyo0v0/ts-dev-kits)。
 
 ## 当前包
 
@@ -46,7 +46,7 @@ pnpm verify:email-git-package
 pnpm add @sakurachiyo0v0/email@workspace:*
 ```
 
-在另一台已获得私有仓库访问权限的电脑上，先为 Git 依赖的构建脚本添加精确授权：
+在另一台电脑上（仓库公开，git 子目录依赖无需访问授权），先为 Git 依赖的构建脚本添加精确授权：
 
 ```yaml
 # 消费项目的 pnpm-workspace.yaml

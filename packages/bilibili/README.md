@@ -17,7 +17,7 @@ B 站视频下载 SDK。解析视频信息、获取播放流、可配置下载�
 pnpm add @sakurachiyo0v0/bilibili@workspace:*
 ```
 
-从私有 GitHub monorepo 使用(需先在消费项目 `pnpm-workspace.yaml` 中授权构建脚本):
+从 GitHub monorepo 使用(需先在消费项目 `pnpm-workspace.yaml` 中授权构建脚本):
 
 ```yaml
 allowBuilds:

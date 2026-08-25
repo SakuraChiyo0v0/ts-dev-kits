@@ -4,7 +4,7 @@
 
 ## 仓库是什么
 
-个人 TypeScript 开发工具 monorepo,用 pnpm workspace 组织。私有 GitHub 仓库 `SakuraChiyo0v0/ts-dev-kits`,暂不发布到公共 npm registry。
+个人 TypeScript 开发工具 monorepo,用 pnpm workspace 组织。公开 GitHub 仓库 `SakuraChiyo0v0/ts-dev-kits`;包发布到 GitHub Packages,不发布到公共 npm registry。
 
 - `packages/*` — 可复用依赖包(`@sakurachiyo0v0/<name>`;当前有 `cli-utils`、`account`、`email`、`ffmpeg`、`bilibili`、`netease-music`、`chat-platforms`、`lol`、`dsh-sdk-tools`)
 - `docs/` — 设计文档、规范、包索引与模板

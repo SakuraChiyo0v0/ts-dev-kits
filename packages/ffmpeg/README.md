@@ -15,7 +15,7 @@
 pnpm add @sakurachiyo0v0/ffmpeg@workspace:*
 ```
 
-### 从私有 GitHub monorepo 使用
+### 从 GitHub monorepo 使用
 
 先在消费项目的 `pnpm-workspace.yaml` 中授权构建脚本:
 

@@ -5,7 +5,7 @@
 - 新增一个依赖包时，在「总览」表格追加一行，并按照下文格式补一段「包详情」。
 - 新建包的目录结构约定见 [`package-template.md`](package-template.md)。
 - 表格中的「引用方式」列填写最常用的安装方式；完整选项见对应包的详情。
-- 所有 `@sakurachiyo0v0/*` 包也发布到 GitHub Packages(私有 npm 仓库),外部项目配置一次 `.npmrc` 后即可 `pnpm add @sakurachiyo0v0/<name>` 直接安装 —— 见 [`GITHUB_PACKAGES.md`](GITHUB_PACKAGES.md)。
+- 所有 `@sakurachiyo0v0/*` 包也发布到 GitHub Packages(GitHub npm 仓库,消费方需在 `.npmrc` 配置认证),外部项目配置一次 `.npmrc` 后即可 `pnpm add @sakurachiyo0v0/<name>` 直接安装 —— 见 [`GITHUB_PACKAGES.md`](GITHUB_PACKAGES.md)。
 
 ## 总览
 
@@ -56,7 +56,7 @@
 pnpm add @sakurachiyo0v0/email@workspace:*
 ```
 
-从私有 GitHub monorepo 安装（需先在消费项目 `pnpm-workspace.yaml` 中授权构建脚本，见包内 README）：
+从 GitHub monorepo 安装（需先在消费项目 `pnpm-workspace.yaml` 中授权构建脚本，见包内 README）：
 
 ```powershell
 pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/email"
@@ -137,7 +137,7 @@ FFmpeg/ffprobe 进程封装 SDK。底层提供任意参数的运行器与原生�
 pnpm add @sakurachiyo0v0/ffmpeg@workspace:*
 ```
 
-从私有 GitHub monorepo 安装(需先在消费项目 `pnpm-workspace.yaml` 中授权构建脚本,见包内 README)：
+从 GitHub monorepo 安装(需先在消费项目 `pnpm-workspace.yaml` 中授权构建脚本,见包内 README)：
 
 ```powershell
 pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/ffmpeg"
@@ -205,7 +205,7 @@ B 站视频下载 SDK。解析视频信息、获取播放流、可配置下载�
 pnpm add @sakurachiyo0v0/bilibili@workspace:*
 ```
 
-从私有 GitHub monorepo 安装(需授权 `@sakurachiyo0v0/bilibili` 与 `@sakurachiyo0v0/ffmpeg` 两个构建脚本)：
+从 GitHub monorepo 安装(需授权 `@sakurachiyo0v0/bilibili` 与 `@sakurachiyo0v0/ffmpeg` 两个构建脚本)：
 
 ```powershell
 pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/bilibili"
@@ -252,7 +252,7 @@ pnpm --filter @sakurachiyo0v0/bilibili build  # 构建 ESM + CJS + d.ts
 pnpm add @sakurachiyo0v0/chat-platforms@workspace:*
 ```
 
-从私有 GitHub monorepo 安装（需授权 `@sakurachiyo0v0/chat-platforms` 与 `@larksuiteoapi/node-sdk` 构建脚本）：
+从 GitHub monorepo 安装（需授权 `@sakurachiyo0v0/chat-platforms` 与 `@larksuiteoapi/node-sdk` 构建脚本）：
 
 ```powershell
 pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/chat-platforms"
@@ -321,7 +321,7 @@ pnpm --filter @sakurachiyo0v0/chat-platforms build  # 构建 ESM + CJS + d.ts
 pnpm add @sakurachiyo0v0/lol@workspace:*
 ```
 
-从私有 GitHub monorepo 安装（需在消费项目 `pnpm-workspace.yaml` 中授权 `@sakurachiyo0v0/lol` 构建脚本）：
+从 GitHub monorepo 安装（需在消费项目 `pnpm-workspace.yaml` 中授权 `@sakurachiyo0v0/lol` 构建脚本）：
 
 ```powershell
 pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/lol"
@@ -376,7 +376,7 @@ pnpm --filter @sakurachiyo0v0/lol build       # 构建 ESM + CJS + d.ts
 pnpm add @sakurachiyo0v0/account@workspace:*
 ```
 
-从私有 GitHub monorepo 安装：
+从 GitHub monorepo 安装：
 
 ```powershell
 pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/account"
@@ -434,7 +434,7 @@ pnpm --filter @sakurachiyo0v0/account build       # 构建 ESM + CJS + d.ts
 pnpm add @sakurachiyo0v0/netease-music@workspace:*
 ```
 
-从私有 GitHub monorepo 安装（需授权 `@sakurachiyo0v0/netease-music`、`@sakurachiyo0v0/account`、`@sakurachiyo0v0/ffmpeg` 构建脚本）：
+从 GitHub monorepo 安装（需授权 `@sakurachiyo0v0/netease-music`、`@sakurachiyo0v0/account`、`@sakurachiyo0v0/ffmpeg` 构建脚本）：
 
 ```powershell
 pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/netease-music"
@@ -486,7 +486,7 @@ BOOTH(booth.pm,Pixiv 旗下数字商品市场)领取/购买 SDK:登录态管理�
 pnpm add @sakurachiyo0v0/booth@workspace:*
 ```
 
-从私有 GitHub monorepo 安装(需授权 `@sakurachiyo0v0/booth` 与 `@sakurachiyo0v0/account` 构建脚本):
+从 GitHub monorepo 安装(需授权 `@sakurachiyo0v0/booth` 与 `@sakurachiyo0v0/account` 构建脚本):
 
 ```powershell
 pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/booth"
@@ -552,7 +552,7 @@ VRChat 官方 REST API SDK。认证（密码 + 2FA，基于 `@sakurachiyo0v0/acc
 pnpm add @sakurachiyo0v0/vrchat@workspace:*
 ```
 
-从私有 GitHub monorepo 安装（需授权 `@sakurachiyo0v0/vrchat` 与 `@sakurachiyo0v0/account` 构建脚本）：
+从 GitHub monorepo 安装（需授权 `@sakurachiyo0v0/vrchat` 与 `@sakurachiyo0v0/account` 构建脚本）：
 
 ```powershell
 pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/vrchat"
@@ -653,7 +653,7 @@ pnpm --filter @sakurachiyo0v0/steam build       # 构建 ESM + CJS + d.ts
 pnpm add @sakurachiyo0v0/xiaoheihe@workspace:*
 ```
 
-从私有 GitHub monorepo 安装(需授权 `@sakurachiyo0v0/xiaoheihe` 与 `@sakurachiyo0v0/account` 构建脚本):
+从 GitHub monorepo 安装(需授权 `@sakurachiyo0v0/xiaoheihe` 与 `@sakurachiyo0v0/account` 构建脚本):
 
 ```powershell
 pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/xiaoheihe"
@@ -886,7 +886,7 @@ pnpm --filter @sakurachiyo0v0/config build       # 构建 ESM + CJS + d.ts + CLI
 pnpm add @sakurachiyo0v0/chuanshengtong@workspace:*
 ```
 
-从私有 GitHub monorepo 安装(需在消费项目 `pnpm-workspace.yaml` 授权 `sharp: true`):
+从 GitHub monorepo 安装(需在消费项目 `pnpm-workspace.yaml` 授权 `sharp: true`):
 
 ```powershell
 pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/chuanshengtong"

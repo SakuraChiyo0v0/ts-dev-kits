@@ -22,7 +22,7 @@ Node.js 20+,运行在可信任的服务端进程。SQLite 基于 better-sqlite3(
 pnpm add @sakurachiyo0v0/database@workspace:*
 ```
 
-从私有 GitHub monorepo 安装(需在消费项目 `pnpm-workspace.yaml` 中授权构建脚本,见 `docs/GITHUB_PACKAGES.md`):
+从 GitHub monorepo 安装(需在消费项目 `pnpm-workspace.yaml` 中授权构建脚本,见 `docs/GITHUB_PACKAGES.md`):
 
 ```powershell
 pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/database"

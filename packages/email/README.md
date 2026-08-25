@@ -29,7 +29,7 @@ pnpm --filter @sakurachiyo0v0/email build
 pnpm add "file:C:/LocalSpace/Projects/ts-dev-kits/packages/email"
 ```
 
-### 从私有 GitHub monorepo 使用
+### 从 GitHub monorepo 使用
 
 pnpm 11 默认禁止未经审核的 Git 依赖运行构建脚本。先在消费项目的 `pnpm-workspace.yaml` 中精确授权这个仓库：
 
@@ -44,7 +44,7 @@ allowBuilds:
 pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/email"
 ```
 
-私有仓库需要本机 Git 已能访问该 GitHub 仓库。生产项目建议把依赖固定到经过审核的提交：
+本机 Git 需能访问 GitHub（仓库公开，无需额外授权）。生产项目建议把依赖固定到经过审核的提交：
 
 ```json
 {

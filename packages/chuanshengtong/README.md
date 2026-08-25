@@ -12,7 +12,7 @@
 pnpm add @sakurachiyo0v0/chuanshengtong@workspace:*
 ```
 
-从私有 GitHub monorepo 安装(需在消费项目 `pnpm-workspace.yaml` 的 `allowBuilds` 中授权 `sharp: true`,否则 sharp 原生模块不会安装):
+从 GitHub monorepo 安装(需在消费项目 `pnpm-workspace.yaml` 的 `allowBuilds` 中授权 `sharp: true`,否则 sharp 原生模块不会安装):
 
 ```powershell
 pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/chuanshengtong"

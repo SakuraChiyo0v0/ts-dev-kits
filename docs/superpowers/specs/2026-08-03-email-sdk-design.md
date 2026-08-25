@@ -194,7 +194,7 @@ SDK 使用统一的 `EmailError`，错误类别包括：
 - 远程使用可通过 Git 标签和 `path:/packages/email` 安装；
 - 将来可无破坏性地发布到 Verdaccio 等 npm-compatible 私有仓库。
 
-GitHub 仓库为私有的 `SakuraChiyo0v0/ts-dev-kits`。提交、推送和发布仍是彼此独立的授权阶段。
+GitHub 仓库为公开的 `SakuraChiyo0v0/ts-dev-kits`。提交、推送和发布仍是彼此独立的授权阶段。
 
 ## 9. 测试与验证
 

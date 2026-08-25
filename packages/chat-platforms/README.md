@@ -121,7 +121,7 @@ await client.add(feishuProvider({ appId, appSecret }), policy);
 pnpm add @sakurachiyo0v0/chat-platforms@workspace:*
 ```
 
-从私有 GitHub monorepo 安装（需在消费项目 `pnpm-workspace.yaml` 授权构建脚本）：
+从 GitHub monorepo 安装（需在消费项目 `pnpm-workspace.yaml` 授权构建脚本）：
 
 ```powershell
 pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/chat-platforms"
