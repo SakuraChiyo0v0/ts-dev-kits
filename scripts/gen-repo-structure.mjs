@@ -23,7 +23,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const HTML_PATH = join(ROOT, 'repo-structure.html');
-const EXCLUDE_DIRS = new Set(['.git', 'node_modules', 'dist']);
+const EXCLUDE_DIRS = new Set(['.git', 'node_modules', 'dist', 'lib']);
 const EXCLUDE_FILES = new Set(['pnpm-lock.yaml']);
 
 /* ---------- 1. 扫描目录树 ---------- */
@@ -68,8 +68,16 @@ const FALLBACK_COLORS = ['#38bdf8', '#a78bfa', '#34d399', '#fbbf24', '#f472b6', 
  * 展示层覆盖表(0=基础层,1=SDK 层,2=领域 SDK,3=DSH 聚合)。
  * 自动分层按"内部依赖深度"计算;需要按语义归位时在此固定层号。
  * 例:lol 没有内部依赖(拓扑深度 0),但属于领域 SDK,固定到第 2 层。
+ * 覆盖表优先于自动深度(可升可降),避免长依赖链把层数拉爆出 L4/L5。
  */
-const LAYER_OVERRIDES = { 'lol': 2 };
+const LAYER_OVERRIDES = {
+  'lol': 2,
+  'config': 1,
+  'account': 2,
+  'netease-music': 2, 'booth': 2, 'bilibili': 2,
+  'vrchat': 2, 'steam': 2, 'xiaoheihe': 2,
+  'dsh-sdk-tools': 3,
+};
 
 const found = [];
 for (const e of readdirSync(PKG_DIR, { withFileTypes: true })) {
@@ -117,7 +125,7 @@ function buildGraphData(packages) {
     inProgress.add(id);
     const ds = packages.find((p) => p.id === id)?.deps.filter((d) => idSet.has(d)) || [];
     const fromDeps = ds.length ? 1 + Math.max(...ds.map(calc)) : 0;
-    depth[id] = Math.max(LAYER_OVERRIDES[id] ?? -1, fromDeps);
+    depth[id] = LAYER_OVERRIDES[id] ?? fromDeps;
     inProgress.delete(id);
     return depth[id];
   };
