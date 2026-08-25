@@ -68,6 +68,11 @@ const SKILL_MAP = [
     cli: "packages/xiaoheihe/src/cli/xiaoheihe.ts",
     bin: "amechan-xiaoheihe",
   },
+  {
+    skill: "chuanshengtong-cli",
+    cli: "packages/chuanshengtong/src/cli/chuanshengtong.ts",
+    bin: "amechan-chuanshengtong",
+  },
 ];
 
 /**

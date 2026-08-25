@@ -27,6 +27,7 @@
 | `@sakurachiyo0v0/database` | 0.1.1 | 统一数据访问抽象层:一套 API 访问本地 SQLite 与远程 PostgreSQL/MySQL,配置切换后端 | 可用(SQLite 全量,远程可选) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/database` |
 | `@sakurachiyo0v0/webdav` | 0.2.1 | WebDAV 配置存取 SDK:基础文件操作 + ConfigStore(原子写/自动备份) + 加密存储 + CLI | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/webdav` |
 | `@sakurachiyo0v0/config` | 0.1.2 | 配置中心 SDK:WebDAV+密钥全局一次配置,namespace 按域存取(可选加密),登录态/配置多端同步 | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/config` |
+| `@sakurachiyo0v0/chuanshengtong` | 0.1.0 | 传声筒:输入文字 + 内置图像模板程序化合成图片(CLI + SDK,不依赖 AI) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/chuanshengtong` |
 
 ## 包详情
 
@@ -859,3 +860,51 @@ pnpm --filter @sakurachiyo0v0/config build       # 构建 ESM + CJS + d.ts + CLI
 ```
 
 **更多细节：** [`packages/config/README.md`](../packages/config/README.md)
+
+### `@sakurachiyo0v0/chuanshengtong`
+
+传声筒:输入文字 + 内置图像模板,**程序化合成**输出图片(不依赖 AI 图像生成 API)。基于 `sharp`(SVG 文本层 → 栅格化),中文自动换行/居中/超长保护。设计文档 [`docs/superpowers/specs/2026-08-25-chuanshengtong-design.md`](superpowers/specs/2026-08-25-chuanshengtong-design.md)。
+
+**适用环境：** Node.js 20+;中文渲染依赖系统安装中文字体(如 Noto Sans CJK / 文鼎),无中文字体时文字显示为方框。
+
+**核心接口：**
+
+- `listTemplates()` / `getTemplate(id)` — 列出/查询内置模板(id/名称/描述/尺寸/容量)
+- `render({ template, text, output, format?, width?, fontSize?, color?, quality? })` — 渲染图片到文件,返回 `{ outputPath, width, height, format, bytes }`
+- `wrapText(text, { fontSize, maxWidth, maxLines })` — 排版纯函数(中文按字符、英文按词断行,超长截断补省略号),返回 `{ lines, truncated }`
+- 内置模板:`dazibao`(大字报)/ `speech-bubble`(台词气泡)/ `card`(卡片)/ `notice`(公告),全部程序化 SVG 生成,无外部图片资源
+- `ChuanshengtongError` — 统一错误码:`TEMPLATE_NOT_FOUND` / `EMPTY_TEXT` / `TEXT_TOO_LONG` / `INVALID_OPTION` / `RENDER_FAILED` / `WRITE_FAILED` / `UNKNOWN`
+
+**CLI：** `amechan-chuanshengtong list|render <text>`(选项 `--template` / `--output` / `--format` / `--width` / `--font-size` / `--color` / `--quality`);skill 手册 [`skills/chuanshengtong-cli/SKILL.md`](../skills/chuanshengtong-cli/SKILL.md)。
+
+**安装方式：**
+
+同一 pnpm workspace 内：
+
+```powershell
+pnpm add @sakurachiyo0v0/chuanshengtong@workspace:*
+```
+
+从私有 GitHub monorepo 安装(需在消费项目 `pnpm-workspace.yaml` 授权 `sharp: true`):
+
+```powershell
+pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/chuanshengtong"
+```
+
+**API 示例：**
+
+```ts
+import { render } from "@sakurachiyo0v0/chuanshengtong";
+
+await render({ template: "dazibao", text: "你好,世界", output: "./out.png" });
+```
+
+**在仓库内的验证方式：**
+
+```powershell
+pnpm --filter @sakurachiyo0v0/chuanshengtong typecheck   # 类型检查
+pnpm --filter @sakurachiyo0v0/chuanshengtong test        # 单测(排版/转义/注册表 + sharp 真实渲染)
+pnpm --filter @sakurachiyo0v0/chuanshengtong build       # 构建 ESM + CJS + d.ts + CLI
+```
+
+**更多细节：** [`packages/chuanshengtong/README.md`](../packages/chuanshengtong/README.md)
