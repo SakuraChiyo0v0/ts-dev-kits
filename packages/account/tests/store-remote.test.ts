@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createConfigCenter } from "@sakurachiyo0v0/config";
 import { AuthStore } from "../src/store.js";
-import { startTestWebdavServer, type TestWebdavServer } from "./helpers/webdav-test-server.js";
+import { startTestWebdavServer, type TestWebdavServer } from "../../../shared/test-helpers/webdav-test-server.js";
 
 const TEST_KEY = "0123456789abcdef0123456789abcdef";
 

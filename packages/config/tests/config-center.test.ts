@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createConfigStore, createWebdavClient, WebdavErrorCode } from "@sakurachiyo0v0/webdav";
 import { createConfigCenter } from "../src/index.js";
 import type { ConfigCenter } from "../src/index.js";
-import { startTestWebdavServer, type TestWebdavServer } from "./helpers/webdav-test-server.js";
+import { startTestWebdavServer, type TestWebdavServer } from "../../../shared/test-helpers/webdav-test-server.js";
 
 const TEST_KEY = "0123456789abcdef0123456789abcdef";
 

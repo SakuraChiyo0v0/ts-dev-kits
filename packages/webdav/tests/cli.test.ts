@@ -3,7 +3,7 @@ import { execFile } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
-import { startTestWebdavServer, type TestWebdavServer } from "./helpers/webdav-test-server.js";
+import { startTestWebdavServer, type TestWebdavServer } from "../../../shared/test-helpers/webdav-test-server.js";
 
 const execFileAsync = promisify(execFile);
 

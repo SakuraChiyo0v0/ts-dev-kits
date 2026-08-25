@@ -6,7 +6,7 @@ import { AuthStore } from "@sakurachiyo0v0/account";
 import { createConfigCenter } from "@sakurachiyo0v0/config";
 import { createWebdavClient } from "@sakurachiyo0v0/webdav";
 import { createNeteaseClient } from "../src/client.js";
-import { startTestWebdavServer, type TestWebdavServer } from "./helpers/webdav-test-server.js";
+import { startTestWebdavServer, type TestWebdavServer } from "../../../shared/test-helpers/webdav-test-server.js";
 
 const TEST_KEY = "0123456789abcdef0123456789abcdef";
 

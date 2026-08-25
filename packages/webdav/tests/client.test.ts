@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createWebdavClient, WebdavErrorCode } from "../src/index.js";
-import { startTestWebdavServer, type TestWebdavServer } from "./helpers/webdav-test-server.js";
+import { startTestWebdavServer, type TestWebdavServer } from "../../../shared/test-helpers/webdav-test-server.js";
 
 describe("webdav 客户端基础操作(真实协议路径)", () => {
   let srv: TestWebdavServer;

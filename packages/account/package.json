@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/account",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "Cross-platform account auth base: login-state store, QR-code/password/browser login flow skeletons and shared error model",
   "license": "UNLICENSED",
   "publishConfig": {

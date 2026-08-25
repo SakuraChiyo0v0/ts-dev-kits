@@ -5,7 +5,7 @@ import {
   createWebdavClient,
   WebdavErrorCode,
 } from "../src/index.js";
-import { startTestWebdavServer, type TestWebdavServer } from "./helpers/webdav-test-server.js";
+import { startTestWebdavServer, type TestWebdavServer } from "../../../shared/test-helpers/webdav-test-server.js";
 
 const TEST_KEY = "0123456789abcdef0123456789abcdef"; // 32 字节 hex
 

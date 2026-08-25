@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/booth",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "BOOTH (booth.pm) SDK: session, item info, free claim / paid order, file download",
   "license": "UNLICENSED",
   "publishConfig": {

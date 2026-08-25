@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/config",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Config center: one-time WebDAV+key setup, per-namespace config storage with optional encryption",
   "license": "UNLICENSED",
   "publishConfig": {

@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createConfigStore, createWebdavClient, WebdavErrorCode } from "../src/index.js";
-import { startTestWebdavServer, type TestWebdavServer } from "./helpers/webdav-test-server.js";
+import { startTestWebdavServer, type TestWebdavServer } from "../../../shared/test-helpers/webdav-test-server.js";
 
 describe("ConfigStore 配置存储(原子写/备份/格式)", () => {
   let srv: TestWebdavServer;

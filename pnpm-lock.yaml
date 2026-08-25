@@ -29,6 +29,9 @@ importers:
       vitest:
         specifier: ^4.1.10
         version: 4.1.10(@types/node@26.1.2)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(tsx@4.23.5))
+      webdav-server:
+        specifier: ^2.6.3
+        version: 2.6.3
 
   packages/account:
     dependencies:
