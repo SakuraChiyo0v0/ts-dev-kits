@@ -142,6 +142,31 @@ importers:
         specifier: ^4.1.10
         version: 4.1.10(@types/node@26.1.2)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(tsx@4.23.5))
 
+  packages/config:
+    dependencies:
+      '@sakurachiyo0v0/cli-utils':
+        specifier: workspace:*
+        version: link:../cli-utils
+      '@sakurachiyo0v0/webdav':
+        specifier: workspace:*
+        version: link:../webdav
+    devDependencies:
+      '@types/node':
+        specifier: ^26.1.2
+        version: 26.1.2
+      rollup:
+        specifier: ^4.62.4
+        version: 4.62.4
+      tslib:
+        specifier: ^2.8.1
+        version: 2.8.1
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      webdav-server:
+        specifier: ^2.6.3
+        version: 2.6.3
+
   packages/database:
     dependencies:
       better-sqlite3:

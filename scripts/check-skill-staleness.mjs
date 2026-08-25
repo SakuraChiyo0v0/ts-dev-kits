@@ -24,6 +24,11 @@ import { join } from "node:path";
 /** skill 目录名 → CLI 源码相对路径 + bin 名。 */
 const SKILL_MAP = [
   {
+    skill: "config-cli",
+    cli: "packages/config/src/cli/config.ts",
+    bin: "amechan-config",
+  },
+  {
     skill: "webdav-cli",
     cli: "packages/webdav/src/cli/webdav.ts",
     bin: "amechan-webdav",

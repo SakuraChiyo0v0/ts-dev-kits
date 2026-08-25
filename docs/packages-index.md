@@ -25,6 +25,7 @@
 | `@sakurachiyo0v0/dsh-sdk-tools` | 0.2.0 | DSH host 插件:把 bilibili/netease-music/ffmpeg/email/lol/vrchat 包装成 agent 工具,经 Agent 预设按需暴露 | 可用 | `pnpm add @sakurachiyo0v0/dsh-sdk-tools`(GitHub Packages) |
 | `@sakurachiyo0v0/database` | 0.1.1 | 统一数据访问抽象层:一套 API 访问本地 SQLite 与远程 PostgreSQL/MySQL,配置切换后端 | 可用(SQLite 全量,远程可选) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/database` |
 | `@sakurachiyo0v0/webdav` | 0.2.0 | WebDAV 配置存取 SDK:基础文件操作 + ConfigStore(原子写/自动备份) + 加密存储 + CLI | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/webdav` |
+| `@sakurachiyo0v0/config` | 0.1.0 | 配置中心 SDK:WebDAV+密钥全局一次配置,namespace 按域存取(可选加密),登录态/配置多端同步 | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/config` |
 
 ## 包详情
 
@@ -812,3 +813,48 @@ pnpm --filter @sakurachiyo0v0/webdav build       # 构建 ESM + CJS + d.ts + CLI
 ```
 
 **更多细节：** [`packages/webdav/README.md`](../packages/webdav/README.md)
+
+### `@sakurachiyo0v0/config`
+
+配置中心 SDK:WebDAV 服务器 + 密钥**全局一次配置**(本地 `<配置根>/amechan/config.json`,chmod 600),各 SDK/平台通过 `namespace("平台名")` 存取配置——路径自动隔离(`/configs/<ns>` 明文、`/secrets/<ns>` 加密),**按域决定是否加密**;换机器配好全局配置即还原登录态/配置。设计文档 [`docs/superpowers/specs/2026-08-24-config-center-design.md`](superpowers/specs/2026-08-24-config-center-design.md)。
+
+**适用环境：** Node.js 20+,依赖 `@sakurachiyo0v0/webdav`(含加密存储)。
+
+**核心接口：**
+
+- `createConfigCenter({ configPath?, global? })` — 读本地全局配置(或显式传入)创建配置中心
+- `cc.namespace(name, { encrypt? })` — 命名空间:encrypt 默认 false(明文 `/configs/<ns>/`),true 走加密(`/secrets/<ns>/`);返回 `get/set/list/remove`
+- `saveGlobalConfig` / `loadGlobalConfig` / `clearGlobalConfig` / `resolveConfigPath` — 本地全局配置读写(文件 600 权限)
+- 错误:远端透传 webdav `WebdavError`;本地配置缺失/非法抛 `VALIDATION`
+
+**注意事项：** 远端目录(`/configs/<ns>`、`/secrets/<ns>`)需预先存在(坚果云禁 WebDAV 建目录);加密密钥本地保管,丢失无法解密。
+
+**安装方式：**
+
+```powershell
+pnpm add @sakurachiyo0v0/config@workspace:*   # workspace 内
+pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/config"  # 其他机器
+```
+
+**API 示例：**
+
+```ts
+import { createConfigCenter } from "@sakurachiyo0v0/config";
+
+const cc = createConfigCenter();   // 读本地全局配置(先 amechan-config setup)
+const xhh = cc.namespace("xiaoheihe", { encrypt: true });  // 敏感域,加密
+await xhh.set("auth", { cookie: "SID=..." });
+const auth = await xhh.get("auth");
+const bili = cc.namespace("bilibili");                     // 明文域
+await bili.set("ui", { quality: 80 });
+```
+
+**在仓库内的验证方式：**
+
+```powershell
+pnpm --filter @sakurachiyo0v0/config typecheck   # 类型检查
+pnpm --filter @sakurachiyo0v0/config test        # 单测(本地 webdav-server 真实协议路径)
+pnpm --filter @sakurachiyo0v0/config build       # 构建 ESM + CJS + d.ts + CLI
+```
+
+**更多细节：** [`packages/config/README.md`](../packages/config/README.md)
