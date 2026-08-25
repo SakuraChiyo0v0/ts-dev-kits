@@ -38,3 +38,13 @@ fi
 if [ -f scripts/check-skill-staleness.mjs ]; then
   node scripts/check-skill-staleness.mjs
 fi
+
+# packages-index 版本表守卫:bump 包版本后忘同步版本表 -> 自动修正并随提交暂存;
+# 若存在缺失行(新包未进表)或残留行,阻止提交并提示。
+if [ -f scripts/check-package-index.mjs ]; then
+  node scripts/check-package-index.mjs --write
+  if [ -n "$(git status --porcelain -- docs/packages-index.md)" ]; then
+    git add docs/packages-index.md
+    echo "packages-index.md 版本表已随本次提交自动同步"
+  fi
+fi
