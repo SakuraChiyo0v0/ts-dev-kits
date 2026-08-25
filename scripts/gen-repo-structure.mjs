@@ -138,12 +138,17 @@ function buildGraphData(packages) {
   packages.forEach((p) => (groups[depth[p.id]] = groups[depth[p.id]] || []).push(p.id));
 
   const nodes = [];
+  const GAP = 28; // 节点间垂直净空
+  const STEP = H + GAP; // 节点垂直步长
+  const maxN = Math.max(0, ...Object.values(groups).map((l) => l.length));
+  // 画布高度按最多节点的层动态计算,避免节点拥挤重叠
+  const height = Math.max(400, 40 * 2 + (maxN - 1) * STEP + H);
   Object.keys(groups).forEach((d) => {
     const list = groups[d];
     const n = list.length;
+    const startY = (height - H - (n - 1) * STEP) / 2;
     list.forEach((id, i) => {
-      const y = n === 1 ? (400 - H) / 2 : 56 + i * (270 / (n - 1));
-      nodes.push({ id, x: X(Number(d)), y: Math.round(y), w: W });
+      nodes.push({ id, x: X(Number(d)), y: Math.round(startY + i * STEP), w: W });
     });
   });
 
@@ -156,7 +161,7 @@ function buildGraphData(packages) {
     layers.push({ x: X(d) + W / 2, label: ['基础层', 'SDK 层', '领域 SDK', 'DSH 聚合'][d] || `L${d}` });
   }
   const width = Math.ceil((X(maxD) + W + 40) / 10) * 10;
-  return { nodes, edges, layers, width };
+  return { nodes, edges, layers, width, height };
 }
 const graphData = buildGraphData(found);
 
