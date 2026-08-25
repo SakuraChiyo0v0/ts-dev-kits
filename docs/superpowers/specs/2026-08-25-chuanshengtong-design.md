@@ -181,3 +181,15 @@ options:
 - [ ] README + packages-index 更新;`skills/chuanshengtong-cli/SKILL.md` 同步
 - [ ] 版本已 bump;`pnpm check` 全仓通过
 - [ ] 用户确认后提交推送
+
+## 11. 富文本扩展(v0.2.0,用户追加需求)
+
+**目标：** 支持行内样式标记,渲染为 SVG `<tspan>`,纯文本行为完全兼容。
+
+**语法：** `**加粗**` / `*斜体*` / `[c:red]彩色[/c]`(CSS 颜色名或 #hex),可叠加;标记必须成对才生效,未配对(如 `2**3=8`)按字面输出。
+
+**实现：** 新增 `src/richtext.ts`(parseRichText → RichRun 片段流);`wrapRichText` 样式感知换行(样式随字符跨行保留,截断省略号继承行尾样式);`buildTextLayer` 改为每行 `<text>` + 每片段 `<tspan>`,tspan 不设坐标按文本流排列,行宽/居中由渲染引擎精确计算;模板接口 `buildSvg(textLayer, opts)` 改为接收预生成文本层。
+
+**接口变更：** `render()`/`wrapText()` 行为不变;新增 `parseRichText()` / `wrapRichText()` 导出与 `RichRun` 类型。
+
+**验收：** 47 测试全绿(解析/样式换行/tspan 渲染/兼容性),富文本样图红蓝像素验证通过,`pnpm check` 全仓通过。

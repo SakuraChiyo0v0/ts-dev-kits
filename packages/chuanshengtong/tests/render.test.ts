@@ -117,3 +117,20 @@ describe("render 错误分支", () => {
     ).rejects.toMatchObject({ code: ChuanshengtongErrorCode.WRITE_FAILED });
   });
 });
+
+describe("render 富文本渲染", () => {
+  it("行内标记渲染出图(加粗/颜色/斜体)", async () => {
+    const output = join(dir, "richtext.png");
+    const text = "**[c:red]重点[/c]**提醒:*小心*";
+    const result = await render({ template: "card", text, output });
+    expect(result.bytes).toBeGreaterThan(0);
+    const meta = await sharp(output).metadata();
+    expect(meta.width).toBe(900);
+  });
+
+  it("未配对标记按字面输出,不报错", async () => {
+    const output = join(dir, "plain-compat.png");
+    const result = await render({ template: "dazibao", text: "2**3=8", output });
+    expect(result.bytes).toBeGreaterThan(0);
+  });
+});

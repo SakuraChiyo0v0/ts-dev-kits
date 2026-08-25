@@ -14,6 +14,22 @@ export type OutputFormat = "png" | "jpeg";
 /** 文本区水平对齐方式 */
 export type TextAlign = "center" | "left";
 
+/**
+ * 富文本片段:一段具有统一样式的文字。
+ * 由 parseRichText 从行内标记解析而来:
+ *   **加粗** / *斜体* / [c:red]彩色[/c](CSS 颜色名或 #hex),可叠加。
+ */
+export interface RichRun {
+  /** 片段文本(不含标记字符) */
+  text: string;
+  /** 加粗 */
+  bold?: boolean;
+  /** 斜体 */
+  italic?: boolean;
+  /** 行内文字颜色 */
+  color?: string;
+}
+
 /** 文本区配置(模板坐标系内的像素值) */
 export interface TextRegion {
   /** 文本区左上角 x(px) */
@@ -59,11 +75,11 @@ export interface TemplateDefinition extends TemplateInfo {
   /** 文本区配置 */
   textRegion: TextRegion;
   /**
-   * 生成完整 SVG 骨架(含背景/装饰/文本行)。
-   * @param lines 已排版好的文字行
-   * @param opts  生效的字号与文字颜色(可能被 RenderOptions 覆盖)
+   * 生成完整 SVG 骨架(含背景/装饰/文本层)。
+   * @param textLayer 已排版好的文本层 SVG(含全部 <text>/<tspan> 元素),模板直接插入正文区域
+   * @param opts      生效的字号与全局文字颜色(可能被 RenderOptions 覆盖)
    */
-  buildSvg: (lines: string[], opts: { fontSize: number; color: string }) => string;
+  buildSvg: (textLayer: string, opts: { fontSize: number; color: string }) => string;
 }
 
 /** 渲染参数 */

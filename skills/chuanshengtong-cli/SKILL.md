@@ -35,7 +35,18 @@ amechan-chuanshengtong render "要传的话"                                # �
 amechan-chuanshengtong render "我会回来的!" --template speech-bubble --output bubble.png
 amechan-chuanshengtong render "通知" --template notice --format jpeg --width 600 --quality 80
 amechan-chuanshengtong render "愿你好" --template card --font-size 48 --color "#ffcc00"
+amechan-chuanshengtong render "**[c:red]重点[/c]**提醒" --output highlight.png   # 富文本
 ```
+
+### 富文本(行内标记)
+
+| 标记 | 效果 | 示例 |
+| --- | --- | --- |
+| `**文字**` | 加粗 | `**重点**` |
+| `*文字*` | 斜体 | `*轻声*` |
+| `[c:red]文字[/c]` | 行内颜色(CSS 颜色名/`#hex`) | `[c:#ffcc00]金色[/c]` |
+
+标记可叠加(`**[c:red]粗红[/c]**`);必须成对才生效,未配对(如 `2**3=8`)按字面输出;`\n` 强制换行。shell 里传换行用 `$'...'` 或 `--` 分隔。
 
 ### 选项
 

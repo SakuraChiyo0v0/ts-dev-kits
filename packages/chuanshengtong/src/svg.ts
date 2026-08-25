@@ -1,8 +1,10 @@
 /**
  * SVG 辅助:XML 转义 + 文本层生成。
  * 模板负责背景与装饰,文本层统一由此函数生成,保证排版一致。
+ * 富文本:每行一个 <text>,行内片段用 <tspan> 表达加粗/斜体/颜色,
+ * tspan 不设坐标时按文本流连续排列,行宽与居中由渲染引擎精确计算。
  */
-import type { TextRegion } from "./types.js";
+import type { RichRun, TextRegion } from "./types.js";
 
 /** 跨平台中文字体栈(sharp 经 libvips/Pango 渲染,取系统已装字体) */
 export const FONT_FAMILY =
@@ -20,10 +22,27 @@ export function escapeXml(text: string): string {
 
 /** 文本层生成参数 */
 export interface TextLayerOptions {
-  lines: string[];
+  /** 排版好的文字行(每行是富文本片段流) */
+  lines: RichRun[][];
   region: TextRegion;
   fontSize: number;
+  /** 全局默认文字颜色(片段未指定 color 时生效) */
   color: string;
+}
+
+/** 单个片段的 tspan 属性串(不含文本) */
+function tspanAttrs(run: RichRun): string {
+  const attrs: string[] = [];
+  if (run.bold) {
+    attrs.push('font-weight="bold"');
+  }
+  if (run.italic) {
+    attrs.push('font-style="italic"');
+  }
+  if (run.color !== undefined) {
+    attrs.push(`fill="${escapeXml(run.color)}"`);
+  }
+  return attrs.length > 0 ? ` ${attrs.join(" ")}` : "";
 }
 
 /**
@@ -41,12 +60,15 @@ export function buildTextLayer({ lines, region, fontSize, color }: TextLayerOpti
   const x = region.align === "center" ? region.x + region.width / 2 : region.x;
 
   return lines
-    .map((line, index) => {
+    .map((runs, index) => {
       const y = startY + index * region.lineHeight;
+      const tspans = runs
+        .map((run) => `<tspan${tspanAttrs(run)}>${escapeXml(run.text)}</tspan>`)
+        .join("");
       return (
         `<text x="${x}" y="${y.toFixed(1)}" text-anchor="${anchor}" ` +
         `font-family="${FONT_FAMILY}" font-size="${fontSize}" fill="${color}">` +
-        `${escapeXml(line)}</text>`
+        `${tspans}</text>`
       );
     })
     .join("\n");

@@ -5,7 +5,8 @@
  *   await render({ template: "dazibao", text: "你好,世界", output: "out.png" });
  */
 export { listTemplates, getTemplate, render } from "./render.js";
-export { wrapText, charWidth } from "./wrap.js";
+export { wrapText, wrapRichText, charWidth } from "./wrap.js";
+export { parseRichText } from "./richtext.js";
 export { ChuanshengtongError, ChuanshengtongErrorCode } from "./errors.js";
 export type {
   TemplateInfo,
@@ -14,5 +15,6 @@ export type {
   OutputFormat,
   TemplateId,
   TextRegion,
+  RichRun,
 } from "./types.js";
-export type { WrapOptions, WrapResult } from "./wrap.js";
+export type { WrapOptions, WrapResult, RichTextWrapResult } from "./wrap.js";

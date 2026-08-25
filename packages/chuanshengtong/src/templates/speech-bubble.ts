@@ -1,7 +1,7 @@
 /**
  * 模板:台词气泡。漫画风白色椭圆气泡 + 黑描边 + 尾巴,文字居中。
  */
-import { buildTextLayer, FONT_FAMILY } from "../svg.js";
+import { FONT_FAMILY } from "../svg.js";
 import type { TemplateDefinition, TextRegion } from "../types.js";
 
 const REGION: TextRegion = {
@@ -24,13 +24,13 @@ export const speechBubble: TemplateDefinition = {
   height: 900,
   maxTextLength: 60,
   textRegion: REGION,
-  buildSvg: (lines, { fontSize, color }) => {
+  buildSvg: (textLayer) => {
     return (
       `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900">` +
       `<rect width="1200" height="900" fill="#e8f4fd"/>` +
       `<polygon points="812,690 972,786 902,688" fill="#ffffff" stroke="#2b2b2b" stroke-width="6" stroke-linejoin="round"/>` +
       `<ellipse cx="600" cy="415" rx="500" ry="305" fill="#ffffff" stroke="#2b2b2b" stroke-width="8"/>` +
-      buildTextLayer({ lines, region: REGION, fontSize, color }) +
+      textLayer +
       `</svg>`
     );
   },

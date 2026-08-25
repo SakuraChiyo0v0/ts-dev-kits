@@ -4,8 +4,10 @@
 import { writeFile } from "node:fs/promises";
 import sharp from "sharp";
 import { ChuanshengtongError, ChuanshengtongErrorCode } from "./errors.js";
+import { parseRichText } from "./richtext.js";
+import { buildTextLayer } from "./svg.js";
 import { TEMPLATES, getTemplateDefinition } from "./templates/index.js";
-import { wrapText } from "./wrap.js";
+import { wrapRichText } from "./wrap.js";
 import type { OutputFormat, RenderOptions, RenderResult, TemplateInfo } from "./types.js";
 
 const FORMATS: readonly OutputFormat[] = ["png", "jpeg"];
@@ -101,8 +103,9 @@ function validateOptions(options: RenderOptions): {
 export async function render(options: RenderOptions): Promise<RenderResult> {
   const { def, format, width, fontSize, color, quality } = validateOptions(options);
 
-  // 排版;行数超出模板容量 → TEXT_TOO_LONG(不静默丢字)
-  const { lines, truncated } = wrapText(options.text, {
+  // 富文本解析 → 排版;行数超出模板容量 → TEXT_TOO_LONG(不静默丢字)
+  const runs = parseRichText(options.text);
+  const { lines, truncated } = wrapRichText(runs, {
     fontSize,
     maxWidth: def.textRegion.width,
     maxLines: def.textRegion.maxLines,
@@ -114,7 +117,9 @@ export async function render(options: RenderOptions): Promise<RenderResult> {
     );
   }
 
-  const svg = def.buildSvg(lines, { fontSize, color });
+  // 生成文本层(含 tspan 富文本样式)与完整 SVG
+  const textLayer = buildTextLayer({ lines, region: def.textRegion, fontSize, color });
+  const svg = def.buildSvg(textLayer, { fontSize, color });
 
   // sharp 栅格化(真实渲染路径);失败归 RENDER_FAILED
   let buffer: Buffer;

@@ -27,7 +27,7 @@
 | `@sakurachiyo0v0/database` | 0.1.1 | 统一数据访问抽象层:一套 API 访问本地 SQLite 与远程 PostgreSQL/MySQL,配置切换后端 | 可用(SQLite 全量,远程可选) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/database` |
 | `@sakurachiyo0v0/webdav` | 0.2.1 | WebDAV 配置存取 SDK:基础文件操作 + ConfigStore(原子写/自动备份) + 加密存储 + CLI | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/webdav` |
 | `@sakurachiyo0v0/config` | 0.1.2 | 配置中心 SDK:WebDAV+密钥全局一次配置,namespace 按域存取(可选加密),登录态/配置多端同步 | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/config` |
-| `@sakurachiyo0v0/chuanshengtong` | 0.1.0 | 传声筒:输入文字 + 内置图像模板程序化合成图片(CLI + SDK,不依赖 AI) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/chuanshengtong` |
+| `@sakurachiyo0v0/chuanshengtong` | 0.2.0 | 传声筒:输入文字 + 内置图像模板程序化合成图片(CLI + SDK,不依赖 AI,支持富文本) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/chuanshengtong` |
 
 ## 包详情
 
@@ -871,7 +871,8 @@ pnpm --filter @sakurachiyo0v0/config build       # 构建 ESM + CJS + d.ts + CLI
 
 - `listTemplates()` / `getTemplate(id)` — 列出/查询内置模板(id/名称/描述/尺寸/容量)
 - `render({ template, text, output, format?, width?, fontSize?, color?, quality? })` — 渲染图片到文件,返回 `{ outputPath, width, height, format, bytes }`
-- `wrapText(text, { fontSize, maxWidth, maxLines })` — 排版纯函数(中文按字符、英文按词断行,超长截断补省略号),返回 `{ lines, truncated }`
+- `wrapText(text, { fontSize, maxWidth, maxLines })` — 纯文本排版纯函数(中文按字符、英文按词断行,超长截断补省略号),返回 `{ lines, truncated }`
+- `parseRichText(text)` / `wrapRichText(runs, opts)` — 富文本解析与样式感知排版:支持 `**加粗**`、`*斜体*`、`[c:red]彩色[/c]`,渲染为 SVG tspan,纯文本行为完全兼容
 - 内置模板:`dazibao`(大字报)/ `speech-bubble`(台词气泡)/ `card`(卡片)/ `notice`(公告),全部程序化 SVG 生成,无外部图片资源
 - `ChuanshengtongError` — 统一错误码:`TEMPLATE_NOT_FOUND` / `EMPTY_TEXT` / `TEXT_TOO_LONG` / `INVALID_OPTION` / `RENDER_FAILED` / `WRITE_FAILED` / `UNKNOWN`
 

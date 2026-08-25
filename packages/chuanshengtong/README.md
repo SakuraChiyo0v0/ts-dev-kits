@@ -80,6 +80,26 @@ const { lines, truncated } = wrapText("你好,世界", { fontSize: 64, maxWidth:
 
 排版规则:中文(CJK)按字符断行,连续英文/数字按空白断词;行数超模板上限抛 `TEXT_TOO_LONG`(不静默丢字);输入中的 `\n` 强制分段。
 
+### 富文本(轻量行内标记)
+
+文字支持行内样式标记(可叠加,标记必须成对才生效,未配对按字面输出):
+
+| 标记 | 效果 | 示例 |
+| --- | --- | --- |
+| `**文字**` | 加粗 | `**重点**` |
+| `*文字*` | 斜体 | `*轻声*` |
+| `[c:red]文字[/c]` | 行内颜色(CSS 颜色名/`#hex`) | `[c:#ffcc00]金色[/c]` |
+
+```ts
+await render({
+  template: "dazibao",
+  text: "**[c:red]传声筒[/c]** *正式上线*\n支持**加粗** [c:#2196f3]彩色[/c]",
+  output: "./out.png",
+});
+```
+
+SDK 侧也可直接用 `parseRichText(text)` 拿到片段流,或 `wrapRichText(runs, opts)` 做样式感知排版。
+
 ## 错误码
 
 | 错误码 | 含义 | 处理 |
