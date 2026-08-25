@@ -20,6 +20,9 @@ function validateNamespace(name: string): void {
   }
 }
 
+/** 统一基底前缀:所有配置挂在该目录下,避免与仓库内其他应用撞名 */
+export const AMECHAN_BASE = "/amechan";
+
 /** 配置命名空间实现:包装 ConfigStore / EncryptedConfigStore */
 export class ConfigNamespaceImpl implements ConfigNamespace {
   readonly name: string;
@@ -49,7 +52,7 @@ export class ConfigNamespaceImpl implements ConfigNamespace {
   }
 }
 
-/** 配置中心实现:全局配置一次,namespace 自动映射 /configs/<ns> 或 /secrets/<ns> */
+/** 配置中心实现:全局配置一次,namespace 自动映射到统一基底下的分域 */
 export class ConfigCenterImpl implements ConfigCenter {
   readonly url: string;
   private readonly client: WebdavClient;
@@ -71,7 +74,8 @@ export class ConfigCenterImpl implements ConfigCenter {
   namespace(name: string, options: NamespaceOptions = {}): ConfigNamespace {
     validateNamespace(name);
     const encrypt = options.encrypt ?? false;
-    const basePath = encrypt ? `/secrets/${name}` : `/configs/${name}`;
+    // 统一基底 /amechan 下按敏感度分域:明文 /amechan/configs/<ns>,加密 /amechan/secrets/<ns>
+    const basePath = encrypt ? `${AMECHAN_BASE}/secrets/${name}` : `${AMECHAN_BASE}/configs/${name}`;
     const store: ConfigStore = encrypt
       ? createEncryptedConfigStore({
           client: this.client,

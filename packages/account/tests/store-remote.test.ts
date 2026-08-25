@@ -26,8 +26,9 @@ describe("AuthStore 远程同步(配置中心加密域)", () => {
     // 建加密域目录(测试环境可建;生产坚果云需网页端建)
     const { createWebdavClient } = await import("@sakurachiyo0v0/webdav");
     const raw = createWebdavClient({ url: srv.url, username: srv.username, password: srv.password });
-    await raw.mkdir("/secrets");
-    await raw.mkdir("/secrets/auth");
+    await raw.mkdir("/amechan");
+    await raw.mkdir("/amechan/secrets");
+    await raw.mkdir("/amechan/secrets/auth");
 
     const center = createConfigCenter({
       global: { url: srv.url, username: srv.username, password: srv.password, key: TEST_KEY },
@@ -64,7 +65,7 @@ describe("AuthStore 远程同步(配置中心加密域)", () => {
         username: srv.username,
         password: srv.password,
       }),
-      basePath: "/secrets/auth",
+      basePath: "/amechan/secrets/auth",
       format: "text",
     });
     const cipher = await rawStore.load<string>("test-platform");

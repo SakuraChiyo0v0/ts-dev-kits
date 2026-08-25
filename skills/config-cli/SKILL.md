@@ -26,17 +26,17 @@ amechan-config clear     # 清除本地全局配置
 
 ```bash
 # 明文域(普通配置)
-amechan-config set bilibili ui --json '{"quality":80}'     # 写 /configs/bilibili/ui
+amechan-config set bilibili ui --json '{"quality":80}'     # 写 /amechan/configs/bilibili/ui
 amechan-config get bilibili ui                              # 读
 amechan-config list bilibili                                # 列出该域配置名
 amechan-config remove bilibili ui                           # 删
 
 # 加密域(敏感配置:登录态/cookie/密钥)加 --encrypt
-amechan-config set xiaoheihe auth --json '{"cookie":"SID=..."}' --encrypt   # /secrets/xiaoheihe/auth(密文)
+amechan-config set xiaoheihe auth --json '{"cookie":"SID=..."}' --encrypt   # /amechan/secrets/xiaoheihe/auth(密文)
 amechan-config get xiaoheihe auth --encrypt                                 # 解密读
 ```
 
-- 远端目录(`/configs/<ns>`、`/secrets/<ns>`)需预先存在(坚果云禁 WebDAV 建目录,网页端建)。
+- 远端目录(`/amechan/configs/<ns>`、`/amechan/secrets/<ns>`)需预先存在(坚果云禁 WebDAV 建目录,网页端建)。
 - 加密域云端只存 AES-256-GCM 密文;密钥丢失则无法解密。
 
 ## 错误码

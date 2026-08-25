@@ -15,14 +15,15 @@ describe("配置中心 namespace(真实协议路径)", () => {
     // 预建 namespace 目录(生产环境需预先存在,测试用本地服务器可建)
     const raw = createWebdavClient({ url: srv.url, username: srv.username, password: srv.password });
     for (const dir of [
-      "/configs",
-      "/secrets",
-      "/configs/bilibili",
-      "/secrets/bilibili",
-      "/secrets/xiaoheihe",
-      "/configs/steam",
-      "/configs/netease",
-      "/secrets/secret",
+      "/amechan",
+      "/amechan/configs",
+      "/amechan/secrets",
+      "/amechan/configs/bilibili",
+      "/amechan/secrets/bilibili",
+      "/amechan/secrets/xiaoheihe",
+      "/amechan/configs/steam",
+      "/amechan/configs/netease",
+      "/amechan/secrets/secret",
     ]) {
       await raw.mkdir(dir);
     }
@@ -56,7 +57,7 @@ describe("配置中心 namespace(真实协议路径)", () => {
     // 直接用底层 ConfigStore 读:路径 /secrets/xiaoheihe/,内容为密文
     const raw = createConfigStore({
       client: createWebdavClient({ url: srv.url, username: srv.username, password: srv.password }),
-      basePath: "/secrets/xiaoheihe",
+      basePath: "/amechan/secrets/xiaoheihe",
       format: "text",
     });
     const cipher = await raw.load<string>("auth");

@@ -816,18 +816,18 @@ pnpm --filter @sakurachiyo0v0/webdav build       # 构建 ESM + CJS + d.ts + CLI
 
 ### `@sakurachiyo0v0/config`
 
-配置中心 SDK:WebDAV 服务器 + 密钥**全局一次配置**(本地 `<配置根>/amechan/config.json`,chmod 600),各 SDK/平台通过 `namespace("平台名")` 存取配置——路径自动隔离(`/configs/<ns>` 明文、`/secrets/<ns>` 加密),**按域决定是否加密**;换机器配好全局配置即还原登录态/配置。设计文档 [`docs/superpowers/specs/2026-08-24-config-center-design.md`](superpowers/specs/2026-08-24-config-center-design.md)。
+配置中心 SDK:WebDAV 服务器 + 密钥**全局一次配置**(本地 `<配置根>/amechan/config.json`,chmod 600),各 SDK/平台通过 `namespace("平台名")` 存取配置——统一基底 `/amechan/` 下按敏感度分域(`/amechan/configs/<ns>` 明文、`/amechan/secrets/<ns>` 加密),**按域决定是否加密**;换机器配好全局配置即还原登录态/配置。设计文档 [`docs/superpowers/specs/2026-08-24-config-center-design.md`](superpowers/specs/2026-08-24-config-center-design.md)。
 
 **适用环境：** Node.js 20+,依赖 `@sakurachiyo0v0/webdav`(含加密存储)。
 
 **核心接口：**
 
 - `createConfigCenter({ configPath?, global? })` — 读本地全局配置(或显式传入)创建配置中心
-- `cc.namespace(name, { encrypt? })` — 命名空间:encrypt 默认 false(明文 `/configs/<ns>/`),true 走加密(`/secrets/<ns>/`);返回 `get/set/list/remove`
+- `cc.namespace(name, { encrypt? })` — 命名空间:encrypt 默认 false(明文 `/amechan/configs/<ns>/`),true 走加密(`/amechan/secrets/<ns>/`);返回 `get/set/list/remove`
 - `saveGlobalConfig` / `loadGlobalConfig` / `clearGlobalConfig` / `resolveConfigPath` — 本地全局配置读写(文件 600 权限)
 - 错误:远端透传 webdav `WebdavError`;本地配置缺失/非法抛 `VALIDATION`
 
-**注意事项：** 远端目录(`/configs/<ns>`、`/secrets/<ns>`)需预先存在(坚果云禁 WebDAV 建目录);加密密钥本地保管,丢失无法解密。
+**注意事项：** 远端目录(`/amechan/configs/<ns>`、`/amechan/secrets/<ns>`)需预先存在(部分 WebDAV 服务如坚果云禁 WebDAV 建目录;自建服务可用 `wd.mkdir` 建);加密密钥本地保管,丢失无法解密。
 
 **安装方式：**
 

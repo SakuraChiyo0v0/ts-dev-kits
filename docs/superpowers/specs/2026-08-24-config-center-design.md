@@ -36,7 +36,7 @@
 ### 加密策略取舍
 
 - `namespace(name, { encrypt })`:encrypt 默认 **false**(普通配置),敏感域(登录态等)显式 `encrypt: true` 走加密存储——"敏感才加密"原则,避免密钥丢失导致非敏感数据也读不了。
-- 路径映射:`encrypt` → `/secrets/<name>/`,`false` → `/configs/<name>/`。
+- 路径映射:`encrypt` → `/amechan/secrets/<name>/`,`false` → `/amechan/configs/<name>/`。
 
 ## 4. 仓库结构
 
@@ -90,11 +90,11 @@ import { createConfigCenter } from "@sakurachiyo0v0/config";
 const cc = await createConfigCenter();          // 读 ~/.config/amechan/config.json
 
 // 2. 命名空间:平台/模块配置域,路径自动隔离
-const xhh = cc.namespace("xiaoheihe", { encrypt: true });   // /secrets/xiaoheihe/*
+const xhh = cc.namespace("xiaoheihe", { encrypt: true });   // /amechan/secrets/xiaoheihe/*
 await xhh.set("auth", { cookie: "..." });        // 加密存取
 const auth = await xhh.get<{ cookie: string }>("auth");
 
-const bili = cc.namespace("bilibili");           // /configs/bilibili/* (明文)
+const bili = cc.namespace("bilibili");           // /amechan/configs/bilibili/* (明文)
 await bili.set("ui", { quality: 80 });
 const names = await bili.list();
 await bili.remove("ui");
@@ -129,7 +129,7 @@ await bili.remove("ui");
 
 - **真实协议路径**:测试 helper 本地起 `webdav-server`(复用 webdav 包测试模式)。
 - 全局配置:setup 写入/load/权限 600/缺失报错;环境变量覆盖配置路径。
-- 配置中心:namespace 明文/加密两域存取往返、路径隔离(`/configs/<ns>/` vs `/secrets/<ns>/`)、加密域密文不含明文、list/remove、防路径越界。
+- 配置中心:namespace 明文/加密两域存取往返、路径隔离(`/amechan/configs/<ns>/` vs `/amechan/secrets/<ns>/`)、加密域密文不含明文、list/remove、防路径越界。
 - CLI:setup/status/get/set/list/remove 冒烟(指向本地服务器)。
 - 写操作自清理:临时命名空间,收尾删除。
 

@@ -5,7 +5,7 @@
 ## 特性
 
 - 全局配置一次:`config setup` 写本地 `<配置根>/amechan/config.json`(chmod 600,密钥不出本机),之后 `createConfigCenter()` 自动读取
-- namespace 隔离:`cc.namespace("xiaoheihe", { encrypt: true })` → 自动映射 `/secrets/xiaoheihe/*`(加密)或 `/configs/bilibili/*`(明文)
+- namespace 隔离:`cc.namespace("xiaoheihe", { encrypt: true })` → 自动映射 `/amechan/secrets/xiaoheihe/*`(加密)或 `/amechan/configs/bilibili/*`(明文)
 - 加密按域开关:`encrypt` 默认 false,敏感域显式 true——"敏感才加密"
 - 复用 `@sakurachiyo0v0/webdav`(ConfigStore/EncryptedConfigStore),不重复造轮子
 - CLI `amechan-config`:setup / status / get / set / list / remove / clear
@@ -31,11 +31,11 @@ import { createConfigCenter } from "@sakurachiyo0v0/config";
 const cc = createConfigCenter();   // 读 <配置根>/amechan/config.json
 
 // 2. 各平台/模块命名空间
-const xhh = cc.namespace("xiaoheihe", { encrypt: true });   // 敏感域: /secrets/xiaoheihe/*
+const xhh = cc.namespace("xiaoheihe", { encrypt: true });   // 敏感域: /amechan/secrets/xiaoheihe/*
 await xhh.set("auth", { cookie: "SID=..." });                // 加密存取
 const auth = await xhh.get<{ cookie: string }>("auth");
 
-const bili = cc.namespace("bilibili");                       // 明文域: /configs/bilibili/*
+const bili = cc.namespace("bilibili");                       // 明文域: /amechan/configs/bilibili/*
 await bili.set("ui", { quality: 80 });
 const names = await bili.list();
 await bili.remove("ui");
@@ -76,7 +76,7 @@ namespace 不允许路径分隔符/`..`(防越界)。
 
 ## 注意事项
 
-- **远端目录需预先存在**:`/configs/<ns>`、`/secrets/<ns>`(坚果云禁 WebDAV 建目录,网页端建;自建服务可用 `wd.mkdir` 建)。
+- **远端目录需预先存在**:`/amechan/configs/<ns>`、`/amechan/secrets/<ns>`(坚果云禁 WebDAV 建目录,网页端建;自建服务可用 `wd.mkdir` 建)。
 - **密钥本地保管**:丢失则加密配置无法解密;换机器带同一份 WebDAV+密钥即可还原。
 
 ## CLI

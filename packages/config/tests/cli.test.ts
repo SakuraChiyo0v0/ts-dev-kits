@@ -37,7 +37,7 @@ describe("amechan-config CLI(冒烟,真实本地服务器)", () => {
     srv = await startTestWebdavServer();
     // 预建 namespace 目录(生产环境需预先存在)
     const raw = createWebdavClient({ url: srv.url, username: srv.username, password: srv.password });
-    for (const dir of ["/configs", "/secrets", "/configs/bilibili", "/secrets/xiaoheihe"]) {
+    for (const dir of ["/amechan", "/amechan/configs", "/amechan/secrets", "/amechan/configs/bilibili", "/amechan/secrets/xiaoheihe"]) {
       await raw.mkdir(dir);
     }
   });
