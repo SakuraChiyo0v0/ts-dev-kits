@@ -78,6 +78,13 @@ for (const [name, directory] of PACKAGES) {
     stdio: "inherit",
   });
   if (result.status !== 0) {
+    // 并发竞态:两个 CI run 同时发布同版本,先到者成功、后到者 409。
+    // 复查 registry:若该版本刚被并发发布,视为跳过,不 fail 整个流程。
+    const nowRemote = publishedVersion(name);
+    if (nowRemote === local) {
+      console.log(`SKIP ${name}@${local} (published concurrently, retry found it)`);
+      continue;
+    }
     console.error(`FAILED: ${name} (exit ${result.status ?? "signal"})`);
     process.exit(result.status ?? 1);
   }

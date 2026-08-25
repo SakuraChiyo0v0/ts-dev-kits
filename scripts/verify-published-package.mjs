@@ -14,7 +14,7 @@
  * 退出码:0=通过;1=失败(安装或导入失败)。
  */
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -65,8 +65,32 @@ writeFileSync(
   ].join("\n"),
 );
 
-console.log(`\n=== 安装 ${pkgName}(GitHub Packages 最新版)===\n`);
-runNpm(["add", pkgName]);
+// pnpm add @latest 存在解析 bug(可能装到旧版),先显式查 registry 最新版再按版本安装。
+const latest = execFileSync("npm", ["view", pkgName, "version"], {
+  cwd: work,
+  encoding: "utf8",
+})
+  .trim()
+  .split(/\r?\n/u)
+  .at(-1);
+if (latest === undefined || latest === "") {
+  console.error(`✗ 无法从 registry 查询 ${pkgName} 的最新版本`);
+  process.exit(1);
+}
+console.log(`registry 最新版: ${latest}`);
+runNpm(["add", `${pkgName}@${latest}`]);
+
+// 打印实际装到的版本,并与 registry 最新版校验一致(避免"验证通过"但装的是旧版)。
+const installedPkg = join(work, "node_modules", ...pkgName.split("/"));
+const installedVersion = JSON.parse(
+  readFileSync(join(installedPkg, "package.json"), "utf8"),
+).version;
+console.log(`已安装版本: ${installedVersion}`);
+if (installedVersion !== latest) {
+  console.error(`✗ 安装版本(${installedVersion})与 registry 最新版(${latest})不一致,验证失败`);
+  process.exit(1);
+}
+console.log("");
 
 console.log("\n=== ESM 导入验证 ===\n");
 writeFileSync(
