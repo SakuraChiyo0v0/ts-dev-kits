@@ -32,10 +32,16 @@ importers:
 
   packages/account:
     dependencies:
+      '@sakurachiyo0v0/config':
+        specifier: workspace:*
+        version: link:../config
       qrcode:
         specifier: ^1.5.4
         version: 1.5.4
     devDependencies:
+      '@sakurachiyo0v0/webdav':
+        specifier: workspace:*
+        version: link:../webdav
       '@types/node':
         specifier: ^26.1.2
         version: 26.1.2
@@ -54,6 +60,9 @@ importers:
       vitest:
         specifier: ^4.1.10
         version: 4.1.10(@types/node@26.1.2)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(tsx@4.23.5))
+      webdav-server:
+        specifier: ^2.6.3
+        version: 2.6.3
 
   packages/bilibili:
     dependencies:

@@ -31,6 +31,8 @@ function spawnCommand(command, args, options = {}) {
 // [包名, 目录] —— 依赖图单向无环,被依赖者先发布。
 const PACKAGES = [
   ["@sakurachiyo0v0/cli-utils", "packages/cli-utils"],
+  ["@sakurachiyo0v0/webdav", "packages/webdav"],
+  ["@sakurachiyo0v0/config", "packages/config"],
   ["@sakurachiyo0v0/account", "packages/account"],
   ["@sakurachiyo0v0/email", "packages/email"],
   ["@sakurachiyo0v0/ffmpeg", "packages/ffmpeg"],
@@ -42,10 +44,8 @@ const PACKAGES = [
   ["@sakurachiyo0v0/vrchat", "packages/vrchat"],
   ["@sakurachiyo0v0/steam", "packages/steam"],
   ["@sakurachiyo0v0/xiaoheihe", "packages/xiaoheihe"],
-  ["@sakurachiyo0v0/dsh-sdk-tools", "packages/dsh-sdk-tools"],
   ["@sakurachiyo0v0/database", "packages/database"],
-  ["@sakurachiyo0v0/webdav", "packages/webdav"],
-  ["@sakurachiyo0v0/config", "packages/config"],
+  ["@sakurachiyo0v0/dsh-sdk-tools", "packages/dsh-sdk-tools"],
 ];
 
 /** 查询包在 registry 上已发布的版本;未发布返回 undefined。 */

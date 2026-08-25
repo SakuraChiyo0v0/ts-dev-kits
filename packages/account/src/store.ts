@@ -6,6 +6,7 @@
 import { promises as fs } from "node:fs";
 import { readFileSync, statSync } from "node:fs";
 import path from "node:path";
+import type { ConfigNamespace } from "@sakurachiyo0v0/config";
 import { defaultAuthPath } from "./paths.js";
 
 /** 存储的登录态载荷:平台凭证 + 元信息。平台字段放在 credentials 内。 */
@@ -25,16 +26,24 @@ export interface AuthStoreOptions {
   platform: string;
   /** 自定义路径(覆盖默认)。 */
   path?: string;
+  /**
+   * 可选远程配置命名空间(通常为配置中心的加密域)。
+   * 配置后登录态**双写**(本地 + 远程),load 优先远程(换机可还原),
+   * 远程不可达时降级本地(带告警)。
+   */
+  remote?: ConfigNamespace;
 }
 
-/** 登录态存储:auth.json 的读写与清理。 */
+/** 登录态存储:auth.json 的读写与清理(可选远程同步)。 */
 export class AuthStore {
   readonly #path: string;
   readonly #platform: string;
+  readonly #remote?: ConfigNamespace;
 
   constructor(options: AuthStoreOptions) {
     this.#platform = options.platform;
     this.#path = options.path ?? defaultAuthPath(options.platform);
+    if (options.remote !== undefined) this.#remote = options.remote;
   }
 
   /** 平台名。 */
@@ -72,8 +81,18 @@ export class AuthStore {
     return parseAuthPayload(text, this.#path);
   }
 
-  /** 读取登录态;不存在或损坏返回 null(损坏时告警,不抛错)。 */
+  /** 读取登录态;不存在或损坏返回 null(损坏时告警,不抛错)。配置远程时优先远程,失败降级本地。 */
   async load(): Promise<AuthPayload | null> {
+    if (this.#remote !== undefined) {
+      try {
+        const payload = await this.#remote.get<AuthPayload>(this.#platform);
+        return payload;
+      } catch (error) {
+        if (error instanceof Error && (error as { code?: string }).code !== "NOT_FOUND") {
+          console.warn(`[account] 远程登录态读取失败(${this.#platform}),降级本地:`, error);
+        }
+      }
+    }
     let text: string;
     try {
       text = await fs.readFile(this.#path, "utf-8");
@@ -88,7 +107,7 @@ export class AuthStore {
     return parseAuthPayload(text, this.#path);
   }
 
-  /** 原子写入登录态:同目录临时文件 + rename,并设置 600 权限。 */
+  /** 原子写入登录态:同目录临时文件 + rename,并设置 600 权限;配置远程时同步写远程(失败降级告警)。 */
   async save(payload: AuthPayload): Promise<void> {
     await fs.mkdir(path.dirname(this.#path), { recursive: true });
     const tmp = `${this.#path}.${process.pid}.tmp`;
@@ -99,9 +118,16 @@ export class AuthStore {
       // Windows 上 chmod 受限,尽力而为。
     }
     await fs.rename(tmp, this.#path);
+    if (this.#remote !== undefined) {
+      try {
+        await this.#remote.set(this.#platform, payload);
+      } catch (error) {
+        console.warn(`[account] 远程登录态同步失败(${this.#platform}),已保留本地:`, error);
+      }
+    }
   }
 
-  /** 删除登录态;文件不存在时静默成功。 */
+  /** 删除登录态;文件不存在时静默成功。配置远程时同步删除远程。 */
   async clear(): Promise<void> {
     try {
       await fs.unlink(this.#path);
@@ -109,6 +135,13 @@ export class AuthStore {
       const code = (error as NodeJS.ErrnoException).code;
       if (code !== "ENOENT") {
         throw error;
+      }
+    }
+    if (this.#remote !== undefined) {
+      try {
+        await this.#remote.remove(this.#platform);
+      } catch (error) {
+        console.warn(`[account] 远程登录态删除失败(${this.#platform}):`, error);
       }
     }
   }

@@ -64,7 +64,7 @@ pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/e
 
 ## 发布流程(GitHub Packages + CI 自动发布)
 
-所有包发布到 **GitHub Packages**(`npm.pkg.github.com`,仓库公开,安装方无需 token)。发布由 **CI 自动完成**:push 到 `main` 时,`.github/workflows/publish.yml` 会检测各包本地版本与已发布版本,有变化的按依赖顺序(`cli-utils → account → email → ffmpeg → lol → netease-music → booth → bilibili → chat-platforms → vrchat → steam → xiaoheihe → dsh-sdk-tools → database → webdav → config`)自动发布,并把 `workspace:*` 依赖转成实际版本号。
+所有包发布到 **GitHub Packages**(`npm.pkg.github.com`,仓库公开,安装方无需 token)。发布由 **CI 自动完成**:push 到 `main` 时,`.github/workflows/publish.yml` 会检测各包本地版本与已发布版本,有变化的按依赖顺序(`cli-utils → webdav → config → account → email → ffmpeg → lol → netease-music → booth → bilibili → chat-platforms → vrchat → steam → xiaoheihe → database → dsh-sdk-tools`)自动发布,并把 `workspace:*` 依赖转成实际版本号。
 
 ### ⚠️ 更新包必须按需 bump 版本号
 
