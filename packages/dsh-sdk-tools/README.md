@@ -11,7 +11,8 @@ DSH(DeepSeek Harness)host 插件:把本仓库功能包(bilibili / netease-music 
 
 - 本插件**不设 `dsh.bundle`**,是普通依赖:工具行由**预设**的 `agent.cordis.yml` 声明;
 - 预设挂载时插件 `ctx.tools.register(defineTool(...))` 注册到该预设的 scope 层,只有加入该预设的 agent 可见(`agent-presets` 的 standing scope 机制);
-- 每包有 `enabled` 开关,未启用即不注册 → 不进 system prompt。
+- 每包有 `enabled` 开关,未启用即不注册 → 不进 system prompt;
+- **设置页开关**:DSH 设置 →「SDK工具」页读写 `~/.dsh/settings.yaml` 的 `dsh-sdk-tools` 节(6 个扁平 `enabled`)。切换实时生效——host 侧 watch 到变化即重新注册/注销对应工具,无需改 YAML、无需重启会话。预设 `agent.cordis.yml` 的 `config` 作为 entry(base)层提供各包参数与默认 enabled,settings 文档(user)层只覆盖 enabled。
 
 ## 安装
 
@@ -74,7 +75,21 @@ Copy-Item -Recurse <本仓库>/packages/dsh-sdk-tools/presets/ts-dev-kits "$env:
 
 ## 配置
 
-预设的 `agent.cordis.yml` 中 `config` 即插件配置(schemastery schema,未填项取默认):
+**设置页开关(推荐):** DSH 设置 →「SDK工具」页切换 6 个功能包开关,实时生效。写入 `~/.dsh/settings.yaml` 的 `dsh-sdk-tools` 节:
+
+```yaml
+dsh-sdk-tools:
+  bilibili: true   # false = 关掉该包全部工具
+  netease: true
+  ffmpeg: true
+  email: false
+  lol: true
+  vrchat: false
+```
+
+> settings 文档只承载 enabled 开关;各包参数仍由预设 `agent.cordis.yml` 的 `config` 提供(见下),避免敏感字段(SMTP 密码)进入设置文档。settings 未写入的包回退 entry 值。
+
+**预设 entry 配置:** 预设的 `agent.cordis.yml` 中 `config` 即插件配置(schemastery schema,未填项取默认):
 
 | 字段 | 默认 | 说明 |
 | --- | --- | --- |
@@ -99,15 +114,22 @@ netease-music 的硬规则在 SDK 层强制,工具层不绕过:无权限品质 �
 
 ```powershell
 pnpm --filter @sakurachiyo0v0/dsh-sdk-tools typecheck
-pnpm --filter @sakurachiyo0v0/dsh-sdk-tools test
-pnpm --filter @sakurachiyo0v0/dsh-sdk-tools build   # ESM + CJS + d.ts
+pnpm --filter @sakurachiyo0v0/dsh-sdk-tools test      # 含 settings 接线真实组合测试
+pnpm --filter @sakurachiyo0v0/dsh-sdk-tools build     # host: dist/;client 设置页: lib/client.js + d.ts
 ```
+
+构建产物:
+- `dist/` — host 半(tsc + rollup,ESM + CJS + d.ts);
+- `lib/client.js` — client 设置页 bundle(tsdown,`window.__ModuleLoader__` 注册,react/cordis external);
+- `lib/index.d.ts` / `lib/settings-page.d.ts` — client 类型(tsc)。
 
 被依赖 SDK(ffmpeg、bilibili、netease-music、email、lol、vrchat)需先 `build`(仓库根 `pnpm build` 已按依赖顺序处理)。
 
 ## 新增功能包工具
 
-1. 在 `src/tools/` 新建 `<pkg>.ts`,导出 `apply<Xxx>Tools(ctx, config)` 注册 `defineTool`;
+1. 在 `src/tools/` 新建 `<pkg>.ts`,导出 `apply<Xxx>Tools(ctx, config)` 注册 `defineTool`,返回 disposer(收集各 `ctx.tools.register` 返回值);
 2. 在 `src/config.ts` 增加该包 Config 字段;
 3. 在 `src/capabilities.ts` 注册表加一行(受 `enabled` 控制);
-4. 补充 `tests/` 与本文档工具表。
+4. 在 `src/settings.ts` 的 `SettingsSchema` / `toSettingsShape` / `applySettingsShape` 加对应开关;
+5. 在 `src/client/settings-page.tsx` 的 `FEATURES` 加一行展示;
+6. 补充 `tests/` 与本文档工具表。

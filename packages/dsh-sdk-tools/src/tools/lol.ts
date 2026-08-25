@@ -20,10 +20,11 @@ async function resolvePuuid(name?: string): Promise<{ puuid: string; displayName
 }
 
 /** 注册 lol 工具(summoner / match_history / ranked)。 */
-export function applyLolTools(ctx: Context, config: LolConfig): void {
+export function applyLolTools(ctx: Context, config: LolConfig): () => void {
+  const disposers: Array<() => void> = [];
   void config;
 
-  ctx.tools.register(defineTool({
+  disposers.push(ctx.tools.register(defineTool({
     name: "lol_summoner",
     description: "查询英雄联盟召唤师信息(当前登录召唤师或按名称查询)。需要本机正在运行英雄联盟客户端。",
     parameters: {
@@ -72,9 +73,9 @@ export function applyLolTools(ctx: Context, config: LolConfig): void {
         throw new Error(describeError(error));
       }
     },
-  }));
+  })));
 
-  ctx.tools.register(defineTool({
+  disposers.push(ctx.tools.register(defineTool({
     name: "lol_match_history",
     description: "查询召唤师最近战绩列表(最近 20 场,含英雄/模式/时长/结果)。需要本机正在运行英雄联盟客户端。",
     parameters: {
@@ -139,9 +140,9 @@ export function applyLolTools(ctx: Context, config: LolConfig): void {
         throw new Error(describeError(error));
       }
     },
-  }));
+  })));
 
-  ctx.tools.register(defineTool({
+  disposers.push(ctx.tools.register(defineTool({
     name: "lol_ranked",
     description: "查询召唤师段位统计(单双排/灵活组排等队列的段位/胜点/胜负数)。需要本机正在运行英雄联盟客户端。",
     parameters: {
@@ -202,5 +203,7 @@ export function applyLolTools(ctx: Context, config: LolConfig): void {
         throw new Error(describeError(error));
       }
     },
-  }));
+  })));
+
+  return () => { for (const dispose of disposers) dispose(); };
 }

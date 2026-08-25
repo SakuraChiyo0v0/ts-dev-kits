@@ -5,10 +5,11 @@ import type { FfmpegConfig } from "../config.js";
 import { describeError } from "../errors.js";
 
 /** 注册 ffmpeg 工具(probe / transcode / extract_audio / thumbnail)。 */
-export function applyFfmpegTools(ctx: Context, config: FfmpegConfig): void {
+export function applyFfmpegTools(ctx: Context, config: FfmpegConfig): () => void {
+  const disposers: Array<() => void> = [];
   void config;
 
-  ctx.tools.register(defineTool({
+  disposers.push(ctx.tools.register(defineTool({
     name: "ffmpeg_probe",
     description: "用 ffprobe 读取媒体文件的元数据(格式/时长/码率/音视频流)。处理媒体文件前先调用它确认输入有效。",
     parameters: {
@@ -65,9 +66,9 @@ export function applyFfmpegTools(ctx: Context, config: FfmpegConfig): void {
         throw new Error(describeError(error));
       }
     },
-  }));
+  })));
 
-  ctx.tools.register(defineTool({
+  disposers.push(ctx.tools.register(defineTool({
     name: "ffmpeg_transcode",
     description: "用 ffmpeg 转码媒体文件(可指定视频/音频编码)。转码是长操作,可通过取消中断;已存在输出文件时默认覆盖。",
     parameters: {
@@ -110,9 +111,9 @@ export function applyFfmpegTools(ctx: Context, config: FfmpegConfig): void {
         throw new Error(describeError(error));
       }
     },
-  }));
+  })));
 
-  ctx.tools.register(defineTool({
+  disposers.push(ctx.tools.register(defineTool({
     name: "ffmpeg_extract_audio",
     description: "从视频中提取音频(默认输出同目录同名 .mp3,可指定输出路径与编码)。长操作,可取消。",
     parameters: {
@@ -154,9 +155,9 @@ export function applyFfmpegTools(ctx: Context, config: FfmpegConfig): void {
         throw new Error(describeError(error));
       }
     },
-  }));
+  })));
 
-  ctx.tools.register(defineTool({
+  disposers.push(ctx.tools.register(defineTool({
     name: "ffmpeg_thumbnail",
     description: "从视频提取一帧生成缩略图(默认取 1 秒处,输出同目录同名 .jpg)。",
     parameters: {
@@ -197,7 +198,9 @@ export function applyFfmpegTools(ctx: Context, config: FfmpegConfig): void {
         throw new Error(describeError(error));
       }
     },
-  }));
+  })));
+
+  return () => { for (const dispose of disposers) dispose(); };
 }
 
 /** 输入视频 → 同目录同名 .mp3。 */

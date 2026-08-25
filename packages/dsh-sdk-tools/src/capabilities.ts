@@ -10,24 +10,29 @@ import { applyVrchatTools } from "./tools/vrchat.js";
 /**
  * 按 config 的 enabled 开关注册各功能包工具。
  * 未启用的包完全不注册 → 不进 system prompt → 0 token 开销。
+ *
+ * 返回 disposer:settings 变化重新评估时先 dispose 旧注册,再按新 enabled
+ * 注册,实现设置页开关的实时生效。
  */
-export function registerCapabilities(ctx: Context, config: ResolvedConfig): void {
+export function registerCapabilities(ctx: Context, config: ResolvedConfig): () => void {
+  const disposers: Array<() => void> = [];
   if (config.bilibili.enabled) {
-    applyBilibiliTools(ctx, config.bilibili);
+    disposers.push(applyBilibiliTools(ctx, config.bilibili));
   }
   if (config.netease.enabled) {
-    applyNeteaseTools(ctx, config.netease);
+    disposers.push(applyNeteaseTools(ctx, config.netease));
   }
   if (config.ffmpeg.enabled) {
-    applyFfmpegTools(ctx, config.ffmpeg);
+    disposers.push(applyFfmpegTools(ctx, config.ffmpeg));
   }
   if (config.email.enabled) {
-    applyEmailTools(ctx, config.email);
+    disposers.push(applyEmailTools(ctx, config.email));
   }
   if (config.lol.enabled) {
-    applyLolTools(ctx, config.lol);
+    disposers.push(applyLolTools(ctx, config.lol));
   }
   if (config.vrchat.enabled) {
-    applyVrchatTools(ctx, config.vrchat);
+    disposers.push(applyVrchatTools(ctx, config.vrchat));
   }
+  return () => { for (const dispose of disposers) dispose(); };
 }

@@ -17,8 +17,9 @@ function resolveSmtp(config: EmailConfig): EmailConfig["smtp"] {
 }
 
 /** 注册 email 工具(verify / send)。SMTP 凭据只来自预设 config,不进模型可见内容。 */
-export function applyEmailTools(ctx: Context, config: EmailConfig): void {
-  ctx.tools.register(defineTool({
+export function applyEmailTools(ctx: Context, config: EmailConfig): () => void {
+  const disposers: Array<() => void> = [];
+  disposers.push(ctx.tools.register(defineTool({
     name: "email_verify",
     description: "校验 SMTP 连接与认证是否可用,不发送邮件。发信前建议先调用;失败会给出认证/连接类错误(消息脱敏)。",
     parameters: {},
@@ -58,9 +59,9 @@ export function applyEmailTools(ctx: Context, config: EmailConfig): void {
         return { ok: false, detail: describeError(error) };
       }
     },
-  }));
+  })));
 
-  ctx.tools.register(defineTool({
+  disposers.push(ctx.tools.register(defineTool({
     name: "email_send",
     description: "通过 SMTP 发送一封邮件(文本或 HTML,可带附件)。需要预设已配置 smtp;凭据不进模型可见内容。",
     parameters: {
@@ -144,5 +145,7 @@ export function applyEmailTools(ctx: Context, config: EmailConfig): void {
         throw new Error(describeError(error));
       }
     },
-  }));
+  })));
+
+  return () => { for (const dispose of disposers) dispose(); };
 }

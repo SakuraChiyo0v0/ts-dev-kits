@@ -41,9 +41,10 @@ function summarizeWorld(world: { id: string; name: string; authorName?: string; 
 }
 
 /** 注册 vrchat 工具(只读;登录态自动从本地 auth.json 加载)。 */
-export function applyVrchatTools(ctx: Context, config: VrchatConfig): void {
+export function applyVrchatTools(ctx: Context, config: VrchatConfig): () => void {
+  const disposers: Array<() => void> = [];
   void config;
-  ctx.tools.register(defineTool({
+  disposers.push(ctx.tools.register(defineTool({
     name: "vrchat_whoami",
     description: "返回当前登录的 VRChat 账号信息(displayName、username、状态等)。需要本地已保存 VRChat 登录态(auth.json)。",
     parameters: {},
@@ -75,9 +76,9 @@ export function applyVrchatTools(ctx: Context, config: VrchatConfig): void {
         throw new Error(describeError(error));
       }
     },
-  }));
+  })));
 
-  ctx.tools.register(defineTool({
+  disposers.push(ctx.tools.register(defineTool({
     name: "vrchat_user",
     description: "按用户名或用户 ID 查询 VRChat 用户信息(displayName、username、id、好友关系等)。需本地登录态。",
     parameters: {
@@ -119,9 +120,9 @@ export function applyVrchatTools(ctx: Context, config: VrchatConfig): void {
         throw new Error(describeError(error));
       }
     },
-  }));
+  })));
 
-  ctx.tools.register(defineTool({
+  disposers.push(ctx.tools.register(defineTool({
     name: "vrchat_worlds_search",
     description: "搜索 VRChat 世界(公开世界列表),返回世界名称、作者、容量、在线人数。需本地登录态(该端点需认证);搜索词为空时返回热门世界。",
     parameters: {
@@ -183,5 +184,7 @@ export function applyVrchatTools(ctx: Context, config: VrchatConfig): void {
         throw new Error(describeError(error));
       }
     },
-  }));
+  })));
+
+  return () => { for (const dispose of disposers) dispose(); };
 }

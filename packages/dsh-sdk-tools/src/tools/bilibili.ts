@@ -24,8 +24,9 @@ function summarizeItem(item: MediaItem): {
 }
 
 /** 注册 bilibili 工具(parse / download)。 */
-export function applyBilibiliTools(ctx: Context, config: BilibiliConfig): void {
-  ctx.tools.register(defineTool({
+export function applyBilibiliTools(ctx: Context, config: BilibiliConfig): () => void {
+  const disposers: Array<() => void> = [];
+  disposers.push(ctx.tools.register(defineTool({
     name: "bilibili_parse",
     description: "解析一个 B 站链接(投稿视频/番剧/课程/音频等),返回媒体项列表。下载前先调用它确认链接可解析、拿到标题与类型。",
     parameters: {
@@ -73,9 +74,9 @@ export function applyBilibiliTools(ctx: Context, config: BilibiliConfig): void {
         throw new Error(describeError(error));
       }
     },
-  }));
+  })));
 
-  ctx.tools.register(defineTool({
+  disposers.push(ctx.tools.register(defineTool({
     name: "bilibili_download",
     description: "下载一个 B 站视频/音频到本地。可先用 bilibili_parse 确认链接;登录态自动从本地 auth.json 加载,高画质(≥1080P)需登录。下载是长操作,可通过取消中断。",
     parameters: {
@@ -133,5 +134,7 @@ export function applyBilibiliTools(ctx: Context, config: BilibiliConfig): void {
         throw new Error(describeError(error));
       }
     },
-  }));
+  })));
+
+  return () => { for (const dispose of disposers) dispose(); };
 }

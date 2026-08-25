@@ -9,4 +9,5 @@ remove("../.build");
 
 if (!process.argv.includes("--intermediate-only")) {
   remove("../dist");
+  remove("../lib");
 }

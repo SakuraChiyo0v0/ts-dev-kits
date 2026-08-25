@@ -43,8 +43,9 @@ function summarizePlaylist(item: UserPlaylistSummary): {
 }
 
 /** 注册 netease-music 工具(解析/下载/状态 + 账号/收藏/歌单管理)。 */
-export function applyNeteaseTools(ctx: Context, config: NeteaseConfig): void {
-  ctx.tools.register(defineTool({
+export function applyNeteaseTools(ctx: Context, config: NeteaseConfig): () => void {
+  const disposers: Array<() => void> = [];
+  disposers.push(ctx.tools.register(defineTool({
     name: "netease_parse",
     description: "解析一个网易云音乐链接(单曲/歌单/专辑),返回歌曲清单。下载前先调用它确认链接可解析、拿到标题与歌手。",
     parameters: {
@@ -92,9 +93,9 @@ export function applyNeteaseTools(ctx: Context, config: NeteaseConfig): void {
         throw new Error(describeError(error));
       }
     },
-  }));
+  })));
 
-  ctx.tools.register(defineTool({
+  disposers.push(ctx.tools.register(defineTool({
     name: "netease_download",
     description: "下载网易云音乐的歌曲/歌单/专辑。品质按账号权限裁决:无权限的品质会被拒绝(不降级),试听片段绝不落盘。下载是长操作,可通过取消中断。",
     parameters: {
@@ -150,9 +151,9 @@ export function applyNeteaseTools(ctx: Context, config: NeteaseConfig): void {
         throw new Error(describeError(error));
       }
     },
-  }));
+  })));
 
-  ctx.tools.register(defineTool({
+  disposers.push(ctx.tools.register(defineTool({
     name: "netease_status",
     description: "检查网易云音乐登录态是否有效。下载或操作收藏前若提示登录,先调用本工具确认状态。",
     parameters: {},
@@ -179,9 +180,9 @@ export function applyNeteaseTools(ctx: Context, config: NeteaseConfig): void {
         return { loggedIn: false, detail: describeError(error) };
       }
     },
-  }));
+  })));
 
-  ctx.tools.register(defineTool({
+  disposers.push(ctx.tools.register(defineTool({
     name: "netease_levels",
     description: "查询单曲可下载的品质清单(按当前账号身份过滤)。下载前可用它确认可用品质,避免请求无权限的品质。",
     parameters: {
@@ -214,9 +215,9 @@ export function applyNeteaseTools(ctx: Context, config: NeteaseConfig): void {
         throw new Error(describeError(error));
       }
     },
-  }));
+  })));
 
-  ctx.tools.register(defineTool({
+  disposers.push(ctx.tools.register(defineTool({
     name: "netease_account",
     description: "获取当前登录的网易云账号信息(uid / 昵称 / 头像)。操作收藏与歌单前先确认登录态。",
     parameters: {},
@@ -250,9 +251,9 @@ export function applyNeteaseTools(ctx: Context, config: NeteaseConfig): void {
         throw new Error(describeError(error));
       }
     },
-  }));
+  })));
 
-  ctx.tools.register(defineTool({
+  disposers.push(ctx.tools.register(defineTool({
     name: "netease_playlists",
     description: "获取当前账号的歌单列表(含'我喜欢的音乐' specialType=5 与订阅的他人歌单)。返回 id/名称/歌曲数/是否订阅。",
     parameters: {
@@ -301,9 +302,9 @@ export function applyNeteaseTools(ctx: Context, config: NeteaseConfig): void {
         throw new Error(describeError(error));
       }
     },
-  }));
+  })));
 
-  ctx.tools.register(defineTool({
+  disposers.push(ctx.tools.register(defineTool({
     name: "netease_likes",
     description: "获取当前账号红心(喜欢)歌曲的 id 列表。",
     parameters: {},
@@ -329,9 +330,9 @@ export function applyNeteaseTools(ctx: Context, config: NeteaseConfig): void {
         throw new Error(describeError(error));
       }
     },
-  }));
+  })));
 
-  ctx.tools.register(defineTool({
+  disposers.push(ctx.tools.register(defineTool({
     name: "netease_check_liked",
     description: "批量检查歌曲是否已红心(喜欢)。返回每首歌的 liked 状态。注意:该接口有分钟级缓存延迟,刚红心/取消后立即查询可能返回旧值。",
     parameters: {
@@ -375,9 +376,9 @@ export function applyNeteaseTools(ctx: Context, config: NeteaseConfig): void {
         throw new Error(describeError(error));
       }
     },
-  }));
+  })));
 
-  ctx.tools.register(defineTool({
+  disposers.push(ctx.tools.register(defineTool({
     name: "netease_like",
     description: "把一首歌加入红心(喜欢)收藏。操作的是当前登录账号自己的收藏。",
     parameters: {
@@ -405,9 +406,9 @@ export function applyNeteaseTools(ctx: Context, config: NeteaseConfig): void {
         throw new Error(describeError(error));
       }
     },
-  }));
+  })));
 
-  ctx.tools.register(defineTool({
+  disposers.push(ctx.tools.register(defineTool({
     name: "netease_unlike",
     description: "把一首歌从红心(喜欢)收藏移除。操作的是当前登录账号自己的收藏。",
     parameters: {
@@ -435,9 +436,9 @@ export function applyNeteaseTools(ctx: Context, config: NeteaseConfig): void {
         throw new Error(describeError(error));
       }
     },
-  }));
+  })));
 
-  ctx.tools.register(defineTool({
+  disposers.push(ctx.tools.register(defineTool({
     name: "netease_playlist_add",
     description: "向歌单添加歌曲(可多首)。操作的是当前登录账号自己的歌单。",
     parameters: {
@@ -471,9 +472,9 @@ export function applyNeteaseTools(ctx: Context, config: NeteaseConfig): void {
         throw new Error(describeError(error));
       }
     },
-  }));
+  })));
 
-  ctx.tools.register(defineTool({
+  disposers.push(ctx.tools.register(defineTool({
     name: "netease_playlist_remove",
     description: "从歌单移除歌曲(可多首)。操作的是当前登录账号自己的歌单。",
     parameters: {
@@ -507,9 +508,9 @@ export function applyNeteaseTools(ctx: Context, config: NeteaseConfig): void {
         throw new Error(describeError(error));
       }
     },
-  }));
+  })));
 
-  ctx.tools.register(defineTool({
+  disposers.push(ctx.tools.register(defineTool({
     name: "netease_playlist_subscribe",
     description: "收藏(订阅)一个歌单。操作的是当前登录账号自己的收藏。",
     parameters: {
@@ -537,9 +538,9 @@ export function applyNeteaseTools(ctx: Context, config: NeteaseConfig): void {
         throw new Error(describeError(error));
       }
     },
-  }));
+  })));
 
-  ctx.tools.register(defineTool({
+  disposers.push(ctx.tools.register(defineTool({
     name: "netease_playlist_unsubscribe",
     description: "取消收藏(退订)一个歌单。操作的是当前登录账号自己的收藏。",
     parameters: {
@@ -567,9 +568,9 @@ export function applyNeteaseTools(ctx: Context, config: NeteaseConfig): void {
         throw new Error(describeError(error));
       }
     },
-  }));
+  })));
 
-  ctx.tools.register(defineTool({
+  disposers.push(ctx.tools.register(defineTool({
     name: "netease_playlist_create",
     description: "创建新歌单,返回新歌单 id。privacy: 0 普通,10 隐私。",
     parameters: {
@@ -601,9 +602,9 @@ export function applyNeteaseTools(ctx: Context, config: NeteaseConfig): void {
         throw new Error(describeError(error));
       }
     },
-  }));
+  })));
 
-  ctx.tools.register(defineTool({
+  disposers.push(ctx.tools.register(defineTool({
     name: "netease_playlist_delete",
     description: "删除歌单。操作的是当前登录账号自己的歌单。",
     parameters: {
@@ -631,5 +632,7 @@ export function applyNeteaseTools(ctx: Context, config: NeteaseConfig): void {
         throw new Error(describeError(error));
       }
     },
-  }));
+  })));
+
+  return () => { for (const dispose of disposers) dispose(); };
 }

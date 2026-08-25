@@ -7,7 +7,7 @@
         "node": ">=20"
     },
     "scripts": {
-        "build": "pnpm --filter @sakurachiyo0v0/cli-utils build && pnpm --filter @sakurachiyo0v0/account build && pnpm --filter @sakurachiyo0v0/email build && pnpm --filter @sakurachiyo0v0/ffmpeg build && pnpm --filter @sakurachiyo0v0/netease-music build && pnpm --filter @sakurachiyo0v0/booth build && pnpm --filter @sakurachiyo0v0/bilibili build && pnpm --filter @sakurachiyo0v0/chat-platforms build && pnpm --filter @sakurachiyo0v0/lol build && pnpm --filter @sakurachiyo0v0/vrchat build && pnpm --filter @sakurachiyo0v0/steam build && pnpm --filter @sakurachiyo0v0/dsh-sdk-tools build \\u0026\\u0026 pnpm --filter @sakurachiyo0v0/database build \\u0026\\u0026 pnpm --filter @sakurachiyo0v0/webdav build \\u0026\\u0026 pnpm --filter @sakurachiyo0v0/config build",
+        "build": "pnpm --filter @sakurachiyo0v0/cli-utils build && pnpm --filter @sakurachiyo0v0/account build && pnpm --filter @sakurachiyo0v0/email build && pnpm --filter @sakurachiyo0v0/ffmpeg build && pnpm --filter @sakurachiyo0v0/netease-music build && pnpm --filter @sakurachiyo0v0/booth build && pnpm --filter @sakurachiyo0v0/bilibili build && pnpm --filter @sakurachiyo0v0/chat-platforms build && pnpm --filter @sakurachiyo0v0/lol build && pnpm --filter @sakurachiyo0v0/vrchat build && pnpm --filter @sakurachiyo0v0/steam build && pnpm --filter @sakurachiyo0v0/dsh-sdk-tools build && pnpm --filter @sakurachiyo0v0/database build && pnpm --filter @sakurachiyo0v0/webdav build && pnpm --filter @sakurachiyo0v0/config build",
         "typecheck": "pnpm -r --if-present typecheck",
         "test": "pnpm -r --if-present test",
         "check": "pnpm typecheck && pnpm test && pnpm build && node scripts/check-skill-staleness.mjs",
