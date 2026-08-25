@@ -61,6 +61,8 @@ export interface QrLoginOptions {
   openBrowser?: (url: string) => void | Promise<void>;
   /** 是否自动打开浏览器,默认 true。 */
   autoOpenBrowser?: boolean;
+  /** 每次生成/重生成二维码时回调图片 data URL(供远程/聊天渠道展示给用户扫码)。 */
+  onQrCode?: (qrDataUrl: string) => void;
   /** 注入 fetch 实现(测试用)。 */
   fetchImpl?: typeof fetch;
   /** 进度回调(测试/UI 用)。 */

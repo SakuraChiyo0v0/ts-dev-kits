@@ -7,16 +7,8 @@
  *   AMECHAN_XIAOHEIHE_COOKIE     — 直接注入 cookie 头(优先于 AuthStore)
  *   AMECHAN_XIAOHEIHE_DEVICE_ID  — device_id 公共参数
  */
-import {
-  getBool,
-  getString,
-  handleCliError,
-  outputError,
-  outputJson,
-  outputText,
-  printHelp,
-  parseArgs,
-} from "@sakurachiyo0v0/cli-utils";
+import { getBool, getString, handleCliError, outputError, outputJson, outputText, printHelp, parseArgs } from "@sakurachiyo0v0/cli-utils";
+import { writeFileSync } from "node:fs";
 import { AuthStore, qrcodeLogin } from "@sakurachiyo0v0/account";
 import { createXiaoheiheClient } from "../client.js";
 import { xiaoheiheQrAdapter } from "../api/qrcode.js";
@@ -37,6 +29,7 @@ const COMMANDS = [
 const OPTIONS = [
   { flag: "--auth-path <path>", desc: "登录态存储路径(默认平台配置目录)" },
   { flag: "--no-browser", desc: "login 不自动打开浏览器(仅打印二维码 URL)" },
+  { flag: "--qr-image <path>", desc: "login 把二维码图片写入 <path>(供聊天/远程渠道展示);同时不自动打开浏览器" },
   { flag: "--json", desc: "JSON 输出(默认已 JSON 输出,保留兼容)" },
 ];
 
@@ -106,13 +99,19 @@ async function runLogin(context: CliContext, args: ReturnType<typeof parseArgs>)
     ...(context.authPath !== undefined ? { path: context.authPath } : {}),
   });
   outputText(`登录态存储: ${store.path}`);
-  outputText("正在生成二维码,请使用小黑盒 App 扫码...");
+  const qrImage = getString(args, "qr-image");
+  outputText(
+    qrImage !== undefined
+      ? `正在生成二维码,图片将写入 ${qrImage},请使用小黑盒 App 扫码...`
+      : "正在生成二维码,请使用小黑盒 App 扫码...",
+  );
   const result = await qrcodeLogin({
     adapter: xiaoheiheQrAdapter({
       ...(context.baseUrl !== undefined ? { baseUrl: context.baseUrl } : {}),
     }),
     store,
-    autoOpenBrowser: getBool(args, "no-browser") ? false : true,
+    autoOpenBrowser: getBool(args, "no-browser") || qrImage !== undefined ? false : true,
+    ...(qrImage !== undefined ? { onQrCode: (dataUrl) => writeQrImage(qrImage, dataUrl) } : {}),
     onStatus: (status) => {
       if (status.state !== "waiting") {
         outputText(`[${status.state}] ${status.message}`);
@@ -235,6 +234,16 @@ function clientOptions(context: CliContext): Parameters<typeof createXiaoheiheCl
     ...(context.cookie !== undefined ? { cookie: context.cookie } : {}),
     ...(context.deviceId !== undefined ? { deviceId: context.deviceId } : {}),
   };
+}
+
+/** 把二维码 data URL 写入 PNG 文件(供聊天/远程渠道展示给用户扫码)。 */
+function writeQrImage(filePath: string, dataUrl: string): void {
+  const base64 = dataUrl.split(",")[1];
+  if (base64 === undefined) {
+    throw new Error(`二维码图片格式异常: ${dataUrl.slice(0, 30)}`);
+  }
+  writeFileSync(filePath, Buffer.from(base64, "base64"));
+  outputText(`二维码图片已写入: ${filePath}`);
 }
 
 main().catch((error) => {

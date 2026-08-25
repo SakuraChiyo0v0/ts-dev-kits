@@ -18,6 +18,7 @@ which amechan-xiaoheihe   # 确认已安装
 ```bash
 amechan-xiaoheihe login             # 扫码登录:自动打开浏览器显示二维码,小黑盒 App 扫码确认
 amechan-xiaoheihe login --no-browser # 不自动开浏览器(仅打印二维码 URL,手动打开)
+amechan-xiaoheihe login --qr-image qr.png   # 把二维码图片写入 qr.png(供聊天/远程渠道展示给用户扫码),不弹浏览器
 amechan-xiaoheihe status            # 查看登录状态
 amechan-xiaoheihe logout            # 清除本地登录态
 ```

@@ -18,6 +18,7 @@ which amechan-bilibili   # 确认已安装
 ```bash
 amechan-bilibili login        # 扫码登录(自动打开浏览器窗口)
 amechan-bilibili login --no-browser   # 不弹浏览器,只打印二维码 URL 手动扫码
+amechan-bilibili login --qr-image qr.png   # 把二维码图片写入 qr.png(供聊天/远程渠道展示给用户扫码),不弹浏览器
 amechan-bilibili status       # 查看登录状态(登录用户 mid)
 amechan-bilibili logout       # 清除本地登录态
 ```

@@ -53,6 +53,7 @@ const payload = await store.load();
 | `pollIntervalMs` | 轮询间隔 | `2000` |
 | `maxRegenerates` | 二维码过期后最大重生成次数 | `3` |
 | `openBrowser` | 自定义浏览器打开器 | 平台默认 |
+| `onQrCode` | 二维码图片回调 `(dataUrl: string) => void`(每次生成/重生成触发,供远程/聊天渠道展示给用户扫码) | — |
 | `fetchImpl` | 注入 fetch(测试用) | 全局 fetch |
 | `onStatus` | 进度回调 `{ state, message }` | — |
 

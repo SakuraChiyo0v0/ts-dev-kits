@@ -54,6 +54,19 @@ describe("qrcodeLogin", () => {
     expect(statuses).toContain("success");
   });
 
+  it("emits QR code image via onQrCode callback", async () => {
+    const qrCodes: string[] = [];
+    await qrcodeLogin({
+      adapter: fakeAdapter(),
+      autoOpenBrowser: false,
+      pollIntervalMs: 1,
+      timeoutMs: 5000,
+      onQrCode: (dataUrl) => qrCodes.push(dataUrl),
+    });
+    expect(qrCodes.length).toBe(1);
+    expect(qrCodes[0]!).toMatch(/^data:image\/png;base64,/u);
+  });
+
   it("persists to store when provided", async () => {
     const adapter = fakeAdapter();
     const storePath = `${process.env.TEMP ?? "/tmp"}/account-qr-${Date.now()}.json`;

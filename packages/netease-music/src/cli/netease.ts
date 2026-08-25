@@ -6,6 +6,7 @@
  *   AMECHAN_NETEASE_AUTH_PATH — 覆盖登录态存储路径
  */
 import { pathToFileURL } from "node:url";
+import { writeFileSync } from "node:fs";
 import {
   qrcodeLogin,
   AuthStore,
@@ -46,6 +47,7 @@ const COMMANDS = [
 const OPTIONS = [
   { flag: "--auth-path <path>", desc: "登录态存储路径(默认平台配置目录)" },
   { flag: "--no-browser", desc: "login 时不自动打开浏览器" },
+  { flag: "--qr-image <path>", desc: "login 把二维码图片写入 <path>(供聊天/远程渠道展示);同时不自动打开浏览器" },
   { flag: "--level <level>", desc: "品质 standard|higher|exhigh|lossless|hires(默认 exhigh)" },
   { flag: "--output-dir <dir>", desc: "下载输出目录(默认当前目录)" },
   { flag: "--no-lyric", desc: "不下载歌词" },
@@ -149,13 +151,19 @@ async function runLogin(context: CliContext, args: ReturnType<typeof parseArgs>)
     ...(context.authPath !== undefined ? { path: context.authPath } : {}),
   });
   outputText(`登录态存储: ${store.path}`);
-  outputText("正在生成二维码,请使用网易云音乐 App 扫码...");
+  const qrImage = getString(args, "qr-image");
+  outputText(
+    qrImage !== undefined
+      ? `正在生成二维码,图片将写入 ${qrImage},请使用网易云音乐 App 扫码...`
+      : "正在生成二维码,请使用网易云音乐 App 扫码...",
+  );
   const result = await qrcodeLogin({
     adapter: NeteaseMusicClient.qrAdapter({
       ...(context.baseUrl !== undefined ? { baseUrl: context.baseUrl } : {}),
     }),
     store,
-    autoOpenBrowser: getBool(args, "no-browser") ? false : true,
+    autoOpenBrowser: getBool(args, "no-browser") || qrImage !== undefined ? false : true,
+    ...(qrImage !== undefined ? { onQrCode: (dataUrl) => writeQrImage(qrImage, dataUrl) } : {}),
     onStatus: (status) => {
       if (status.state !== "waiting") {
         outputText(`[${status.state}] ${status.message}`);
@@ -427,6 +435,16 @@ if (isDirectRun) {
     }
     handleCliError(error);
   });
+}
+
+/** 把二维码 data URL 写入 PNG 文件(供聊天/远程渠道展示给用户扫码)。 */
+function writeQrImage(filePath: string, dataUrl: string): void {
+  const base64 = dataUrl.split(",")[1];
+  if (base64 === undefined) {
+    throw new Error(`二维码图片格式异常: ${dataUrl.slice(0, 30)}`);
+  }
+  writeFileSync(filePath, Buffer.from(base64, "base64"));
+  outputText(`二维码图片已写入: ${filePath}`);
 }
 
 export { main };

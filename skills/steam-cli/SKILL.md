@@ -18,6 +18,7 @@ which amechan-steam   # 确认已安装
 ```bash
 amechan-steam login --account <账号名>          # 密码登录;如开启 Guard,按提示粘贴邮箱/令牌验证码(输完 Ctrl+D/EOF 提交)
 amechan-steam login --qr                        # 二维码登录:自动弹出本地二维码页面,用 Steam 手机 App 扫码确认
+amechan-steam login --qr --qr-image qr.png      # 二维码图片写入 qr.png(供聊天/远程渠道展示给用户扫码),不弹浏览器
 amechan-steam login --cookie "steamLoginSecure=...; sessionid=..."   # 导入浏览器 Cookie 头
 amechan-steam status                            # 查看登录状态(登录态/账号/steamid)
 amechan-steam logout                            # 清除本地登录态
@@ -76,6 +77,7 @@ amechan-steam inventory "76561198006483290" 730 2 --language schinese   # 玩家
 | --- | --- |
 | `--account <name>` | login 账号名 |
 | `--qr` | login 使用二维码登录 |
+| `--qr-image <path>` | login --qr 把二维码图片写入 <path>(供聊天/远程渠道展示;同时不弹浏览器) |
 | `--cookie <cookies>` | login 直接导入 Cookie 头字符串 |
 | `--auth-path <path>` | 登录态存储路径(默认平台配置目录;或 `AMECHAN_STEAM_AUTH_PATH`) |
 | `--api-key <key>` | Steam Web API user key(或 `AMECHAN_STEAM_API_KEY`;user/owned-games/achievements 需要) |

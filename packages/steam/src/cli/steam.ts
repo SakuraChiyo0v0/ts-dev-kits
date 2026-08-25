@@ -20,6 +20,7 @@ import {
   printHelp,
   parseArgs,
 } from "@sakurachiyo0v0/cli-utils";
+import { writeFileSync } from "node:fs";
 import { createSteamClient, type SteamClient } from "../client.js";
 
 const USAGE = "amechan-steam <command> [options]";
@@ -42,6 +43,7 @@ const COMMANDS = [
 const OPTIONS = [
   { flag: "--account <name>", desc: "login 账号名" },
   { flag: "--qr", desc: "login 使用二维码登录" },
+  { flag: "--qr-image <path>", desc: "login --qr 把二维码图片写入 <path>(供聊天/远程渠道展示);同时不自动打开浏览器" },
   { flag: "--cookie <cookies>", desc: "login 直接导入 Cookie 头字符串" },
   { flag: "--auth-path <path>", desc: "登录态存储路径(默认平台配置目录)" },
   { flag: "--api-key <key>", desc: "Steam Web API user key" },
@@ -175,13 +177,19 @@ async function runLogin(context: CliContext, args: ReturnType<typeof parseArgs>)
   }
 
   if (getBool(args, "qr")) {
-    outputText("二维码登录:即将弹出二维码页面,请用 Steam 手机 App 扫码确认…");
+    const qrImage = getString(args, "qr-image");
+    outputText(
+      qrImage !== undefined
+        ? `二维码登录:图片将写入 ${qrImage},请用 Steam 手机 App 扫码确认…`
+        : "二维码登录:即将弹出二维码页面,请用 Steam 手机 App 扫码确认…",
+    );
     const result = await client.auth.loginWithQr({
-      autoOpenBrowser: true,
+      autoOpenBrowser: qrImage === undefined,
+      ...(qrImage !== undefined ? { onQrCode: (dataUrl) => writeQrImage(qrImage, dataUrl) } : {}),
       pollIntervalMs: 1500,
       timeoutMs: 180_000,
       onStatus: (status) => {
-        if (status.state === "waiting") outputText("请用 Steam App 扫描弹出的二维码");
+        if (status.state === "waiting") outputText(qrImage !== undefined ? "请用 Steam App 扫描二维码图片" : "请用 Steam App 扫描弹出的二维码");
         if (status.state === "scanned") outputText("已扫码,请在手机上确认…");
         if (status.state === "expired") outputText("二维码已过期,重新生成…");
       },
@@ -484,3 +492,13 @@ function promptText(label: string): Promise<string> {
 }
 
 main(process.argv.slice(2)).catch(handleCliError);
+
+/** 把二维码 data URL 写入 PNG 文件(供聊天/远程渠道展示给用户扫码)。 */
+function writeQrImage(filePath: string, dataUrl: string): void {
+  const base64 = dataUrl.split(",")[1];
+  if (base64 === undefined) {
+    throw new Error(`二维码图片格式异常: ${dataUrl.slice(0, 30)}`);
+  }
+  writeFileSync(filePath, Buffer.from(base64, "base64"));
+  outputText(`二维码图片已写入: ${filePath}`);
+}

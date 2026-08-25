@@ -12,6 +12,7 @@ import {
   requireString,
 } from "@sakurachiyo0v0/cli-utils";
 import { AuthStore, qrcodeLogin } from "@sakurachiyo0v0/account";
+import { writeFileSync } from "node:fs";
 import { bilibiliQrAdapter } from "../auth/index.js";
 import { createBilibiliClient } from "../index.js";
 
@@ -68,6 +69,7 @@ const OPTIONS = [
   { flag: "--cookie <cookie>", desc: "Login cookie (SESSDATA=...; bili_jct=...)" },
   { flag: "--auth-path <path>", desc: "Auth store file path (default: platform user config dir)" },
   { flag: "--no-browser", desc: "Do not open browser window (print QR url only)" },
+  { flag: "--qr-image <path>", desc: "Write QR code image to <path> for chat/remote display; also disables browser" },
   { flag: "--timeout <sec>", desc: "Login timeout in seconds (default 180)" },
   { flag: "--output-dir <dir>", desc: "Output directory" },
   { flag: "--quality <n>", desc: "Target quality (80=1080P, 64=720P)" },
@@ -112,12 +114,20 @@ async function main(): Promise<void> {
         ...(authPath !== undefined ? { path: authPath } : {}),
       });
       const noBrowser = getBool(args, "no-browser");
+      const qrImage = getString(args, "qr-image");
       const timeoutSec = getNumber(args, "timeout");
-      outputText(noBrowser ? "登录:打印二维码地址,请手动打开扫码" : "登录:正在打开浏览器窗口,请用哔哩哔哩 App 扫码...");
+      outputText(
+        qrImage !== undefined
+          ? `登录:二维码图片将写入 ${qrImage},请用哔哩哔哩 App 扫码...`
+          : noBrowser
+            ? "登录:打印二维码地址,请手动打开扫码"
+            : "登录:正在打开浏览器窗口,请用哔哩哔哩 App 扫码...",
+      );
       const result = await qrcodeLogin({
         adapter: bilibiliQrAdapter(),
         store,
-        autoOpenBrowser: !noBrowser,
+        autoOpenBrowser: !noBrowser && qrImage === undefined,
+        ...(qrImage !== undefined ? { onQrCode: (dataUrl) => writeQrImage(qrImage, dataUrl) } : {}),
         ...(timeoutSec !== undefined ? { timeoutMs: timeoutSec * 1000 } : {}),
       });
       if (result.saved) {
@@ -452,6 +462,16 @@ async function runTagCommand(args: ReturnType<typeof parseArgs>): Promise<void> 
 function splitIds(input: string[] | string): string[] {
   const source = Array.isArray(input) ? input : [input];
   return source.flatMap((part) => part.split(",")).map((s) => s.trim()).filter((s) => s !== "");
+}
+
+/** 把二维码 data URL 写入 PNG 文件(供聊天/远程渠道展示给用户扫码)。 */
+function writeQrImage(filePath: string, dataUrl: string): void {
+  const base64 = dataUrl.split(",")[1];
+  if (base64 === undefined) {
+    throw new Error(`二维码图片格式异常: ${dataUrl.slice(0, 30)}`);
+  }
+  writeFileSync(filePath, Buffer.from(base64, "base64"));
+  outputText(`二维码图片已写入: ${filePath}`);
 }
 
 main().catch(handleCliError);

@@ -147,6 +147,8 @@ export async function qrcodeLogin(options: QrLoginOptions): Promise<LoginResult>
       }
       // 用 PNG data URL(SVG 带 XML 声明,内嵌 HTML 可能不渲染)。
       state.qrDataUrl = await QRCode.toDataURL(scanUrl, { margin: 1, width: 280 });
+      // 每次生成/重生成都把二维码图片吐给调用方(远程/聊天渠道展示给用户扫码)。
+      options.onQrCode?.(state.qrDataUrl);
       emit({ state: "waiting", message: `请使用 ${adapter.platform} App 扫码` });
 
       if (options.autoOpenBrowser !== false) {

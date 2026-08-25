@@ -44,6 +44,8 @@ export interface SteamPasswordLoginOptions {
 export interface SteamQrLoginOptions {
   /** 是否自动打开浏览器(显示二维码页面),默认 false。 */
   autoOpenBrowser?: boolean;
+  /** 每次生成/重生成二维码时回调图片 data URL(供远程/聊天渠道展示给用户扫码)。 */
+  onQrCode?: (qrDataUrl: string) => void;
   onStatus?: (status: LoginStatus) => void;
   /** 覆盖默认存储。 */
   store?: AuthStore;
@@ -110,6 +112,7 @@ export class AuthApi {
           ? { store: this.#store }
           : {}),
       autoOpenBrowser: options.autoOpenBrowser ?? false,
+      ...(options.onQrCode !== undefined ? { onQrCode: options.onQrCode } : {}),
       ...(options.onStatus !== undefined ? { onStatus: options.onStatus } : {}),
       ...(options.pollIntervalMs !== undefined ? { pollIntervalMs: options.pollIntervalMs } : {}),
       ...(options.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
