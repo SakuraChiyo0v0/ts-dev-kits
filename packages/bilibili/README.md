@@ -69,6 +69,18 @@ amechan-bilibili logout    # 清除登录态
 
 SDK 侧,`createBilibiliClient` 未传 `cookie` 时自动从登录态存储加载(显式 `cookie` 优先),可用 `authPath` 指定存储文件。
 
+**登录态多端同步(可选):** 传 `remote`(配置中心加密命名空间)后登录态双写本地+远程,换机可还原:
+
+```ts
+import { createConfigCenter } from "@sakurachiyo0v0/config";
+import { AuthStore } from "@sakurachiyo0v0/account";
+
+const remote = createConfigCenter().namespace("auth", { encrypt: true }); // /amechan/secrets/auth
+// 新机还原:先 await new AuthStore({ platform: "bilibili", remote }).load() 拉取回写本地,再构造客户端
+const client = createBilibiliClient({ remote });
+// 远程不可达时自动降级本地,不影响使用
+```
+
 > 登录实现内聚于本包:扫码登录适配器 `bilibiliQrAdapter()` 复用 [`@sakurachiyo0v0/account`](../../account/README.md) 的通用底座(`qrcodeLogin` / `AuthStore` / 续期钩子),与网易云音乐共用同一套登录态管理逻辑。
 
 ## 下载器配置

@@ -38,6 +38,13 @@ await qrcodeLogin({
 // 2. 创建客户端(自动从 AuthStore 加载 cookie)
 const client = createXiaoheiheClient();
 
+// (可选)登录态多端同步:配置远程加密命名空间,登录态双写本地+远程
+import { createConfigCenter } from "@sakurachiyo0v0/config";
+const remote = createConfigCenter().namespace("auth", { encrypt: true }); // /amechan/secrets/auth
+const client2 = createXiaoheiheClient({ remote });
+// 新机还原:先 await new AuthStore({ platform: "xiaoheihe", remote }).load() 拉取回写本地,再构造客户端
+// 远程不可达时自动降级本地,不影响使用
+
 // 3. 查询
 const links = await client.feeds.list();                       // 首页帖子流
 const detail = await client.links.getDetail({ linkId: links[0]!.linkid });  // 帖子详情+评论

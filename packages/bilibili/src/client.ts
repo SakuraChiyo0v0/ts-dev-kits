@@ -81,6 +81,7 @@ export class BilibiliClient {
       authStore = new AuthStore({
         platform: "bilibili",
         ...(options.authPath !== undefined ? { path: options.authPath } : {}),
+        ...(options.remote !== undefined ? { remote: options.remote } : {}),
       });
       let payload = authStore.loadSync();
       if (payload === null && authStore.exists()) {

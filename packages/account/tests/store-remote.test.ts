@@ -89,6 +89,25 @@ describe("AuthStore 远程同步(配置中心加密域)", () => {
     expect(loaded).toEqual(payload);
   });
 
+  it("远程 load 成功回写本地缓存(loadSync 可用,SDK 同步构造也能读到)", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "auth-remote-cache-"));
+    const { unlink } = await import("node:fs/promises");
+
+    const store = new AuthStore({ platform: "test-platform", path: join(dir, "auth.json"), remote: remoteNs });
+    const payload = makePayload();
+    await store.save(payload); // 写本地 + 远程
+
+    // 模拟新机:本地无缓存
+    await unlink(join(dir, "auth.json"));
+    const fresh = new AuthStore({ platform: "test-platform", path: join(dir, "auth.json"), remote: remoteNs });
+    expect(fresh.loadSync()).toBeNull();
+
+    // load() 从远程拉取 → 回写本地缓存
+    const restored = await fresh.load();
+    expect(restored).toEqual(payload);
+    expect(fresh.loadSync()).toEqual(payload); // 已回写,后续 SDK 同步构造可读
+  });
+
   it("clear 同时删除本地与远程", async () => {
     const dir = mkdtempSync(join(tmpdir(), "auth-remote-clear-"));
     const store = new AuthStore({ platform: "test-platform", path: join(dir, "auth.json"), remote: remoteNs });

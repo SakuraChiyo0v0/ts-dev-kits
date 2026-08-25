@@ -10,6 +10,7 @@ import { LinksApi } from "./api/links.js";
 import { FeedsApi } from "./api/feeds.js";
 import { MessagesApi } from "./api/messages.js";
 import { UserApi } from "./api/user.js";
+import type { ConfigNamespace } from "@sakurachiyo0v0/config";
 import type { XiaoheiheCredentials } from "./types.js";
 
 export interface XiaoheiheClientOptions {
@@ -17,6 +18,11 @@ export interface XiaoheiheClientOptions {
   cookie?: string;
   /** 登录态存储路径(覆盖默认 <配置根>/amechan/xiaoheihe/auth.json)。 */
   authPath?: string;
+  /**
+   * 可选远程登录态命名空间(配置中心加密域,如 createConfigCenter().namespace("auth",{encrypt:true}))。
+   * 登录态双写本地+远程;新机还原:先 await new AuthStore({platform:"xiaoheihe",remote}).load()。
+   */
+  remote?: ConfigNamespace;
   /** 覆盖 base URL(测试 mock 用)。 */
   baseUrl?: string;
   /** 注入 fetch 实现(测试用)。 */
@@ -79,6 +85,7 @@ export function createXiaoheiheClient(options: XiaoheiheClientOptions = {}): Xia
     store = new AuthStore({
       platform: "xiaoheihe",
       ...(options.authPath !== undefined ? { path: options.authPath } : {}),
+      ...(options.remote !== undefined ? { remote: options.remote } : {}),
     });
     const payload = store.loadSync();
     if (payload !== null) {

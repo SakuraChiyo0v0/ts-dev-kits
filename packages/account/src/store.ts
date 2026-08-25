@@ -9,6 +9,26 @@ import path from "node:path";
 import type { ConfigNamespace } from "@sakurachiyo0v0/config";
 import { defaultAuthPath } from "./paths.js";
 
+/** 远程(WebDAV)操作超时:服务器不可达/挂起时及时降级本地,避免卡住 */
+export const REMOTE_TIMEOUT_MS = 5000;
+
+/** 给远程操作加超时:超时抛错(由调用方降级处理) */
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`远程操作超时(${ms}ms)`)), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
 /** 存储的登录态载荷:平台凭证 + 元信息。平台字段放在 credentials 内。 */
 export interface AuthPayload {
   /** 平台名(如 "netease-music"),写入文件便于校验。 */
@@ -81,11 +101,17 @@ export class AuthStore {
     return parseAuthPayload(text, this.#path);
   }
 
-  /** 读取登录态;不存在或损坏返回 null(损坏时告警,不抛错)。配置远程时优先远程,失败降级本地。 */
+  /** 读取登录态;不存在或损坏返回 null(损坏时告警,不抛错)。配置远程时优先远程,失败/超时降级本地;远程成功回写本地缓存。 */
   async load(): Promise<AuthPayload | null> {
     if (this.#remote !== undefined) {
       try {
-        const payload = await this.#remote.get<AuthPayload>(this.#platform);
+        const payload = await withTimeout(this.#remote.get<AuthPayload>(this.#platform), REMOTE_TIMEOUT_MS);
+        // 远程成功:回写本地缓存,保证 SDK 的 loadSync(同步)也能读到
+        try {
+          await this.saveLocal(payload);
+        } catch {
+          // 本地回写失败不影响返回
+        }
         return payload;
       } catch (error) {
         if (error instanceof Error && (error as { code?: string }).code !== "NOT_FOUND") {
@@ -107,8 +133,8 @@ export class AuthStore {
     return parseAuthPayload(text, this.#path);
   }
 
-  /** 原子写入登录态:同目录临时文件 + rename,并设置 600 权限;配置远程时同步写远程(失败降级告警)。 */
-  async save(payload: AuthPayload): Promise<void> {
+  /** 仅写本地(原子写 + 600 权限),供 save 与远程回写共用。 */
+  private async saveLocal(payload: AuthPayload): Promise<void> {
     await fs.mkdir(path.dirname(this.#path), { recursive: true });
     const tmp = `${this.#path}.${process.pid}.tmp`;
     await fs.writeFile(tmp, JSON.stringify(payload, null, 2), { encoding: "utf-8" });
@@ -118,16 +144,21 @@ export class AuthStore {
       // Windows 上 chmod 受限,尽力而为。
     }
     await fs.rename(tmp, this.#path);
+  }
+
+  /** 原子写入登录态;配置远程时同步写远程(失败/超时降级告警,本地保留)。 */
+  async save(payload: AuthPayload): Promise<void> {
+    await this.saveLocal(payload);
     if (this.#remote !== undefined) {
       try {
-        await this.#remote.set(this.#platform, payload);
+        await withTimeout(this.#remote.set(this.#platform, payload), REMOTE_TIMEOUT_MS);
       } catch (error) {
         console.warn(`[account] 远程登录态同步失败(${this.#platform}),已保留本地:`, error);
       }
     }
   }
 
-  /** 删除登录态;文件不存在时静默成功。配置远程时同步删除远程。 */
+  /** 删除登录态;文件不存在时静默成功。配置远程时同步删除远程(失败/超时告警)。 */
   async clear(): Promise<void> {
     try {
       await fs.unlink(this.#path);
@@ -139,7 +170,7 @@ export class AuthStore {
     }
     if (this.#remote !== undefined) {
       try {
-        await this.#remote.remove(this.#platform);
+        await withTimeout(this.#remote.remove(this.#platform), REMOTE_TIMEOUT_MS);
       } catch (error) {
         console.warn(`[account] 远程登录态删除失败(${this.#platform}):`, error);
       }
