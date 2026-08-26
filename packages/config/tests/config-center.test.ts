@@ -21,8 +21,8 @@ describe("配置中心 namespace(真实协议路径)", () => {
       "/amechan/configs/bilibili",
       "/amechan/secrets/bilibili",
       "/amechan/secrets/xiaoheihe",
-      "/amechan/configs/steam",
-      "/amechan/configs/netease",
+      "/amechan/secrets/steam",
+      "/amechan/secrets/netease",
       "/amechan/secrets/secret",
     ]) {
       await raw.mkdir(dir);
@@ -41,8 +41,15 @@ describe("配置中心 namespace(真实协议路径)", () => {
     await srv.stop();
   });
 
-  it("明文域存取往返", async () => {
-    const ns = center.namespace("bilibili"); // encrypt 默认 false
+  it("默认加密域存取往返(上 WebDAV 默认加密)", async () => {
+    const ns = center.namespace("bilibili"); // encrypt 默认 true
+    expect(ns.encrypt).toBe(true);
+    await ns.set("ui", { quality: 80, theme: "dark" });
+    expect(await ns.get<{ quality: number; theme: string }>("ui")).toEqual({ quality: 80, theme: "dark" });
+  });
+
+  it("显式 encrypt: false 明文域存取往返", async () => {
+    const ns = center.namespace("bilibili", { encrypt: false });
     expect(ns.encrypt).toBe(false);
     await ns.set("ui", { quality: 80, theme: "dark" });
     expect(await ns.get<{ quality: number; theme: string }>("ui")).toEqual({ quality: 80, theme: "dark" });
@@ -66,8 +73,8 @@ describe("配置中心 namespace(真实协议路径)", () => {
 
   it("明文与加密域路径隔离", async () => {
     // /configs/bilibili 与 /secrets/bilibili 互不影响
-    const plain = center.namespace("bilibili");
-    const secret = center.namespace("bilibili", { encrypt: true });
+    const plain = center.namespace("bilibili", { encrypt: false });
+    const secret = center.namespace("bilibili");
     await plain.set("same-key", { kind: "plain" });
     await secret.set("same-key", { kind: "secret" });
     expect(await plain.get<{ kind: string }>("same-key")).toEqual({ kind: "plain" });
@@ -75,7 +82,7 @@ describe("配置中心 namespace(真实协议路径)", () => {
   });
 
   it("list / remove", async () => {
-    const ns = center.namespace("steam");
+    const ns = center.namespace("steam"); // 默认加密
     await ns.set("a", { x: 1 });
     await ns.set("b", { y: 2 });
     const names = await ns.list();

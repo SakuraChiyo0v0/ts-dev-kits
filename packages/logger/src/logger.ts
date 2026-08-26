@@ -7,7 +7,17 @@ import {
   type LogTransport,
   type Logger,
   type LoggerOptions,
+  type TimedOptions,
 } from "./types.js";
+
+/** 判断返回值是否为 Promise(用于异步函数耗时包装)。 */
+function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    typeof (value as PromiseLike<unknown>).then === "function"
+  );
+}
 
 /**
  * 级别名称 → 数值映射
@@ -113,6 +123,41 @@ class LoggerImpl implements Logger {
       this.#write(LogLevel.ERROR, message, undefined, data);
     } else {
       this.#write(LogLevel.ERROR, message, data);
+    }
+  }
+
+  timed<T>(name: string, fn: () => T, options: TimedOptions = {}): T {
+    const logStart = options.logStart ?? true;
+    const successLevel: "debug" | "info" = options.level ?? "info";
+    const recordName = options.name ?? name;
+
+    if (logStart) {
+      this.debug("timed start", { name: recordName });
+    }
+    const startedAt = Date.now();
+    const duration = (): { durationMs: number } => ({ durationMs: Date.now() - startedAt });
+
+    const onSuccess = (value: T): T => {
+      if (successLevel === "debug") {
+        this.debug("timed done", { name: recordName, ...duration() });
+      } else {
+        this.info("timed done", { name: recordName, ...duration() });
+      }
+      return value;
+    };
+    const onError = (error: unknown): never => {
+      this.error("timed failed", { name: recordName, ...duration(), error });
+      throw error;
+    };
+
+    try {
+      const result = fn();
+      if (isPromiseLike(result)) {
+        return Promise.resolve(result).then(onSuccess, onError) as T;
+      }
+      return onSuccess(result);
+    } catch (error) {
+      return onError(error);
     }
   }
 

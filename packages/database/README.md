@@ -141,6 +141,57 @@ await store.execute("INSERT INTO users (name) VALUES (?)", ["alice"]);
 const [{ id }] = await store.query("SELECT LAST_INSERT_ID() AS id");
 ```
 
+## 日志持久化与查询
+
+配合 `@sakurachiyo0v0/logger` 使用:把日志写入本地 SQLite + 同步远程 PostgreSQL(跨机聚合),并提供 `queryLogs` API 与 `sc-log` CLI 按条件查询。
+
+### 写入:DatabaseLogTransport
+
+```ts
+import { createLogger } from "@sakurachiyo0v0/logger";
+import { DatabaseLogTransport } from "@sakurachiyo0v0/database";
+
+const transport = new DatabaseLogTransport({
+  // 本地 SQLite 默认 <配置根>/amechan/logs/<hostname>.db;传 false 禁用本地
+  localPath: false,
+  // 远程 PostgreSQL(服务器集中聚合;断网自动重试不丢)
+  remoteUrl: "postgresql://logs:pass@host:5432/logs",
+});
+const logger = createLogger({ namespace: "bilibili", transport });
+
+// 进程退出前
+await transport.close();
+```
+
+- 本地 SQLite 即时写(离线可查);远程批量 flush(默认 1s / 200 条),失败自动重试保序。
+- 表结构首次写入自动创建,无需手动建表。
+
+### 查询:queryLogs API
+
+```ts
+import { queryLogs } from "@sakurachiyo0v0/database";
+
+const logs = await queryLogs({
+  localPath: "~/.config/amechan/logs/desktop-01.db", // 查本地
+  remoteUrl: "postgresql://.../logs",                // 查远程(跨机聚合)
+  level: ["warn", "error"],      // 按等级
+  hostname: "desktop-01",        // 按设备
+  namespace: "bilibili",         // 按命名空间(子串)
+  from: "2026-08-26T00:00:00Z",  // 按时间区间
+  to: "2026-08-26T23:59:59Z",
+  keyword: "download",           // 按关键词
+  limit: 100, offset: 0,         // 分页
+});
+```
+
+### 查询:sc-log CLI
+
+```bash
+sc-log --remote-url "$LOG_URL" --level error --since 1h --device desktop-01 --keyword download
+```
+
+参数:`--local-path` / `--remote-url` / `--level`(可重复)/ `--device` / `--namespace` / `--since`(`30m`/`1h`/`1d` 或 ISO)/ `--until` / `--keyword` / `--limit` / `--offset`。输出 JSON 数组。完整说明见 [`skills/database-cli/SKILL.md`](../../skills/database-cli/SKILL.md)。
+
 ## 错误处理
 
 所有失败统一抛 `DataError`(带 `code` 字段,`cause` 保留底层错误;消息已脱敏):

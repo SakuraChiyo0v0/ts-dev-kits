@@ -148,3 +148,58 @@ describe("@timed 装饰器", () => {
     expect(() => service.run()).not.toThrow();
   });
 });
+
+describe("logger.timed() 函数包装", () => {
+  let transport: CollectTransport;
+  let logger: Logger;
+
+  beforeEach(() => {
+    transport = new CollectTransport();
+    logger = createLogger({ level: "debug", transport });
+  });
+
+  it("同步函数记录 start + done,返回原值", () => {
+    const result = logger.timed("op.sync", () => 42);
+
+    expect(result).toBe(42);
+    expect(transport.entries[0]!.message).toBe("timed start");
+    expect(transport.entries[0]!.data).toEqual({ name: "op.sync" });
+    expect(transport.entries[1]!.message).toBe("timed done");
+    expect(transport.entries[1]!.data).toMatchObject({ name: "op.sync" });
+  });
+
+  it("异步函数在 resolve 后记录 done", async () => {
+    const result = await logger.timed("op.async", async () => {
+      await sleep(5);
+      return "ok";
+    });
+
+    expect(result).toBe("ok");
+    const done = transport.entries.at(-1)!;
+    expect(done.message).toBe("timed done");
+    expect((done.data! as { durationMs: number }).durationMs).toBeGreaterThanOrEqual(5);
+  });
+
+  it("函数抛错时记录 timed failed 并原样重新抛出", async () => {
+    await expect(
+      logger.timed("op.fail", async () => {
+        await sleep(2);
+        throw new Error("boom");
+      }),
+    ).rejects.toThrow("boom");
+
+    const failed = transport.entries.at(-1)!;
+    expect(failed.level).toBe(LogLevel.ERROR);
+    expect(failed.message).toBe("timed failed");
+    expect(failed.data).toMatchObject({ name: "op.fail" });
+    expect((failed.data! as { error: unknown }).error).toBeInstanceOf(Error);
+  });
+
+  it("options 生效:name 覆盖 / level / logStart", () => {
+    logger.timed("ignored", () => 1, { name: "custom", level: "debug", logStart: false });
+
+    expect(transport.entries).toHaveLength(1);
+    expect(transport.entries[0]!.level).toBe(LogLevel.DEBUG);
+    expect(transport.entries[0]!.data).toMatchObject({ name: "custom" });
+  });
+});

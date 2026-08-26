@@ -1,12 +1,12 @@
 # @sakurachiyo0v0/config
 
-配置中心 SDK:WebDAV 服务器 + 密钥**全局只配置一次**,各 SDK/平台通过 `namespace("平台名")` 存取自己的配置——路径自动隔离,**按域决定是否加密**(敏感配置加密上云,普通配置明文)。换机器配好全局配置即可还原,免重复配置。
+配置中心 SDK:WebDAV 服务器 + 密钥**全局只配置一次**,各 SDK/平台通过 `namespace("平台名")` 存取自己的配置——路径自动隔离,**默认加密上云**(本机可明文,云端必加密)。换机器配好全局配置即可还原,免重复配置。
 
 ## 特性
 
 - 全局配置一次:`config setup` 写本地 `<配置根>/amechan/config.json`(chmod 600,密钥不出本机),之后 `createConfigCenter()` 自动读取
-- namespace 隔离:`cc.namespace("xiaoheihe", { encrypt: true })` → 自动映射 `/amechan/secrets/xiaoheihe/*`(加密)或 `/amechan/configs/bilibili/*`(明文)
-- 加密按域开关:`encrypt` 默认 false,敏感域显式 true——"敏感才加密"
+- namespace 隔离:`cc.namespace("xiaoheihe")` → 默认映射 `/amechan/secrets/xiaoheihe/*`(**加密**);显式 `{ encrypt: false }` 才走明文域 `/amechan/configs/<ns>/*`
+- 加密按域开关:`encrypt` **默认 true(凡是上 WebDAV 的数据一律加密)**,显式 `false` 才明文——"本机可明文,云端必加密"
 - 复用 `@sakurachiyo0v0/webdav`(ConfigStore/EncryptedConfigStore),不重复造轮子
 - CLI `sc-config`:setup / status / get / set / list / remove / clear
 
@@ -54,7 +54,7 @@ await bili.remove("ui");
 
 | 选项 | 说明 |
 | --- | --- |
-| `encrypt?` | 是否加密存储,默认 false;true=加密(需全局配置含 key 或环境变量 `WEBDAV_CONFIG_KEY`) |
+| `encrypt?` | 是否加密存储,**默认 true**(上 WebDAV 必加密);显式 `false` 走明文域(需全局配置含 key 或环境变量 `WEBDAV_CONFIG_KEY`) |
 
 | 方法 | 说明 |
 | --- | --- |

@@ -2,6 +2,7 @@ import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { AuthStore, type AuthPayload } from "@sakurachiyo0v0/account";
 import { createFfmpegClient } from "@sakurachiyo0v0/ffmpeg";
+import { createLogger, timed } from "@sakurachiyo0v0/logger";
 import { bilibiliQrAdapter, type BilibiliCredentials } from "./auth/index.js";
 import { BilibiliError } from "./errors.js";
 import { ApiSession } from "./network.js";
@@ -55,6 +56,8 @@ export interface DownloadOptions {
 
 /** Bilibili 下载客户端。 */
 export class BilibiliClient {
+  /** @timed 装饰器使用的 logger 实例(约定属性)。 */
+  readonly logger = createLogger({ namespace: "bilibili" });
   readonly #session: ApiSession;
   readonly #parsers: Map<string, Parser>;
   readonly #streamResolver: StreamResolver;
@@ -212,6 +215,7 @@ export class BilibiliClient {
   }
 
   /** 解析任意 B 站链接,返回媒体项列表。 */
+  @timed()
   async parse(url: string): Promise<MediaItem[]> {
     const parsed = parseUrl(url);
     const parser = this.#parsers.get(parsed.type);
@@ -225,6 +229,7 @@ export class BilibiliClient {
   }
 
   /** 获取媒体项的播放流。 */
+  @timed()
   getStreams(item: MediaItem, options?: StreamOptions): Promise<PlayStream> {
     const streamOptions: StreamOptions = {};
     if (options?.quality !== undefined) {
@@ -237,6 +242,7 @@ export class BilibiliClient {
   }
 
   /** 下载媒体项(音视频分离下载 + 可选 ffmpeg 合并)。 */
+  @timed()
   async download(item: MediaItem, options: DownloadOptions): Promise<string> {
     const merge = options.merge ?? this.#options.merge;
 

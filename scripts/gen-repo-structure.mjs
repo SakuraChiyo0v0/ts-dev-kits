@@ -6,8 +6,9 @@
  *   1. 目录树 TREE_RAW     —— 从实际文件系统扫描(排除 .git / node_modules / dist / pnpm-lock.yaml)
  *   2. 包清单 PACKAGES     —— 读 packages 下各包的 package.json 的 name/version/dependencies
  *   3. 构建顺序 BUILD_ORDER—— 解析根 package.json 的 build 脚本里 --filter 顺序
- *   4. 依赖图 GRAPH        —— 按依赖深度自动分层布局(节点/边/列宽全部由脚本计算)
- *   5. 快照时间 GENERATED_AT
+ *   4. 快照时间 GENERATED_AT
+ *
+ * 依赖图(节点/边/分层/域分组)由 HTML 端 JS 根据 PACKAGES 自算布局,本脚本不注入坐标。
  *
  * 用法(仓库根目录):
  *   node scripts/gen-repo-structure.mjs
@@ -53,7 +54,15 @@ const DESCRIPTIONS = {
   'bilibili': 'B 站视频下载 SDK:链接解析、DASH 取流、可配置下载器、ffmpeg 合并,内置 WBI 签名。',
   'netease-music': '网易云音乐下载 SDK:自研 weapi 加密、二维码登录、权限感知品质、试听拦截硬规则。',
   'dsh-sdk-tools': 'DSH host 插件:把各功能包包装成 agent 工具,经 Agent 预设按需暴露,其余会话零污染。',
-  'steam': 'Steam SDK(查询向):Web API / Storefront / Community 三套接口,登录态支持,零写操作。'
+  'steam': 'Steam SDK(查询向):Web API / Storefront / Community 三套接口,登录态支持,零写操作。',
+  'logger': '轻量级日志模块:级别控制、命名空间、多机来源标识、子 logger 派生、可替换 transport,全仓公共底座。',
+  'webdav': 'WebDAV 配置存取 SDK:基础文件操作 + 配置文件存储高层 API(原子写 + 自动备份),带 CLI,适合多端同步的轻量配置场景。',
+  'config': '配置中心 SDK:全局只配置一次,各 SDK/平台经 namespace 隔离存取,按域决定是否加密(敏感配置加密上云,普通配置明文)。',
+  'chuanshengtong': '传声筒:输入文字 + 内置图像模板,程序化合成输出图片(不依赖 AI 图像 API),CLI 与 SDK 双形态。',
+  'booth': 'BOOTH(booth.pm,Pixiv 旗下数字商品市场)SDK:登录态管理、商品解析、免费领取 / 付费加购、文件下载与批量编排。',
+  'vrchat': 'VRChat 官方 REST API SDK:认证(密码 + 2FA)、用户、世界、头像、实例、好友、通知等能力,基于 account 密码登录骨架。',
+  'xiaoheihe': '小黑盒(xiaoheihe.cn)SDK:扫码登录 + hkey/nonce 签名 + 只读查询(帖子/评论/feed/@消息/用户),协议层提炼自 Go 参考实现。',
+  'database': '统一数据访问抽象层:一套 async API 同时访问本地 SQLite 与远程 PostgreSQL / MySQL,切换后端只改一行配置。'
 };
 /** 新增包时可在 COLORS 里指定主题色,否则从 FALLBACK_COLORS 顺序取色。 */
 const COLORS = {
@@ -63,21 +72,6 @@ const COLORS = {
   'dsh-sdk-tools': '#e879f9', 'steam': '#94a3b8'
 };
 const FALLBACK_COLORS = ['#38bdf8', '#a78bfa', '#34d399', '#fbbf24', '#f472b6', '#22d3ee', '#60a5fa', '#f87171', '#fb923c', '#e879f9'];
-
-/**
- * 展示层覆盖表(0=基础层,1=SDK 层,2=领域 SDK,3=DSH 聚合)。
- * 自动分层按"内部依赖深度"计算;需要按语义归位时在此固定层号。
- * 例:lol 没有内部依赖(拓扑深度 0),但属于领域 SDK,固定到第 2 层。
- * 覆盖表优先于自动深度(可升可降),避免长依赖链把层数拉爆出 L4/L5。
- */
-const LAYER_OVERRIDES = {
-  'lol': 2,
-  'config': 1,
-  'account': 2,
-  'netease-music': 2, 'booth': 2, 'bilibili': 2,
-  'vrchat': 2, 'steam': 2, 'xiaoheihe': 2,
-  'dsh-sdk-tools': 3,
-};
 
 const found = [];
 for (const e of readdirSync(PKG_DIR, { withFileTypes: true })) {
@@ -114,60 +108,9 @@ found.sort((a, b) => {
   return a.id.localeCompare(b.id);
 });
 
-/* ---------- 4. 依赖图自动分层布局 ---------- */
-function buildGraphData(packages) {
-  const idSet = new Set(packages.map((p) => p.id));
-  const depth = {};
-  const inProgress = new Set();
-  const calc = (id) => {
-    if (depth[id] !== undefined) return depth[id];
-    if (inProgress.has(id)) return 0; // 防御环
-    inProgress.add(id);
-    const ds = packages.find((p) => p.id === id)?.deps.filter((d) => idSet.has(d)) || [];
-    const fromDeps = ds.length ? 1 + Math.max(...ds.map(calc)) : 0;
-    depth[id] = LAYER_OVERRIDES[id] ?? fromDeps;
-    inProgress.delete(id);
-    return depth[id];
-  };
-  packages.forEach((p) => calc(p.id));
-
-  const maxD = Math.max(0, ...packages.map((p) => depth[p.id]));
-  const X = (d) => 40 + d * 220;
-  const W = 150, H = 44;
-  const groups = {};
-  packages.forEach((p) => (groups[depth[p.id]] = groups[depth[p.id]] || []).push(p.id));
-
-  const nodes = [];
-  const GAP = 28; // 节点间垂直净空
-  const STEP = H + GAP; // 节点垂直步长
-  const maxN = Math.max(0, ...Object.values(groups).map((l) => l.length));
-  // 画布高度按最多节点的层动态计算,避免节点拥挤重叠
-  const height = Math.max(400, 40 * 2 + (maxN - 1) * STEP + H);
-  Object.keys(groups).forEach((d) => {
-    const list = groups[d];
-    const n = list.length;
-    const startY = (height - H - (n - 1) * STEP) / 2;
-    list.forEach((id, i) => {
-      nodes.push({ id, x: X(Number(d)), y: Math.round(startY + i * STEP), w: W });
-    });
-  });
-
-  const edges = [];
-  packages.forEach((p) => p.deps.forEach((d) => { if (idSet.has(d)) edges.push([d, p.id]); }));
-
-  const layers = [];
-  for (let d = 0; d <= maxD; d++) {
-    if (!groups[d]?.length) continue;
-    layers.push({ x: X(d) + W / 2, label: ['基础层', 'SDK 层', '领域 SDK', 'DSH 聚合'][d] || `L${d}` });
-  }
-  const width = Math.ceil((X(maxD) + W + 40) / 10) * 10;
-  return { nodes, edges, layers, width, height };
-}
-const graphData = buildGraphData(found);
-
 /* ---------- 5. 重写 HTML(全部使用稳定正则,可重复执行) ---------- */
 let html = readFileSync(HTML_PATH, 'utf8');
-const report = { tree: 0, pkg: 0, order: 0, graph: 0, stamp: 0 };
+const report = { tree: 0, pkg: 0, order: 0, stamp: 0 };
 const noStamp = process.argv.includes('--no-stamp');
 
 const replacements = [
@@ -176,9 +119,7 @@ const replacements = [
   // 包清单(多行 JSON 数组,以行首 `];` 结尾)
   [/const PACKAGES = \[[\s\S]*?\n\];/, 'const PACKAGES = ' + JSON.stringify(found, null, 2) + ';', 'pkg'],
   // 构建顺序(单行 JSON 数组)
-  [/const BUILD_ORDER = .*;/, 'const BUILD_ORDER = ' + JSON.stringify(buildOrder) + ';', 'order'],
-  // 依赖图(单行 JSON 对象)
-  [/const GRAPH = .*;/, 'const GRAPH = ' + JSON.stringify(graphData) + ';', 'graph']
+  [/const BUILD_ORDER = .*;/, 'const BUILD_ORDER = ' + JSON.stringify(buildOrder) + ';', 'order']
 ];
 
 if (!noStamp) {
@@ -206,5 +147,5 @@ replacements.forEach(([rex, replacement, key]) => {
 
 writeFileSync(HTML_PATH, html, 'utf8');
 console.log(`repo-structure.html 已重新生成`);
-console.log(`  packages=${found.length} · 目录条目=${treeLines.length} · buildOrder=${buildOrder.length} · 图节点=${graphData.nodes.length} / 边=${graphData.edges.length}`);
-console.log(`  注入状态: tree=${report.tree} pkg=${report.pkg} order=${report.order} graph=${report.graph} stamp=${report.stamp}`);
+console.log(`  packages=${found.length} · 目录条目=${treeLines.length} · buildOrder=${buildOrder.length}`);
+console.log(`  注入状态: tree=${report.tree} pkg=${report.pkg} order=${report.order} stamp=${report.stamp}`);

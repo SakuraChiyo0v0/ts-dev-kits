@@ -86,7 +86,8 @@ export class ConfigCenterImpl implements ConfigCenter {
 
   namespace(name: string, options: NamespaceOptions = {}): ConfigNamespace {
     validateNamespace(name);
-    const encrypt = options.encrypt ?? false;
+    // 默认加密:凡是上 WebDAV 的数据一律加密(本机可明文,云端必加密)。
+    const encrypt = options.encrypt ?? true;
     // 统一基底 /amechan 下按敏感度分域:明文 /amechan/configs/<ns>,加密 /amechan/secrets/<ns>
     const basePath = encrypt ? `${AMECHAN_BASE}/secrets/${name}` : `${AMECHAN_BASE}/configs/${name}`;
     const store: ConfigStore = encrypt

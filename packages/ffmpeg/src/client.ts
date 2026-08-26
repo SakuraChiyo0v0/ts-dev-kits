@@ -259,22 +259,24 @@ export function createFfmpegClient(options: FfmpegOptions = {}): FfmpegClient {
   }
 
   async function transcode(options: TranscodeOptions): Promise<RunResult> {
-    requireInput(options.input, "input");
-    requireInput(options.output, "output");
-    const args = [
-      "-i", options.input,
-      ...(options.videoCodec ? ["-c:v", options.videoCodec] : []),
-      ...(options.audioCodec ? ["-c:a", options.audioCodec] : []),
-      ...(options.videoBitrate ? ["-b:v", options.videoBitrate] : []),
-      ...(options.audioBitrate ? ["-b:a", options.audioBitrate] : []),
-      ...scaleArgs(options.scale),
-      "-progress", "pipe:1",
-      "-nostats",
-      ...yArgs(options.overwrite),
-      options.output,
-    ];
-    logger.info("transcoding", { input: options.input, output: options.output });
-    return runner.run(args, runOptions(options));
+    return logger.timed("ffmpeg.transcode", async () => {
+      requireInput(options.input, "input");
+      requireInput(options.output, "output");
+      const args = [
+        "-i", options.input,
+        ...(options.videoCodec ? ["-c:v", options.videoCodec] : []),
+        ...(options.audioCodec ? ["-c:a", options.audioCodec] : []),
+        ...(options.videoBitrate ? ["-b:v", options.videoBitrate] : []),
+        ...(options.audioBitrate ? ["-b:a", options.audioBitrate] : []),
+        ...scaleArgs(options.scale),
+        "-progress", "pipe:1",
+        "-nostats",
+        ...yArgs(options.overwrite),
+        options.output,
+      ];
+      logger.info("transcoding", { input: options.input, output: options.output });
+      return runner.run(args, runOptions(options));
+    });
   }
 
   async function extractAudio(options: ExtractAudioOptions): Promise<RunResult> {

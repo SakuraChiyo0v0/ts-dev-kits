@@ -1,5 +1,5 @@
 /**
- * @timed 装饰器 —— 标准 ECMAScript 装饰器(ClassMethodDecoratorContext)。
+ * @timed 装饰器 —— 兼容 TS legacy(experimentalDecorators)与 ECMAScript 标准两种签名。
  *
  * 自动为类方法记录耗时:
  *   - 开始:debug "timed start" { name }
@@ -24,7 +24,7 @@
  * logger 解析优先级:options.logger > this.logger(约定属性) > 默认 logger(namespace "timed")。
  */
 import { createLogger } from "./logger.js";
-import type { Logger, LogLevelName } from "./types.js";
+import type { Logger } from "./types.js";
 
 /** @timed 装饰器选项。 */
 export interface TimedOptions {
@@ -62,63 +62,104 @@ function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
   );
 }
 
+/** 包装方法的核心逻辑(两种装饰器签名共用)。 */
+function wrapMethod(
+  originalMethod: (this: unknown, ...args: unknown[]) => unknown,
+  methodName: string,
+  options: TimedOptions,
+): (this: unknown, ...args: unknown[]) => unknown {
+  const logStart = options.logStart ?? true;
+  const successLevel: "debug" | "info" = options.level ?? "info";
+
+  return function replaceMethod(this: unknown, ...args: unknown[]): unknown {
+    const logger = resolveLogger(this, options);
+    const name =
+      options.name ??
+      `${this !== null && this !== undefined ? this.constructor.name : ""}.${methodName}`;
+
+    if (logStart) {
+      logger.debug("timed start", { name });
+    }
+    const startedAt = Date.now();
+    const duration = (): { durationMs: number } => ({ durationMs: Date.now() - startedAt });
+
+    const onSuccess = (value: unknown): unknown => {
+      if (successLevel === "debug") {
+        logger.debug("timed done", { name, ...duration() });
+      } else {
+        logger.info("timed done", { name, ...duration() });
+      }
+      return value;
+    };
+    const onError = (error: unknown): never => {
+      logger.error("timed failed", { name, ...duration(), error });
+      throw error;
+    };
+
+    try {
+      const result = originalMethod.apply(this, args);
+      if (isPromiseLike(result)) {
+        return Promise.resolve(result).then(onSuccess, onError);
+      }
+      return onSuccess(result);
+    } catch (error) {
+      return onError(error);
+    }
+  };
+}
+
 /**
- * 方法耗时装饰器(泛型保持方法签名不变,类型安全)。
+ * 方法耗时装饰器 —— legacy 模式(experimentalDecorators: true)下的签名。
+ */
+export function timed<Args extends unknown[], Return>(
+  options?: TimedOptions,
+): (
+  target: object,
+  propertyKey: string | symbol,
+  descriptor: TypedPropertyDescriptor<(...args: Args) => Return>,
+) => TypedPropertyDescriptor<(...args: Args) => Return> | void;
+
+/**
+ * 方法耗时装饰器 —— 标准模式(ECMAScript 2023)下的签名。
  */
 export function timed<This, Args extends unknown[], Return>(
-  options: TimedOptions = {},
+  options?: TimedOptions,
 ): (
   originalMethod: (this: This, ...args: Args) => Return,
   context: ClassMethodDecoratorContext<This, (this: This, ...args: Args) => Return>,
-) => (this: This, ...args: Args) => Return {
-  return function timedDecorator(
-    originalMethod: (this: This, ...args: Args) => Return,
-    context: ClassMethodDecoratorContext<This, (this: This, ...args: Args) => Return>,
-  ): (this: This, ...args: Args) => Return {
-    if (context.kind !== "method") {
-      throw new TypeError(`@timed can only be applied to methods, got "${context.kind}"`);
+) => (this: This, ...args: Args) => Return;
+
+/**
+ * 方法耗时装饰器实现 —— 运行时检测调用形态:
+ *   - 标准装饰器:(value, context),context.kind === "method"
+ *   - legacy 装饰器(experimentalDecorators):(target, key, descriptor)
+ */
+export function timed(options: TimedOptions = {}): any {
+  return function timedDecorator(...args: unknown[]): unknown {
+    // 标准装饰器:(originalMethod, context)
+    if (args.length === 2 && args[1] !== null && typeof args[1] === "object" && "kind" in args[1]) {
+      const context = args[1] as { kind?: string; name?: string | symbol };
+      if (context.kind !== "method") {
+        throw new TypeError(`@timed can only be applied to methods, got "${context.kind}"`);
+      }
+      const originalMethod = args[0] as (this: unknown, ...args: unknown[]) => unknown;
+      return wrapMethod(originalMethod, String(context.name ?? ""), options);
     }
 
-    const methodName = String(context.name);
-    const logStart = options.logStart ?? true;
-    const successLevel: "debug" | "info" = options.level ?? "info";
-
-    function replaceMethod(this: This, ...args: Args): Return {
-      const logger = resolveLogger(this, options);
-      const name =
-        options.name ??
-        `${this !== null && this !== undefined ? this.constructor.name : ""}.${methodName}`;
-
-      if (logStart) {
-        logger.debug("timed start", { name });
+    // legacy 装饰器:(target, propertyKey, descriptor)
+    if (args.length === 3) {
+      const propertyKey = args[1] as string | symbol;
+      const descriptor = args[2] as
+        | { value?: unknown; get?: unknown; set?: unknown }
+        | undefined;
+      if (descriptor === undefined || typeof descriptor.value !== "function") {
+        throw new TypeError("@timed can only be applied to methods");
       }
-      const startedAt = Date.now();
-      const duration = (): { durationMs: number } => ({ durationMs: Date.now() - startedAt });
-
-      const onSuccess = (value: Return): Return => {
-        if (successLevel === "debug") {
-          logger.debug("timed done", { name, ...duration() });
-        } else {
-          logger.info("timed done", { name, ...duration() });
-        }
-        return value;
-      };
-      const onError = (error: unknown): never => {
-        logger.error("timed failed", { name, ...duration(), error });
-        throw error;
-      };
-
-      try {
-        const result = originalMethod.apply(this, args);
-        if (isPromiseLike(result)) {
-          return Promise.resolve(result).then(onSuccess, onError) as Return;
-        }
-        return onSuccess(result);
-      } catch (error) {
-        return onError(error);
-      }
+      const originalMethod = descriptor.value as (this: unknown, ...args: unknown[]) => unknown;
+      descriptor.value = wrapMethod(originalMethod, String(propertyKey), options);
+      return descriptor;
     }
 
-    return replaceMethod;
+    throw new TypeError("@timed received unexpected decorator arguments");
   };
 }

@@ -76,8 +76,24 @@ export interface Logger {
   /** 输出 error 级别日志 */
   error(message: string, data?: Record<string, unknown> | Error): void;
 
+  /**
+   * 函数耗时包装:执行 fn 并记录耗时(等价 @timed 装饰器的函数式用法)。
+   * 同步/异步函数均可;失败时记录 durationMs + error 后原样重新抛出。
+   */
+  timed<T>(name: string, fn: () => T, options?: TimedOptions): T;
+
   /** 派生子 logger，自动追加命名空间前缀 */
   child(bindings: Record<string, unknown>): Logger;
   /** 派生命名空间子 logger */
   child(namespace: string): Logger;
+}
+
+/** timed 包装选项(与 @timed 装饰器共用)。 */
+export interface TimedOptions {
+  /** 覆盖记录名;缺省为传入的 name。 */
+  name?: string;
+  /** 成功日志级别,默认 "info"(debug/info)。 */
+  level?: "debug" | "info";
+  /** 是否也记录开始日志,默认 true。 */
+  logStart?: boolean;
 }
