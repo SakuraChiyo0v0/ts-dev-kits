@@ -1,0 +1,37 @@
+{
+  "name": "@sakurachiyo0v0/logger",
+  "version": "0.1.0",
+  "description": "轻量级日志模块：级别控制、命名空间、子 logger 派生、可替换 transport",
+  "license": "UNLICENSED",
+  "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "clean": "node scripts/clean.mjs",
+    "build": "node scripts/clean.mjs && tsc --project tsconfig.bundle.json && rollup --config rollup.config.mjs && tsc --project tsconfig.build.json && node scripts/clean.mjs --intermediate-only",
+    "prepare": "npm run build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "rollup": "^4.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^3.0.0"
+  }
+}

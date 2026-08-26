@@ -28,7 +28,7 @@
 | `@sakurachiyo0v0/webdav` | 0.3.0 | WebDAV 配置存取 SDK:基础文件操作 + ConfigStore(原子写/自动备份) + 加密存储 + CLI | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/webdav` |
 | `@sakurachiyo0v0/config` | 0.2.0 | 配置中心 SDK:WebDAV+密钥全局一次配置,namespace 按域存取(可选加密),登录态/配置多端同步 | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/config` |
 | `@sakurachiyo0v0/chuanshengtong` | 0.3.0 | 传声筒:输入文字 + 内置图像模板程序化合成图片(CLI + SDK,不依赖 AI,支持富文本) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/chuanshengtong` |
-| `@sakurachiyo0v0/logger` | 0.1.0 | 轻量级日志模块:级别控制/命名空间/子 logger 派生/可替换 transport | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/logger` |
+| `@sakurachiyo0v0/logger` | 0.1.0 | 轻量级日志模块:级别控制/命名空间/多机主机标识/子 logger 派生/可替换 transport | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/logger` |
 
 ## 包详情
 
@@ -913,17 +913,19 @@ pnpm --filter @sakurachiyo0v0/chuanshengtong build       # 构建 ESM + CJS + d.
 
 ### `@sakurachiyo0v0/logger`
 
-轻量级日志模块，为所有 SDK 包提供统一的日志能力。设计参考 pino 的 child logger 模式，支持命名空间、子 logger 派生、bindings 绑定和可替换 transport。
+轻量级日志模块，为所有 SDK 包提供统一的日志能力。设计参考 pino 的 child logger 模式，支持命名空间、多机主机标识、子 logger 派生、bindings 绑定和可替换 transport。
 
 **核心接口：**
 
-- `createLogger({ namespace?, level?, transport? })` — 创建 logger 实例
+- `createLogger({ namespace?, level?, hostname?, transport? })` — 创建 logger 实例
 - `logger.debug/info/warn/error(message, data?)` — 输出各级别日志
 - `logger.child(bindings)` — 派生带固定数据的子 logger（bindings 自动附加到每条日志）
 - `logger.child(namespace)` — 派生命名空间子 logger（自动追加前缀，如 `bilibili:download`）
 - `LogTransport` — 自定义 transport 接口，可替换输出目标
 
 **级别控制：** `debug`(10) < `info`(20) < `warn`(30) < `error`(40) < `silent`(Infinity)，默认 `info`。子 logger 继承父级别。
+
+**主机标识：** 默认自动检测 `os.hostname()`，多台机器部署时日志自动带 `@hostname` 来源；也可在 `createLogger` 时手动覆盖 `hostname`。
 
 **安装方式：**
 
@@ -947,24 +949,24 @@ import { createLogger } from "@sakurachiyo0v0/logger";
 const logger = createLogger({ namespace: "bilibili", level: "debug" });
 
 logger.info("开始下载", { videoId: "BV123" });
-// [bilibili] 2024-08-23T10:00:00.000Z INFO 开始下载 { videoId: 'BV123' }
+// [bilibili]@desktop-01 2024-08-23T10:00:00.000Z INFO 开始下载 { videoId: 'BV123' }
 
 // 子 logger：自动追加命名空间
 const dl = logger.child("download");
 dl.info("完成");
-// [bilibili:download] 2024-08-23T10:00:01.000Z INFO 完成
+// [bilibili:download]@desktop-01 2024-08-23T10:00:01.000Z INFO 完成
 
 // 子 logger：绑定固定数据
 const bound = logger.child({ videoId: "BV123" });
 bound.info("进度", { percent: 50 });
-// [bilibili] 2024-08-23T10:00:02.000Z INFO 进度 { videoId: 'BV123', percent: 50 }
+// [bilibili]@desktop-01 2024-08-23T10:00:02.000Z INFO 进度 { videoId: 'BV123', percent: 50 }
 ```
 
 **在仓库内的验证方式：**
 
 ```powershell
 pnpm --filter @sakurachiyo0v0/logger typecheck   # 类型检查
-pnpm --filter @sakurachiyo0v0/logger test        # 单测(级别/命名空间/bindings/transport)
+pnpm --filter @sakurachiyo0v0/logger test        # 单测(级别/hostname/命名空间/bindings/Error/transport)
 pnpm --filter @sakurachiyo0v0/logger build       # 构建 ESM + CJS + d.ts
 ```
 
