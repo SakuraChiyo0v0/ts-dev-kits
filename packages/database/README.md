@@ -154,8 +154,9 @@ import { DatabaseLogTransport } from "@sakurachiyo0v0/database";
 const transport = new DatabaseLogTransport({
   // 本地 SQLite 默认 <配置根>/amechan/logs/<hostname>.db;传 false 禁用本地
   localPath: false,
-  // 远程 PostgreSQL(服务器集中聚合;断网自动重试不丢)
-  remoteUrl: "postgresql://logs:pass@host:5432/logs",
+  // "auto":从 WebDAV 加密配置自动解析连接串(推荐,不硬编码密码);
+  // 或显式传连接串(如环境变量):remoteUrl: process.env.LOG_REMOTE_URL
+  remoteUrl: "auto",
 });
 const logger = createLogger({ namespace: "bilibili", transport });
 
@@ -164,6 +165,7 @@ await transport.close();
 ```
 
 - 本地 SQLite 即时写(离线可查);远程批量 flush(默认 1s / 200 条),失败自动重试保序。
+- `remoteUrl: "auto"` 从 config 加密域 `namespace("logs", { encrypt: true })` 读取 `/amechan/secrets/logs/remote` 的连接串;也可用 `await DatabaseLogTransport.fromConfig()` 等价创建。
 - 表结构首次写入自动创建,无需手动建表。
 
 ### 查询:queryLogs API

@@ -85,8 +85,13 @@ export async function resolveLogRemoteUrl(): Promise<string | undefined> {
 export interface DatabaseLogTransportOptions {
   /** 本地 SQLite 库路径;缺省 <配置根>/amechan/logs/<hostname>.db;传 false 禁用本地。 */
   localPath?: string | false;
-  /** 远程 PostgreSQL 连接串;缺省不写远程。 */
-  remoteUrl?: string;
+  /**
+   * 远程 PostgreSQL 连接串。
+   * - 传字符串:显式连接串(推荐环境变量,不硬编码)
+   * - 传 "auto":从 config 加密域自动解析(WebDAV /amechan/secrets/logs/remote)
+   * - 缺省:不写远程(仅本地)
+   */
+  remoteUrl?: string | "auto";
   /** flush 间隔(毫秒),默认 1000。 */
   flushIntervalMs?: number;
   /** 远程批量大小,默认 200。 */
@@ -126,7 +131,7 @@ function serializeData(entry: LogEntry): string {
  */
 export class DatabaseLogTransport implements LogTransport {
   readonly #localPath: string | false;
-  readonly #remoteUrl: string | undefined;
+  #remoteUrl: string | undefined;
   readonly #flushIntervalMs: number;
   readonly #remoteBatchSize: number;
 
@@ -151,13 +156,21 @@ export class DatabaseLogTransport implements LogTransport {
   constructor(options: DatabaseLogTransportOptions = {}) {
     this.#localPath =
       options.localPath ?? defaultLocalLogPath(osHostname());
-    this.#remoteUrl = options.remoteUrl;
+    this.#remoteUrl = options.remoteUrl === "auto" ? undefined : options.remoteUrl;
     this.#flushIntervalMs = options.flushIntervalMs ?? 1000;
     this.#remoteBatchSize = options.remoteBatchSize ?? 200;
 
     this.#openLocal();
     if (this.#remoteUrl !== undefined) {
       this.#openRemote();
+    } else if (options.remoteUrl === "auto") {
+      // "auto":异步从 config 加密域解析连接串(解析不到则仅本地)。
+      void resolveLogRemoteUrl().then((url) => {
+        if (url !== undefined && !this.#closed) {
+          this.#remoteUrl = url;
+          this.#openRemote();
+        }
+      });
     }
 
     this.#timer = setInterval(() => {

@@ -24,7 +24,7 @@
 | `@sakurachiyo0v0/steam` | 0.8.1 | Steam SDK(查询向):Web API/Storefront/Community 三套接口,登录态支持,写操作仅激活码兑换一项 | 可用(全阶段交付) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/steam` |
 | `@sakurachiyo0v0/xiaoheihe` | 0.4.1 | 小黑盒 SDK:扫码登录 + hkey/nonce 签名 + 只读查询(帖子/评论/feed/@消息/用户) | 可用(P0 只读) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/xiaoheihe` |
 | `@sakurachiyo0v0/dsh-sdk-tools` | 0.3.2 | DSH host 插件:把 bilibili/netease-music/ffmpeg/email/lol/vrchat 包装成 agent 工具,经 Agent 预设按需暴露 | 可用 | `pnpm add @sakurachiyo0v0/dsh-sdk-tools`(GitHub Packages) |
-| `@sakurachiyo0v0/database` | 0.2.0 | 统一数据访问抽象层:一套 API 访问本地 SQLite 与远程 PostgreSQL/MySQL,配置切换后端 | 可用(SQLite 全量,远程可选) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/database` |
+| `@sakurachiyo0v0/database` | 0.2.1 | 统一数据访问抽象层:一套 API 访问本地 SQLite 与远程 PostgreSQL/MySQL,配置切换后端 | 可用(SQLite 全量,远程可选) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/database` |
 | `@sakurachiyo0v0/webdav` | 0.3.1 | WebDAV 配置存取 SDK:基础文件操作 + ConfigStore(原子写/自动备份) + 加密存储 + CLI | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/webdav` |
 | `@sakurachiyo0v0/config` | 0.3.0 | 配置中心 SDK:WebDAV+密钥全局一次配置,namespace 按域存取(可选加密),登录态/配置多端同步 | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/config` |
 | `@sakurachiyo0v0/chuanshengtong` | 0.3.1 | 传声筒:输入文字 + 内置图像模板程序化合成图片(CLI + SDK,不依赖 AI,支持富文本) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/chuanshengtong` |
