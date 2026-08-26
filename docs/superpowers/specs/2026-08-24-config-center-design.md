@@ -48,7 +48,7 @@ packages/config/
 │  ├─ errors.ts           ConfigError(本地配置/校验)+ 透传 WebdavError
 │  ├─ global-config.ts    本地全局配置读写(setup/load,chmod600)
 │  ├─ config-center.ts    createConfigCenter / namespace 实现
-│  └─ cli/config.ts       amechan-config CLI
+│  └─ cli/config.ts       sc-config CLI
 ├─ tests/
 │  ├─ helpers/            (复用 webdav 包测试服务器的模式,本地起 webdav-server)
 │  ├─ global-config.test.ts
@@ -104,7 +104,7 @@ await bili.remove("ui");
 - `ConfigNamespace.get/set/list/remove`(语义与 ConfigStore 一致,key 即文件名,防路径越界)
 - 错误:远端错误透传 `WebdavError`(调用方已熟悉);本地配置缺失/非法抛 `ConfigError`(`VALIDATION`,"未配置,请先 config setup")
 
-### CLI(`amechan-config`)
+### CLI(`sc-config`)
 
 - `setup [--url ...] [--username ...] [--password ...] [--key ...]` — 写入本地全局配置
 - `status` — 显示配置状态(地址/账号,密码密钥脱敏)
@@ -135,7 +135,7 @@ await bili.remove("ui");
 
 ## 8. CLI 与 skill 同步
 
-- 新增 CLI `amechan-config`:`setup / status / get / set / list / remove`(带 `--encrypt`/`--namespace` 语义)。
+- 新增 CLI `sc-config`:`setup / status / get / set / list / remove`(带 `--encrypt`/`--namespace` 语义)。
 - 同步 `skills/config-cli/SKILL.md`(命令集一致,守卫自动校验)。
 
 ## 9. 版本与发布

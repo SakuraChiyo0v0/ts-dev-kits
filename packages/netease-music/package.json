@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/netease-music",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "NetEase Cloud Music download SDK: weapi encryption, QR-code login, privilege-aware quality selection and compliant downloading",
   "license": "UNLICENSED",
   "publishConfig": {
@@ -22,7 +22,7 @@
     }
   },
   "bin": {
-    "amechan-netease": "./dist/cli/netease.js"
+    "sc-netease": "./dist/cli/netease.js"
   },
   "files": [
     "dist",

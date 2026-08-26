@@ -12,9 +12,9 @@
 
 | 当前情况 | 完成后 |
 | --- | --- |
-| 领取 BOOTH 免费商品要浏览器手动逐个购买 | 一条命令 `amechan-booth claim <链接或ID>...` 批量领取,0 日元直接成交 |
+| 领取 BOOTH 免费商品要浏览器手动逐个购买 | 一条命令 `sc-booth claim <链接或ID>...` 批量领取,0 日元直接成交 |
 | 已购买商品的下载文件要手动从订单页逐个下载 | SDK 按订单文件清单批量下载到本地,支持进度/重试/限速 |
-| 登录态靠浏览器 cookie 手工管理 | `amechan-booth login` 浏览器捕获会话并持久化到 AuthStore,`status` 校验 |
+| 登录态靠浏览器 cookie 手工管理 | `sc-booth login` 浏览器捕获会话并持久化到 AuthStore,`status` 校验 |
 | 错误信息不统一、凭据易泄露 | 统一 `BoothError` + 错误码,消息脱敏 |
 
 ## 3. 方案选择
@@ -51,7 +51,7 @@ packages/booth/
 │  │  └─ url.ts           # booth.pm 链接 ↔ item id 解析;纯数字 ID 直接使用
 │  ├─ client.ts           # BoothClient 统一入口 + 批量 claim 编排
 │  └─ cli/
-│     ├─ booth.ts         # amechan-booth 入口(login|status|logout|claim|download)
+│     ├─ booth.ts         # sc-booth 入口(login|status|logout|claim|download)
 │     └─ login-server.ts  # 本地回环临时 HTTP,接收浏览器注入的 cookie
 ├─ tests/
 │  ├─ helpers/
@@ -197,21 +197,21 @@ export { BoothError };
   - 用户页校验端点 — 区分已登录/未登录(供 login 校验)。
 - 客户端通过 `baseUrl` + `fetchImpl` 指向 mock,全链路不碰线上。
 - 用例覆盖:URL/ID 解析(ja/en/zh-tw 等语言前缀、纯 ID、非法输入)、商品解析、免费下单、付费下单、已拥有跳过、批量并发与顺序保持、下载重试/进度/幂等跳过、错误码归类、会话加载优先级(显式 cookie > AuthStore)。
-- **真实冒烟(手动,不进 CI):** 用户提供一次登录态后跑 `amechan-booth claim <免费商品链接>` + `status` + `download` 验证真实链路。
+- **真实冒烟(手动,不进 CI):** 用户提供一次登录态后跑 `sc-booth claim <免费商品链接>` + `status` + `download` 验证真实链路。
 - 写操作自清理:测试用 mock,不产生线上副作用;冒烟仅领取用户指定、明确同意的免费商品。
 
 ## 8. CLI 与 skill 同步
 
-- 新增 CLI `amechan-booth`,命令:
+- 新增 CLI `sc-booth`,命令:
 
 | 命令 | 说明 |
 | --- | --- |
-| `amechan-booth login [--manual] [--auth-path <path>]` | 浏览器捕获登录(默认);`--manual` 引导粘贴 Cookie 头 |
-| `amechan-booth status` | 显示登录态(账号/有效性) |
-| `amechan-booth logout` | 清除本地登录态 |
-| `amechan-booth claim <input...> [--output-dir <dir>] [--concurrency <n>] [--no-download]` | 领取(免费直接成交;付费返回支付 URL);默认领取后下载(付费待支付不下载) |
-| `amechan-booth download <order-id> [--output-dir <dir>]` | 按订单号下载文件 |
-| `amechan-booth parse <input>` | 只解析商品信息,不领取 |
+| `sc-booth login [--manual] [--auth-path <path>]` | 浏览器捕获登录(默认);`--manual` 引导粘贴 Cookie 头 |
+| `sc-booth status` | 显示登录态(账号/有效性) |
+| `sc-booth logout` | 清除本地登录态 |
+| `sc-booth claim <input...> [--output-dir <dir>] [--concurrency <n>] [--no-download]` | 领取(免费直接成交;付费返回支付 URL);默认领取后下载(付费待支付不下载) |
+| `sc-booth download <order-id> [--output-dir <dir>]` | 按订单号下载文件 |
+| `sc-booth parse <input>` | 只解析商品信息,不领取 |
 
 - 同步创建 `skills/booth-cli/SKILL.md`(命令/参数/用法/错误码表);否则 pre-commit 的 `scripts/check-skill-staleness.mjs` 会因命令集不一致阻止提交。
 
@@ -224,7 +224,7 @@ export { BoothError };
 
 - [ ] `createBoothClient()` + `getItem` / `claim` / `downloadOrder` 最小示例跑通(mock 链路)
 - [ ] 测试全绿:URL 解析 / 商品解析 / 免费+付费下单 / 已拥有跳过 / 批量顺序 / 下载重试与跳过 / 错误码归类 / 会话加载优先级
-- [ ] CLI `amechan-booth` 四命令可用,`skills/booth-cli/SKILL.md` 已同步
+- [ ] CLI `sc-booth` 四命令可用,`skills/booth-cli/SKILL.md` 已同步
 - [ ] README 与 `docs/packages-index.md` 已更新
 - [ ] `pnpm check` 全仓通过
 - [ ] 真实冒烟(用户配合登录)验证领取/下载一条龙

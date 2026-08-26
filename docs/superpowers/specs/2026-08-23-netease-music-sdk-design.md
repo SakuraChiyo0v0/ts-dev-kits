@@ -19,8 +19,8 @@
 
 | 当前情况 | 完成后 |
 | --- | --- |
-| 无网易云音乐接入 | `amechan-netease download <url>` 一键下载单曲/歌单/专辑 |
-| 无网易云登录 | `amechan-netease login` 扫码即得,登录态持久化复用 |
+| 无网易云音乐接入 | `sc-netease download <url>` 一键下载单曲/歌单/专辑 |
+| 无网易云登录 | `sc-netease login` 扫码即得,登录态持久化复用 |
 | 无品质/权限感知 | 下载时按账号身份返回可请求品质清单,越权品质直接拒绝 |
 | 试听片段被当完整歌曲 | 试听特征 → 抛错拒绝,绝不落盘不完整音频 |
 | 每平台一套登录逻辑 | account 底座统一登录态管理,后续酷狗/QQ 音乐零成本接入 |
@@ -92,22 +92,22 @@
 ### 3.7 CLI(采用)
 
 ```
-amechan-netease login    [--auth-path <path>] [--no-browser]
-amechan-netease status   [--auth-path <path>]
-amechan-netease logout   [--auth-path <path>]
-amechan-netease parse    <url> [--auth-path <path>]
-amechan-netease download <url|song-id> [--level <standard|higher|exhigh|lossless|hires>]
+sc-netease login    [--auth-path <path>] [--no-browser]
+sc-netease status   [--auth-path <path>]
+sc-netease logout   [--auth-path <path>]
+sc-netease parse    <url> [--auth-path <path>]
+sc-netease download <url|song-id> [--level <standard|higher|exhigh|lossless|hires>]
                          [--output-dir <dir>] [--lyric] [--no-cover] [--auth-path <path>]
 
 # 收藏夹管理(需登录;authPath 缺省时自动从默认 AuthStore 加载)
-amechan-netease favorites                     [--uid <uid>]   # 用户歌单列表
-amechan-netease likes                         [--uid <uid>]   # 红心歌曲 ID
-amechan-netease like <songId> / unlike <songId>               # 红心收藏/取消
-amechan-netease playlist-create <name> [--privacy 10]         # 创建歌单
-amechan-netease playlist-delete <playlistId>                  # 删除歌单
-amechan-netease playlist-add <pid> <songId...>                # 歌单添加歌曲
-amechan-netease playlist-remove <pid> <songId...>             # 歌单移除歌曲
-amechan-netease subscribe / unsubscribe <playlistId>          # 收藏/取消收藏歌单
+sc-netease favorites                     [--uid <uid>]   # 用户歌单列表
+sc-netease likes                         [--uid <uid>]   # 红心歌曲 ID
+sc-netease like <songId> / unlike <songId>               # 红心收藏/取消
+sc-netease playlist-create <name> [--privacy 10]         # 创建歌单
+sc-netease playlist-delete <playlistId>                  # 删除歌单
+sc-netease playlist-add <pid> <songId...>                # 歌单添加歌曲
+sc-netease playlist-remove <pid> <songId...>             # 歌单移除歌曲
+sc-netease subscribe / unsubscribe <playlistId>          # 收藏/取消收藏歌单
 ```
 
 ### 3.8 测试策略:离线 mock 为主 + 可选真实冒烟(采用)
@@ -179,7 +179,7 @@ packages/netease-music/
 │  ├─ download/
 │  │  ├─ stream.ts       取流 + 下载器(并发/重试/进度;writeTags 走系统临时目录规避 fuse rename 崩溃)
 │  └─ cli/
-│     └─ netease.ts      amechan-netease 命令
+│     └─ netease.ts      sc-netease 命令
 ├─ tests/
 ├─ package.json / tsconfig*.json / rollup.config.mjs / README.md
 ```
@@ -189,7 +189,7 @@ packages/netease-music/
 **download 命令:**
 
 ```
-amechan-netease download <url>
+sc-netease download <url>
  → parse(url) → MediaItem[](歌曲 | 歌单展开为歌曲清单)
  → 检查 AuthStore 登录态(未登录 → LOGIN_REQUIRED 提示 login)
  → 每首歌:getDetail(id)(st/fee)+ vip/info → 权限品质清单
@@ -334,7 +334,7 @@ NeteaseError · code:
 - [x] `pnpm --filter @sakurachiyo0v0/netease-music typecheck && test && build` 通过;
 - [x] `pnpm --filter @sakurachiyo0v0/ffmpeg test` 通过(含新增 writeTags 测试);
 - [x] `pnpm check` 全仓通过;
-- [x] `amechan-netease` CLI 注入假服务可跑通 login/status/logout/parse/download(`tests/cli.test.ts`);
+- [x] `sc-netease` CLI 注入假服务可跑通 login/status/logout/parse/download(`tests/cli.test.ts`);
 - [x] `NETEASE_SMOKE=1` 真实接口冒烟通过(`tests/smoke.test.ts`);
 - [x] 真实账号扫码登录 + 单曲/歌单下载 + 合规拦截(非 VIP 拒 VIP 歌)实测通过;
 - [x] 收藏夹功能(§5.2 接口)真实账号实测通过:账号信息、用户歌单(含我喜欢的音乐)、红心列表、红心收藏/取消(歌单数 72→73→72 净零)、订阅/退订他人歌单、歌单增删歌曲、创建/删除歌单(全部自清理);

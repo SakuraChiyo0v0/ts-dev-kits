@@ -10,7 +10,7 @@ import { basename, join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 const repo = process.cwd();
-const work = mkdtempSync(join(tmpdir(), "amechan-email-git-"));
+const work = mkdtempSync(join(tmpdir(), "sc-email-git-"));
 const fixtureRepository = join(work, "email-repository");
 const fixturePackage = join(fixtureRepository, "packages", "email");
 const consumerDirectory = join(work, "consumer");

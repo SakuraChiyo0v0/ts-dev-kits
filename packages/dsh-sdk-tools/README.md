@@ -98,7 +98,7 @@ dsh-sdk-tools:
 | `ffmpeg.enabled` | `true` | — |
 | `email.enabled` / `smtp` | `false` / 无 | 配置 `smtp.host/port/secure/from`(可选 `user/pass`)后启用 |
 | `lol.enabled` | `true` | — |
-| `vrchat.enabled` | `false` | 需本机已保存 VRChat 登录态 auth.json(CLI `amechan-vrchat login` 生成) |
+| `vrchat.enabled` | `false` | 需本机已保存 VRChat 登录态 auth.json(CLI `sc-vrchat login` 生成) |
 
 **安全约定:** SMTP 密码等敏感配置只存在于 host 端预设 config,不进浏览器/WebView;工具返回与错误消息已脱敏(不包含 SMTP 密码 / cookie / 连接串)。
 

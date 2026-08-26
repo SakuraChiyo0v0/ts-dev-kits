@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * amechan-netease CLI:login / status / logout / parse / download。
+ * sc-netease CLI:login / status / logout / parse / download。
  * 测试/自定义网关支持环境变量注入:
  *   AMECHAN_NETEASE_BASE_URL  — 覆盖 API baseUrl(测试用 mock 服务器)
  *   AMECHAN_NETEASE_AUTH_PATH — 覆盖登录态存储路径
@@ -26,7 +26,7 @@ import {
 import { createNeteaseClient, NeteaseMusicClient } from "../client.js";
 import { NeteaseError } from "../errors.js";
 
-const USAGE = "amechan-netease <command> [options]";
+const USAGE = "sc-netease <command> [options]";
 const COMMANDS = [
   { name: "login", desc: "二维码扫码登录并持久化登录态" },
   { name: "status", desc: "显示登录状态" },
@@ -184,7 +184,7 @@ async function runStatus(context: CliContext): Promise<void> {
   });
   const payload = await store.load();
   if (payload === null) {
-    outputJson({ loggedIn: false, message: "未登录,请运行 amechan-netease login" });
+    outputJson({ loggedIn: false, message: "未登录,请运行 sc-netease login" });
     return;
   }
   const cred = payload.credentials as { cookies?: string };
@@ -209,7 +209,7 @@ async function runLogout(context: CliContext): Promise<void> {
 async function runParse(context: CliContext, args: ReturnType<typeof parseArgs>): Promise<void> {
   const url = args.positionals[1];
   if (url === undefined) {
-    throw new NeteaseError("INVALID_URL", "缺少链接参数,用法: amechan-netease parse <url>");
+    throw new NeteaseError("INVALID_URL", "缺少链接参数,用法: sc-netease parse <url>");
   }
   const client = createNeteaseClient({
     ...(context.authPath !== undefined ? { authPath: context.authPath } : {}),
@@ -229,7 +229,7 @@ async function runParse(context: CliContext, args: ReturnType<typeof parseArgs>)
 async function runDownload(context: CliContext, args: ReturnType<typeof parseArgs>): Promise<void> {
   const input = args.positionals[1];
   if (input === undefined) {
-    throw new NeteaseError("INVALID_URL", "缺少链接/歌曲 ID,用法: amechan-netease download <url|id>");
+    throw new NeteaseError("INVALID_URL", "缺少链接/歌曲 ID,用法: sc-netease download <url|id>");
   }
   const client = createNeteaseClient({
     ...(context.authPath !== undefined ? { authPath: context.authPath } : {}),
@@ -331,7 +331,7 @@ async function runLike(
   if (songId === undefined) {
     throw new NeteaseError(
       "INVALID_URL",
-      `缺少歌曲 ID,用法: amechan-netease ${like ? "like" : "unlike"} <songId>`,
+      `缺少歌曲 ID,用法: sc-netease ${like ? "like" : "unlike"} <songId>`,
     );
   }
   const client = createContextClient(context);
@@ -349,7 +349,7 @@ async function runPlaylistCreate(
 ): Promise<void> {
   const name = args.positionals[1];
   if (name === undefined) {
-    throw new NeteaseError("INVALID_URL", "缺少歌单名称,用法: amechan-netease playlist-create <name>");
+    throw new NeteaseError("INVALID_URL", "缺少歌单名称,用法: sc-netease playlist-create <name>");
   }
   const client = createContextClient(context);
   const privacy = getString(args, "privacy");
@@ -366,7 +366,7 @@ async function runPlaylistDelete(
 ): Promise<void> {
   const playlistId = args.positionals[1];
   if (playlistId === undefined) {
-    throw new NeteaseError("INVALID_URL", "缺少歌单 ID,用法: amechan-netease playlist-delete <playlistId>");
+    throw new NeteaseError("INVALID_URL", "缺少歌单 ID,用法: sc-netease playlist-delete <playlistId>");
   }
   const client = createContextClient(context);
   await client.deletePlaylist(playlistId);
@@ -383,7 +383,7 @@ async function runPlaylistTracks(
   if (playlistId === undefined || songIds.length === 0) {
     throw new NeteaseError(
       "INVALID_URL",
-      `用法: amechan-netease playlist-${op === "add" ? "add" : "remove"} <playlistId> <songId...>`,
+      `用法: sc-netease playlist-${op === "add" ? "add" : "remove"} <playlistId> <songId...>`,
     );
   }
   const client = createContextClient(context);
@@ -404,7 +404,7 @@ async function runSubscribe(
   if (playlistId === undefined) {
     throw new NeteaseError(
       "INVALID_URL",
-      `缺少歌单 ID,用法: amechan-netease ${subscribe ? "subscribe" : "unsubscribe"} <playlistId>`,
+      `缺少歌单 ID,用法: sc-netease ${subscribe ? "subscribe" : "unsubscribe"} <playlistId>`,
     );
   }
   const client = createContextClient(context);

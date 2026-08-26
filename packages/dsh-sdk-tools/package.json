@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/dsh-sdk-tools",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "DSH host plugin: expose ts-dev-kits SDK packages as agent tools via agent presets, with a Settings-page toggle for each package",
   "license": "UNLICENSED",
   "publishConfig": {

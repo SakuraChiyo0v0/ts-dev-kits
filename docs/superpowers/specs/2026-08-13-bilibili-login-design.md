@@ -24,11 +24,11 @@
 
 | 当前情况 | 完成后 |
 | --- | --- |
-| 手动复制浏览器 cookie | `amechan-bilibili login` 扫码即得 |
+| 手动复制浏览器 cookie | `sc-bilibili login` 扫码即得 |
 | cookie 散落在命令行/环境变量 | 登录一次,CLI 与 SDK 自动复用 |
 | cookie 过期后重新复制 | refresh_token 自动续期,无感 |
 | 匿名请求被风控拦截 | 登录态 cookie 稳定通过 |
-| 无登录状态可查 | `amechan-bilibili status` / `logout` |
+| 无登录状态可查 | `sc-bilibili status` / `logout` |
 
 ## 3. 方案选择
 
@@ -166,9 +166,9 @@ createBilibiliClient(options: {
 ### 5.5 CLI
 
 ```
-amechan-bilibili login    [--auth-path <path>] [--no-browser]   # 弹出窗口扫码登录
-amechan-bilibili logout   [--auth-path <path>]                  # 删除存储的登录态
-amechan-bilibili status   [--auth-path <path>]                  # 显示是否已登录/过期时间(不打印 cookie)
+sc-bilibili login    [--auth-path <path>] [--no-browser]   # 弹出窗口扫码登录
+sc-bilibili logout   [--auth-path <path>]                  # 删除存储的登录态
+sc-bilibili status   [--auth-path <path>]                  # 显示是否已登录/过期时间(不打印 cookie)
 ```
 
 `--no-browser`:只打印二维码 URL,不自动打开浏览器(无头环境)。

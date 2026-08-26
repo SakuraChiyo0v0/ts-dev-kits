@@ -40,7 +40,7 @@ const COMMANDS = [
 
 **校验方法**:
 - 解析 `packages/*/src/cli/*.ts`,用正则提取 `COMMANDS = [ ... { name: "<cmd>" } ... ]` 数组(以及 bilibili 的子命令数组 `FAV_COMMANDS` / `RELATION_COMMANDS` / `TAG_COMMANDS`;父命令 = 数组变量名前缀小写)
-- 从对应 `skills/*/SKILL.md` 中提取 `amechan-<bin> <cmd>` 调用(行首或反引号后均可,子命令取 `bin parent sub` 二元组)
+- 从对应 `skills/*/SKILL.md` 中提取 `sc-<bin> <cmd>` 调用(行首或反引号后均可,子命令取 `bin parent sub` 二元组)
 - 对比:
   - CLI 有而 skill 没有 → 报错"skill 缺命令 `<cmd>`"
   - skill 有而 CLI 没有 → 报错"skill 有过时命令 `<cmd>`"

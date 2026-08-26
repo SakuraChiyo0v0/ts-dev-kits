@@ -100,17 +100,17 @@ await client.close();
 
 ## CLI
 
-`amechan-xiaoheihe`(随包提供):
+`sc-xiaoheihe`(随包提供):
 
 ```powershell
-amechan-xiaoheihe login          # 扫码登录并持久化(--no-browser 关浏览器)
-amechan-xiaoheihe status         # 登录状态
-amechan-xiaoheihe logout         # 清除登录态
-amechan-xiaoheihe feed           # 首页帖子流
-amechan-xiaoheihe link <id>      # 帖子详情+评论
-amechan-xiaoheihe comments <id> [page]  # 评论区翻页
-amechan-xiaoheihe messages       # @消息
-amechan-xiaoheihe user <id>      # 用户资料
+sc-xiaoheihe login          # 扫码登录并持久化(--no-browser 关浏览器)
+sc-xiaoheihe status         # 登录状态
+sc-xiaoheihe logout         # 清除登录态
+sc-xiaoheihe feed           # 首页帖子流
+sc-xiaoheihe link <id>      # 帖子详情+评论
+sc-xiaoheihe comments <id> [page]  # 评论区翻页
+sc-xiaoheihe messages       # @消息
+sc-xiaoheihe user <id>      # 用户资料
 ```
 
 环境变量:`AMECHAN_XIAOHEIHE_AUTH_PATH` / `AMECHAN_XIAOHEIHE_BASE_URL`(mock 测试用)/ `AMECHAN_XIAOHEIHE_COOKIE` / `AMECHAN_XIAOHEIHE_DEVICE_ID`。CLI 手册见 [`skills/xiaoheihe-cli/SKILL.md`](../../skills/xiaoheihe-cli/SKILL.md)。

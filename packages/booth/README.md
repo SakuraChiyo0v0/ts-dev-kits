@@ -63,7 +63,7 @@ const client = createBoothClient({ cookie: "_pixiv_session=..." });
 await client.persistLogin();
 ```
 
-CLI 方式:`amechan-booth login` / `login --manual` / `status` / `logout`。
+CLI 方式:`sc-booth login` / `login --manual` / `status` / `logout`。
 
 ### 远程登录态同步(多端)
 
@@ -137,12 +137,12 @@ const client = createBoothClient({ remote });
 ## CLI
 
 ```bash
-amechan-booth login [--manual] [--auth-path <path>]
-amechan-booth status
-amechan-booth logout
-amechan-booth parse <链接|ID> [--detail] [--no-description] [--no-variations]
-amechan-booth claim <链接|ID>... [--output-dir <dir>] [--concurrency <n>] [--no-download]
-amechan-booth download <download-url> [--output-dir <dir>]
+sc-booth login [--manual] [--auth-path <path>]
+sc-booth status
+sc-booth logout
+sc-booth parse <链接|ID> [--detail] [--no-description] [--no-variations]
+sc-booth claim <链接|ID>... [--output-dir <dir>] [--concurrency <n>] [--no-download]
+sc-booth download <download-url> [--output-dir <dir>]
 ```
 
 环境变量:`AMECHAN_BOOTH_BASE_URL`(测试/网关)、`AMECHAN_BOOTH_AUTH_PATH`(登录态路径)。

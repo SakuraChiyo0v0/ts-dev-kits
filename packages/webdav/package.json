@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/webdav",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "WebDAV config storage SDK: basic file operations + atomic ConfigStore with backups, plus CLI",
   "license": "UNLICENSED",
   "publishConfig": {
@@ -22,7 +22,7 @@
     }
   },
   "bin": {
-    "amechan-webdav": "./dist/cli/webdav.js"
+    "sc-webdav": "./dist/cli/webdav.js"
   },
   "files": [
     "dist",

@@ -16,7 +16,7 @@ import { writeFileSync } from "node:fs";
 import { bilibiliQrAdapter } from "../auth/index.js";
 import { createBilibiliClient } from "../index.js";
 
-const USAGE = "Usage: amechan-bilibili <command> [options]";
+const USAGE = "Usage: sc-bilibili <command> [options]";
 
 const COMMANDS = [
   { name: "login", desc: "Scan QR code to log in (opens browser window)" },
@@ -238,7 +238,7 @@ async function main(): Promise<void> {
 async function runFavCommand(args: ReturnType<typeof parseArgs>): Promise<void> {
   const sub = args.positionals[0];
   if (sub === undefined || sub === "help") {
-    printHelp("Usage: amechan-bilibili fav <command> [args]", FAV_COMMANDS, [
+    printHelp("Usage: sc-bilibili fav <command> [args]", FAV_COMMANDS, [
       { flag: "--pn <n>", desc: "Page number (default 1)" },
       { flag: "--ps <n>", desc: "Page size (default 20, max 20)" },
       { flag: "--intro <text>", desc: "Folder intro" },
@@ -326,7 +326,7 @@ async function runFavCommand(args: ReturnType<typeof parseArgs>): Promise<void> 
     }
     default:
       outputText(`Unknown fav command: ${sub}`);
-      printHelp("Usage: amechan-bilibili fav <command> [args]", FAV_COMMANDS, []);
+      printHelp("Usage: sc-bilibili fav <command> [args]", FAV_COMMANDS, []);
       throw new CliError(`Unknown fav command: ${sub}`, 2);
   }
 }
@@ -335,7 +335,7 @@ async function runFavCommand(args: ReturnType<typeof parseArgs>): Promise<void> 
 async function runRelationCommand(args: ReturnType<typeof parseArgs>): Promise<void> {
   const sub = args.positionals[0];
   if (sub === undefined || sub === "help") {
-    printHelp("Usage: amechan-bilibili relation <command> [args]", RELATION_COMMANDS, [
+    printHelp("Usage: sc-bilibili relation <command> [args]", RELATION_COMMANDS, [
       { flag: "--pn <n>", desc: "Page number (default 1)" },
       { flag: "--ps <n>", desc: "Page size (default 50)" },
     ]);
@@ -385,7 +385,7 @@ async function runRelationCommand(args: ReturnType<typeof parseArgs>): Promise<v
       return;
     default:
       outputText(`Unknown relation command: ${sub}`);
-      printHelp("Usage: amechan-bilibili relation <command> [args]", RELATION_COMMANDS, []);
+      printHelp("Usage: sc-bilibili relation <command> [args]", RELATION_COMMANDS, []);
       throw new CliError(`Unknown relation command: ${sub}`, 2);
   }
 }
@@ -394,7 +394,7 @@ async function runRelationCommand(args: ReturnType<typeof parseArgs>): Promise<v
 async function runTagCommand(args: ReturnType<typeof parseArgs>): Promise<void> {
   const sub = args.positionals[0];
   if (sub === undefined || sub === "help") {
-    printHelp("Usage: amechan-bilibili tag <command> [args]", TAG_COMMANDS, [
+    printHelp("Usage: sc-bilibili tag <command> [args]", TAG_COMMANDS, [
       { flag: "--pn <n>", desc: "Page number (default 1)" },
       { flag: "--ps <n>", desc: "Page size (default 20)" },
     ]);
@@ -453,7 +453,7 @@ async function runTagCommand(args: ReturnType<typeof parseArgs>): Promise<void> 
     }
     default:
       outputText(`Unknown tag command: ${sub}`);
-      printHelp("Usage: amechan-bilibili tag <command> [args]", TAG_COMMANDS, []);
+      printHelp("Usage: sc-bilibili tag <command> [args]", TAG_COMMANDS, []);
       throw new CliError(`Unknown tag command: ${sub}`, 2);
   }
 }

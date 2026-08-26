@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/config",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Config center: one-time WebDAV+key setup, per-namespace config storage with optional encryption",
   "license": "UNLICENSED",
   "publishConfig": {
@@ -22,7 +22,7 @@
     }
   },
   "bin": {
-    "amechan-config": "./dist/cli/config.js"
+    "sc-config": "./dist/cli/config.js"
   },
   "files": [
     "dist",

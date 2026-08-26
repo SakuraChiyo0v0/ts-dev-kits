@@ -147,24 +147,24 @@ createVrchatClient(options?: VrchatClientOptions): Promise<VrchatClient>
 ## CLI
 
 ```powershell
-amechan-vrchat login [username]                  # 密码登录(2FA 交互输入)
-amechan-vrchat status                            # 查看登录状态
-amechan-vrchat logout                            # 登出
-amechan-vrchat users get|profile|search|friend-status|worlds|groups|mutuals|avatar|active|update-status|update-bio
-amechan-vrchat worlds get|search|favorites|recent|active|add-tags|remove-tags|publish
-amechan-vrchat avatars get|search|owned|favorites|licensed|styles|select
-amechan-vrchat instances get <worldId> <instanceId>|recent
-amechan-vrchat friends list|add|remove
-amechan-vrchat notifications list|get|accept|hide|see|reply|clear
-amechan-vrchat favorites list|add|remove|groups|by-group
-amechan-vrchat groups get|search|members|member|remove-member|add-role|remove-role|roles|role-templates|instances|permissions|requests|approve|bans|ban|unban|join|leave|announcement|announce
-amechan-vrchat files get|list|create|create-image|delete
-amechan-vrchat permissions list|get
-amechan-vrchat system health|stats|time
-amechan-vrchat economy balance|transactions
-amechan-vrchat moderation list|create|delete|report
-amechan-vrchat invite invite|request|join|respond
-amechan-vrchat messages list|get|update
+sc-vrchat login [username]                  # 密码登录(2FA 交互输入)
+sc-vrchat status                            # 查看登录状态
+sc-vrchat logout                            # 登出
+sc-vrchat users get|profile|search|friend-status|worlds|groups|mutuals|avatar|active|update-status|update-bio
+sc-vrchat worlds get|search|favorites|recent|active|add-tags|remove-tags|publish
+sc-vrchat avatars get|search|owned|favorites|licensed|styles|select
+sc-vrchat instances get <worldId> <instanceId>|recent
+sc-vrchat friends list|add|remove
+sc-vrchat notifications list|get|accept|hide|see|reply|clear
+sc-vrchat favorites list|add|remove|groups|by-group
+sc-vrchat groups get|search|members|member|remove-member|add-role|remove-role|roles|role-templates|instances|permissions|requests|approve|bans|ban|unban|join|leave|announcement|announce
+sc-vrchat files get|list|create|create-image|delete
+sc-vrchat permissions list|get
+sc-vrchat system health|stats|time
+sc-vrchat economy balance|transactions
+sc-vrchat moderation list|create|delete|report
+sc-vrchat invite invite|request|join|respond
+sc-vrchat messages list|get|update
 ```
 
 测试/自定义网关可用环境变量 `AMECHAN_VRCHAT_BASE_URL` / `AMECHAN_VRCHAT_AUTH_PATH` 覆盖默认配置。完整用法见 [`skills/vrchat-cli/SKILL.md`](../../skills/vrchat-cli/SKILL.md)。

@@ -12,8 +12,8 @@
 
 | 当前情况 | 完成后 |
 | --- | --- |
-| 想做传声筒但没有工具 | `amechan-chuanshengtong render "要传的话" --template dazibao` 直接出图 |
-| 无内置模板 | `amechan-chuanshengtong list` 列出内置模板库,文字自动按模板排版 |
+| 想做传声筒但没有工具 | `sc-chuanshengtong render "要传的话" --template dazibao` 直接出图 |
+| 无内置模板 | `sc-chuanshengtong list` 列出内置模板库,文字自动按模板排版 |
 | 无统一错误 | 统一 `ChuanshengtongError` + 错误码,消息可读 |
 
 ## 3. 方案选择
@@ -53,7 +53,7 @@ packages/chuanshengtong/
 │  └─ cli/chuanshengtong.ts  CLI 入口
 ├─ tests/                Vitest 单测(wrap/转义/注册表) + 集成测试(sharp 真实渲染)
 ├─ scripts/clean.mjs     构建清理(照抄 webdav)
-├─ package.json          @sakurachiyo0v0/chuanshengtong,bin: amechan-chuanshengtong
+├─ package.json          @sakurachiyo0v0/chuanshengtong,bin: sc-chuanshengtong
 ├─ tsconfig.json / tsconfig.base.json / tsconfig.bundle.json / tsconfig.build.json / tsconfig.cli.json
 ├─ rollup.config.mjs     ESM + CJS 双格式,external: sharp / @sakurachiyo0v0/cli-utils / node:*
 └─ README.md             安装方式 / CLI / API / 参数表 / 错误码 / 字体要求
@@ -148,7 +148,7 @@ export { ChuanshengtongError, ChuanshengtongErrorCode } from "./errors.js";
 ## 8. CLI 与 skill 同步
 
 ```
-amechan-chuanshengtong <command> [options]
+sc-chuanshengtong <command> [options]
 
 commands:
   help                显示帮助
@@ -176,7 +176,7 @@ options:
 
 ## 10. 验收条件
 
-- [ ] `amechan-chuanshengtong list` 列出 4 个模板;`render "你好,世界" --template dazibao` 生成可用 PNG/JPEG
+- [ ] `sc-chuanshengtong list` 列出 4 个模板;`render "你好,世界" --template dazibao` 生成可用 PNG/JPEG
 - [ ] 测试全绿(纯函数 + sharp 真实渲染 + 错误分支)
 - [ ] README + packages-index 更新;`skills/chuanshengtong-cli/SKILL.md` 同步
 - [ ] 版本已 bump;`pnpm check` 全仓通过

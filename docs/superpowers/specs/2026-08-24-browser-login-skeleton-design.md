@@ -105,7 +105,7 @@ interface BrowserLoginAdapter {
 
 ## 8. CLI 与 skill 同步
 
-- 无 CLI 变更:booth 的 `amechan-booth login` 公共签名与语义不变;account 无 CLI。
+- 无 CLI 变更:booth 的 `sc-booth login` 公共签名与语义不变;account 无 CLI。
 - 不涉及 skill 更新。
 
 ## 9. 版本与发布

@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/ffmpeg",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "FFmpeg/ffprobe process wrapper with progress events and high-level media helpers",
   "license": "UNLICENSED",
   "publishConfig": {
@@ -22,7 +22,7 @@
     }
   },
   "bin": {
-    "amechan-ffmpeg": "./dist/cli/ffmpeg.js"
+    "sc-ffmpeg": "./dist/cli/ffmpeg.js"
   },
   "files": [
     "dist",

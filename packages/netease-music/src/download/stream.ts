@@ -321,7 +321,7 @@ async function writeTagsToTemp(
   const { join } = await import("node:path");
   const { existsSync } = await import("node:fs");
   const suffix = randomBytes(4).toString("hex");
-  const taggedPath = join(tmpdir(), `amechan-tag-${suffix}.${extension}`);
+  const taggedPath = join(tmpdir(), `sc-tag-${suffix}.${extension}`);
   const result = await ffmpeg.writeTags({
     input: sourcePath,
     output: taggedPath,

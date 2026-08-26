@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * amechan-steam CLI:login / status / logout / user / owned-games / achievements /
+ * sc-steam CLI:login / status / logout / user / owned-games / achievements /
  * price / search / inventory / my-listings。
  * 环境变量注入(测试/自定义网关):
  *   AMECHAN_STEAM_AUTH_PATH      — 覆盖登录态存储路径
@@ -23,7 +23,7 @@ import {
 import { writeFileSync } from "node:fs";
 import { createSteamClient, type SteamClient } from "../client.js";
 
-const USAGE = "amechan-steam <command> [options]";
+const USAGE = "sc-steam <command> [options]";
 const COMMANDS = [
   { name: "help", desc: "显示帮助" },
   { name: "login", desc: "密码/二维码/cookie 登录并持久化(--account/--qr/--cookie)" },
@@ -233,7 +233,7 @@ async function runStatus(context: CliContext): Promise<void> {
     path: context.authPath ?? "(默认)",
     ...(status.accountName !== undefined ? { accountName: status.accountName } : {}),
     ...(status.steamid !== undefined ? { steamid: status.steamid } : {}),
-    ...(status.loggedIn ? {} : { message: "未登录,请运行 amechan-steam login" }),
+    ...(status.loggedIn ? {} : { message: "未登录,请运行 sc-steam login" }),
   });
   await client.close();
 }
@@ -248,7 +248,7 @@ async function runLogout(context: CliContext): Promise<void> {
 async function runUser(context: CliContext, args: ReturnType<typeof parseArgs>): Promise<void> {
   const input = args.positionals[1];
   if (input === undefined) {
-    throw new Error("缺少参数,用法: amechan-steam user <steamid|vanity|URL>");
+    throw new Error("缺少参数,用法: sc-steam user <steamid|vanity|URL>");
   }
   const client = buildClient(context);
   const players = await client.user.getSummaries([input]);
@@ -271,7 +271,7 @@ async function runUser(context: CliContext, args: ReturnType<typeof parseArgs>):
 async function runOwnedGames(context: CliContext, args: ReturnType<typeof parseArgs>): Promise<void> {
   const input = args.positionals[1];
   if (input === undefined) {
-    throw new Error("缺少参数,用法: amechan-steam owned-games <steamid|vanity|URL>");
+    throw new Error("缺少参数,用法: sc-steam owned-games <steamid|vanity|URL>");
   }
   const client = buildClient(context);
   const result = await client.library.getOwnedGames(input, { includeAppInfo: true });
@@ -292,7 +292,7 @@ async function runAchievements(context: CliContext, args: ReturnType<typeof pars
   const input = args.positionals[1];
   const appid = Number(args.positionals[2]);
   if (input === undefined || Number.isNaN(appid)) {
-    throw new Error("缺少参数,用法: amechan-steam achievements <steamid|vanity|URL> <appid>");
+    throw new Error("缺少参数,用法: sc-steam achievements <steamid|vanity|URL> <appid>");
   }
   const client = buildClient(context);
   const result = await client.stats.getPlayerAchievements(input, appid);
@@ -313,7 +313,7 @@ async function runPrice(context: CliContext, args: ReturnType<typeof parseArgs>)
   const appid = Number(args.positionals[1]);
   const marketHashName = args.positionals[2];
   if (Number.isNaN(appid) || marketHashName === undefined) {
-    throw new Error("缺少参数,用法: amechan-steam price <appid> <market_hash_name>");
+    throw new Error("缺少参数,用法: sc-steam price <appid> <market_hash_name>");
   }
   const client = buildClient(context);
   const currency = getNumber(args, "currency", 1) ?? 1;
@@ -325,7 +325,7 @@ async function runPrice(context: CliContext, args: ReturnType<typeof parseArgs>)
 async function runSearch(context: CliContext, args: ReturnType<typeof parseArgs>): Promise<void> {
   const query = args.positionals[1];
   if (query === undefined) {
-    throw new Error("缺少参数,用法: amechan-steam search <query>");
+    throw new Error("缺少参数,用法: sc-steam search <query>");
   }
   const client = buildClient(context);
   const appid = getNumber(args, "appid");
@@ -352,7 +352,7 @@ async function runInventory(context: CliContext, args: ReturnType<typeof parseAr
   const input = args.positionals[1];
   const appid = Number(args.positionals[2]);
   if (input === undefined || Number.isNaN(appid)) {
-    throw new Error("缺少参数,用法: amechan-steam inventory <steamid|vanity|URL> <appid> [contextid]");
+    throw new Error("缺少参数,用法: sc-steam inventory <steamid|vanity|URL> <appid> [contextid]");
   }
   const contextId = getString(args, "contextid") ?? args.positionals[3] ?? "2";
   const client = buildClient(context);
@@ -390,7 +390,7 @@ async function runMyListings(context: CliContext): Promise<void> {
 async function runReviews(context: CliContext, args: ReturnType<typeof parseArgs>): Promise<void> {
   const appid = Number(args.positionals[1]);
   if (Number.isNaN(appid)) {
-    throw new Error("缺少参数,用法: amechan-steam reviews <appid>");
+    throw new Error("缺少参数,用法: sc-steam reviews <appid>");
   }
   const client = buildClient(context);
   const filter = getString(args, "filter");
@@ -420,7 +420,7 @@ async function runReviews(context: CliContext, args: ReturnType<typeof parseArgs
 async function runRedeem(context: CliContext, args: ReturnType<typeof parseArgs>): Promise<void> {
   const key = args.positionals[1];
   if (key === undefined) {
-    throw new Error("缺少参数,用法: amechan-steam redeem <activation_key>");
+    throw new Error("缺少参数,用法: sc-steam redeem <activation_key>");
   }
   const client = buildClient(context);
   const result = await client.redeem.redeemActivationKey(key);
@@ -433,7 +433,7 @@ async function runWatch(context: CliContext, args: ReturnType<typeof parseArgs>)
   const appid = Number(args.positionals[1]);
   const marketHashName = args.positionals[2];
   if (Number.isNaN(appid) || marketHashName === undefined) {
-    throw new Error("缺少参数,用法: amechan-steam watch <appid> <market_hash_name>");
+    throw new Error("缺少参数,用法: sc-steam watch <appid> <market_hash_name>");
   }
   const client = buildClient(context);
   const currency = getNumber(args, "currency", 1) ?? 1;

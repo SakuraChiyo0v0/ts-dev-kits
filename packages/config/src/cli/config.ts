@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * amechan-config CLI:setup / status / get / set / list / remove。
+ * sc-config CLI:setup / status / get / set / list / remove。
  * 全局配置(WebDAV 地址/账号/密钥)本地只配一次,各命名空间按需 --encrypt。
  */
 import {
@@ -19,7 +19,7 @@ import { createConfigCenter } from "../config-center.js";
 import { clearGlobalConfig, loadGlobalConfig, saveGlobalConfig } from "../global-config.js";
 import type { GlobalConfig } from "../types.js";
 
-const USAGE = "amechan-config <command> [options]";
+const USAGE = "sc-config <command> [options]";
 const COMMANDS = [
   { name: "help", desc: "显示帮助" },
   { name: "setup", desc: "写入本地全局配置(--url/--username/--password/--key)" },
@@ -83,7 +83,7 @@ async function run(): Promise<void> {
     case "status": {
       const config = safeLoad(configPath);
       if (config === undefined) {
-        outputJson({ configured: false, message: "未配置,请运行 amechan-config setup" });
+        outputJson({ configured: false, message: "未配置,请运行 sc-config setup" });
         return;
       }
       outputJson({
@@ -139,7 +139,7 @@ async function run(): Promise<void> {
       return;
     }
     default:
-      throw new CliError(`未知命令: ${command}(运行 amechan-config help 查看用法)`);
+      throw new CliError(`未知命令: ${command}(运行 sc-config help 查看用法)`);
   }
 }
 

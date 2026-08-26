@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * amechan-chuanshengtong CLI:list / render。
+ * sc-chuanshengtong CLI:list / render。
  * 用法:
- *   amechan-chuanshengtong list
- *   amechan-chuanshengtong render "要传的话" --template dazibao --output out.png
+ *   sc-chuanshengtong list
+ *   sc-chuanshengtong render "要传的话" --template dazibao --output out.png
  */
 import {
   CliError,
@@ -19,7 +19,7 @@ import { ChuanshengtongError } from "../errors.js";
 import { listTemplates, render } from "../index.js";
 import type { OutputFormat } from "../types.js";
 
-const USAGE = "amechan-chuanshengtong <command> [options]";
+const USAGE = "sc-chuanshengtong <command> [options]";
 const COMMANDS = [
   { name: "help", desc: "显示帮助" },
   { name: "list", desc: "列出内置模板(id/名称/尺寸/容量)" },
@@ -51,7 +51,7 @@ async function run(): Promise<void> {
     case "render": {
       const text = args.positionals[1];
       if (text === undefined) {
-        throw new CliError("render 需要要传的文字:amechan-chuanshengtong render <text> [options]");
+        throw new CliError("render 需要要传的文字:sc-chuanshengtong render <text> [options]");
       }
       const format = getString(args, "format");
       const width = getNumber(args, "width");
@@ -72,7 +72,7 @@ async function run(): Promise<void> {
       return;
     }
     default:
-      throw new CliError(`未知命令: ${command}(运行 amechan-chuanshengtong help 查看用法)`);
+      throw new CliError(`未知命令: ${command}(运行 sc-chuanshengtong help 查看用法)`);
   }
 }
 

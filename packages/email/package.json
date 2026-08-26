@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/email",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Provider-neutral email SDK with SMTP support",
   "license": "UNLICENSED",
   "publishConfig": {
@@ -22,7 +22,7 @@
     }
   },
   "bin": {
-    "amechan-email": "./dist/cli/email.js"
+    "sc-email": "./dist/cli/email.js"
   },
   "files": [
     "dist",

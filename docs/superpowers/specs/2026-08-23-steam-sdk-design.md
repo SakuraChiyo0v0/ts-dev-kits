@@ -62,7 +62,7 @@ packages/steam/
 │  │  ├─ user.ts          library.ts  stats.ts  news.ts  store.ts
 │  │  ├─ inventory.ts     market.ts  workshop.ts  trade.ts
 │  │  └─ auth.ts          登录/登出/会话状态
-│  └─ cli/                amechan-steam(P5 阶段按需)
+│  └─ cli/                sc-steam(P5 阶段按需)
 ├─ tests/                 Vitest:mock 三台主机走真实 HTTP 协议路径
 ├─ package.json           版本 0.1.0 / exports / scripts
 └─ README.md              安装 / API / 参数表 / 错误码 / 网络注意事项
@@ -138,7 +138,7 @@ interface SteamClientOptions {
 
 ## 8. CLI 与 skill 同步
 
-- P5 按需提供 `amechan-steam` CLI,计划命令:`login` / `status` / `logout` / `user` / `owned-games` / `achievements` / `price` / `search` / `inventory` / `my-listings`(登录态命令需先 `login`)。
+- P5 按需提供 `sc-steam` CLI,计划命令:`login` / `status` / `logout` / `user` / `owned-games` / `achievements` / `price` / `search` / `inventory` / `my-listings`(登录态命令需先 `login`)。
 - 若提供 CLI:新增 `skills/steam-cli/SKILL.md`,命令集与参数表必须同步(提交守卫 `check-skill-staleness.mjs` 会拦命令集不一致)。
 - 若 P5 决定不做 CLI,则无 skill 同步义务,本项删除。
 
@@ -157,7 +157,7 @@ interface SteamClientOptions {
 - [x] P3:登录后只读深水区全部可用 ✅(订单簿 itemordershistogram / 价格历史 pricehistory / 我的挂单 mylistings / 成交历史 myhistory / 自己库存 getOwnInventory / 物品定义 GetItemDefs(publisher key)/ 交易报价与历史只读 GetTradeOffers|GetTradeOffer|GetTradeHistory / 交易链接 / 动态流与评论读;v0.4.0)
 - [x] 测试全绿(含错误分支);零写接口 + 唯一写例外 redeem ✅(113/113;激活码兑换经用户拍板扩展红线,2026-08-24)
 - [x] 新能力:商店评测 getAppReviews(公开)+ 价格监控 CLI watch + 激活码兑换 redeem(真实协议:store /account/registerkey 302+Set-Cookie 会话刷新 → ajaxregisterkey JSON,ePurchaseResult 码映射)✅(v0.5.0,2026-08-24)
-- [x] README + packages-index 更新;CLI 已同步 skill ✅(`amechan-steam` 14 命令,`check-skill-staleness` 校验通过)
+- [x] README + packages-index 更新;CLI 已同步 skill ✅(`sc-steam` 14 命令,`check-skill-staleness` 校验通过)
 - [ ] `pnpm check` 通过;用户确认后提交推送,CI 发布成功,消费验证通过(提交/推送/发布需用户授权)
 
 ## 11. 待办映射(能力清单 → 阶段)

@@ -55,7 +55,7 @@ packages/xiaoheihe/
 │  ├─ transport.ts       HTTP 层(公共参数注入 / cookie 携带 / 脱敏日志 / 风控识别)
 │  ├─ types.ts           数据模型与枚举(field 语义的权威定义)
 │  ├─ errors.ts          统一错误类 + 错误码
-│  └─ cli/                amechan-xiaoheihe 命令(login/status/logout/feed/link/comments/messages/user)
+│  └─ cli/                sc-xiaoheihe 命令(login/status/logout/feed/link/comments/messages/user)
 ├─ tests/
 │  ├─ sign.test.ts       签名算法单测(对照 Go 实现)
 │  ├─ qrcode.test.ts     扫码登录流程(mock 本地服务器)
@@ -150,10 +150,10 @@ client.auth.logout();    // 清除本地登录态
 
 ## 8. CLI 与 skill 同步
 
-- CLI `amechan-xiaoheihe` 命令:
+- CLI `sc-xiaoheihe` 命令:
   - `login`(扫码,复用 account 骨架)/ `status` / `logout`
   - `feed`(首页帖子流)/ `link <id>`(帖子详情+评论)/ `comments <id>`(评论翻页)/ `messages`(@消息)/ `user <id>`(用户资料)
-  - JSON 输出,与 `amechan-steam` 等一致。
+  - JSON 输出,与 `sc-steam` 等一致。
 - 新增 `skills/xiaoheihe-cli/SKILL.md`(命令速查 + 前置条件 + 登录态说明)。
 - 提交守卫(`check-skill-staleness.mjs`)会拦命令集不一致,需同步。
 

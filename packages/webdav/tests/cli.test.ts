@@ -25,7 +25,7 @@ async function runCli(
   }
 }
 
-describe("amechan-webdav CLI(冒烟,真实本地服务器)", () => {
+describe("sc-webdav CLI(冒烟,真实本地服务器)", () => {
   let srv: TestWebdavServer;
   const env = (): Record<string, string> => ({
     WEBDAV_URL: srv.url,

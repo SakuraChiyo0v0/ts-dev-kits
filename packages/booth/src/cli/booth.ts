@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * amechan-booth CLI:login / status / logout / parse / claim / download。
+ * sc-booth CLI:login / status / logout / parse / claim / download。
  * 测试/自定义网关支持环境变量注入:
  *   AMECHAN_BOOTH_BASE_URL  — 覆盖 API baseUrl(测试用 mock 服务器)
  *   AMECHAN_BOOTH_AUTH_PATH — 覆盖登录态存储路径
@@ -20,7 +20,7 @@ import {
 import { createBoothClient, loginBooth } from "../client.js";
 import { BoothError } from "../errors.js";
 
-const USAGE = "amechan-booth <command> [options]";
+const USAGE = "sc-booth <command> [options]";
 const COMMANDS = [
   { name: "help", desc: "显示帮助" },
   { name: "login", desc: "浏览器登录捕获会话并持久化" },
@@ -154,7 +154,7 @@ async function runStatus(context: CliContext): Promise<void> {
   });
   const payload = await store.load();
   if (payload === null) {
-    outputJson({ loggedIn: false, message: "未登录,请运行 amechan-booth login" });
+    outputJson({ loggedIn: false, message: "未登录,请运行 sc-booth login" });
     return;
   }
   const cred = payload.credentials as { cookies?: string };
@@ -178,7 +178,7 @@ async function runLogout(context: CliContext): Promise<void> {
 async function runParse(context: CliContext, args: ReturnType<typeof parseArgs>): Promise<void> {
   const input = args.positionals[1];
   if (input === undefined) {
-    throw new BoothError("INVALID_URL", "缺少参数,用法: amechan-booth parse <链接|ID>");
+    throw new BoothError("INVALID_URL", "缺少参数,用法: sc-booth parse <链接|ID>");
   }
   const client = createBoothClient({
     ...(context.authPath !== undefined ? { authPath: context.authPath } : {}),
@@ -224,7 +224,7 @@ async function runParse(context: CliContext, args: ReturnType<typeof parseArgs>)
 async function runClaim(context: CliContext, args: ReturnType<typeof parseArgs>): Promise<void> {
   const inputs = args.positionals.slice(1);
   if (inputs.length === 0) {
-    throw new BoothError("INVALID_URL", "缺少商品参数,用法: amechan-booth claim <链接|ID>...");
+    throw new BoothError("INVALID_URL", "缺少商品参数,用法: sc-booth claim <链接|ID>...");
   }
   const client = createBoothClient({
     ...(context.authPath !== undefined ? { authPath: context.authPath } : {}),
@@ -255,7 +255,7 @@ async function runClaim(context: CliContext, args: ReturnType<typeof parseArgs>)
 async function runDownload(context: CliContext, args: ReturnType<typeof parseArgs>): Promise<void> {
   const url = args.positionals[1];
   if (url === undefined) {
-    throw new BoothError("INVALID_URL", "缺少下载链接,用法: amechan-booth download <download-url>");
+    throw new BoothError("INVALID_URL", "缺少下载链接,用法: sc-booth download <download-url>");
   }
   const client = createBoothClient({
     ...(context.authPath !== undefined ? { authPath: context.authPath } : {}),

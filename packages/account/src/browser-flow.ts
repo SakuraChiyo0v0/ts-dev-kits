@@ -232,7 +232,7 @@ async function cdpCaptureCookies(options: CdpCaptureOptions): Promise<CdpCapture
   // profile:临时(缺省)或复用传入的日常浏览器 profile。
   const isTempProfile = profileDir === undefined;
   const resolvedProfileDir =
-    profileDir ?? mkdtempSync(path.join(tmpdir(), "amechan-cdp-"));
+    profileDir ?? mkdtempSync(path.join(tmpdir(), "sc-cdp-"));
   const port = 30000 + Math.floor(Math.random() * 20000);
 
   // 复用日常 profile 时,若该浏览器已在运行,新进程会并入已有实例,

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * amechan-vrchat CLI:login / logout / status。
+ * sc-vrchat CLI:login / logout / status。
  * 测试/自定义网关支持环境变量注入:
  *   AMECHAN_VRCHAT_BASE_URL  — 覆盖 API baseUrl(测试用 mock 服务器)
  *   AMECHAN_VRCHAT_AUTH_PATH — 覆盖登录态存储路径
@@ -21,7 +21,7 @@ import { createVrchatClient } from "../client.js";
 import { FriendsApi } from "../endpoints/friends.js";
 import { VrchatError } from "../errors.js";
 
-const USAGE = "amechan-vrchat <command> [options]";
+const USAGE = "sc-vrchat <command> [options]";
 const COMMANDS = [
   { name: "help", desc: "显示帮助" },
   { name: "login [username]", desc: "密码登录(支持 2FA)并持久化登录态" },
@@ -290,14 +290,14 @@ async function runUsers(context: CliContext, args: ReturnType<typeof parseArgs>)
   const client = await makeClient(context);
   try {
     if (sub === undefined || sub === "help") {
-      printHelp("amechan-vrchat users <subcommand>", USERS_COMMANDS, OPTIONS);
+      printHelp("sc-vrchat users <subcommand>", USERS_COMMANDS, OPTIONS);
       return;
     }
     switch (sub) {
       case "get": {
         const id = args.positionals[2];
         if (id === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少用户 ID,用法: amechan-vrchat users get <userId>");
+          throw new VrchatError("NOT_FOUND", "缺少用户 ID,用法: sc-vrchat users get <userId>");
         }
         outputJson(await client.users.getById(id));
         return;
@@ -305,7 +305,7 @@ async function runUsers(context: CliContext, args: ReturnType<typeof parseArgs>)
       case "profile": {
         const id = args.positionals[2];
         if (id === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少用户 ID,用法: amechan-vrchat users profile <userId>");
+          throw new VrchatError("NOT_FOUND", "缺少用户 ID,用法: sc-vrchat users profile <userId>");
         }
         outputJson(await client.users.getProfile(id));
         return;
@@ -313,7 +313,7 @@ async function runUsers(context: CliContext, args: ReturnType<typeof parseArgs>)
       case "search": {
         const query = args.positionals[2];
         if (query === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少搜索词,用法: amechan-vrchat users search <query>");
+          throw new VrchatError("NOT_FOUND", "缺少搜索词,用法: sc-vrchat users search <query>");
         }
         const list = await client.users.search({ search: query, ...pageParams(args) });
         outputJson({ count: list.length, users: list.map(pickUser) });
@@ -322,7 +322,7 @@ async function runUsers(context: CliContext, args: ReturnType<typeof parseArgs>)
       case "friend-status": {
         const id = args.positionals[2];
         if (id === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少用户 ID,用法: amechan-vrchat users friend-status <userId>");
+          throw new VrchatError("NOT_FOUND", "缺少用户 ID,用法: sc-vrchat users friend-status <userId>");
         }
         outputJson(await client.users.getFriendStatus(id));
         return;
@@ -330,7 +330,7 @@ async function runUsers(context: CliContext, args: ReturnType<typeof parseArgs>)
       case "worlds": {
         const id = args.positionals[2];
         if (id === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少用户 ID,用法: amechan-vrchat users worlds <userId>");
+          throw new VrchatError("NOT_FOUND", "缺少用户 ID,用法: sc-vrchat users worlds <userId>");
         }
         const list = await client.users.getUserWorlds(id, pageParams(args));
         outputJson({ count: list.length, worlds: list.map(pickWorld) });
@@ -339,7 +339,7 @@ async function runUsers(context: CliContext, args: ReturnType<typeof parseArgs>)
       case "groups": {
         const id = args.positionals[2];
         if (id === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少用户 ID,用法: amechan-vrchat users groups <userId>");
+          throw new VrchatError("NOT_FOUND", "缺少用户 ID,用法: sc-vrchat users groups <userId>");
         }
         const list = await client.users.getGroups(id);
         outputJson({ count: list.length, groups: list.map(pickGroup) });
@@ -348,7 +348,7 @@ async function runUsers(context: CliContext, args: ReturnType<typeof parseArgs>)
       case "mutuals": {
         const id = args.positionals[2];
         if (id === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少用户 ID,用法: amechan-vrchat users mutuals <userId>");
+          throw new VrchatError("NOT_FOUND", "缺少用户 ID,用法: sc-vrchat users mutuals <userId>");
         }
         const list = await client.users.getMutuals(id);
         outputJson({ count: list.length, users: list.map(pickUser) });
@@ -357,7 +357,7 @@ async function runUsers(context: CliContext, args: ReturnType<typeof parseArgs>)
       case "avatar": {
         const id = args.positionals[2];
         if (id === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少用户 ID,用法: amechan-vrchat users avatar <userId>");
+          throw new VrchatError("NOT_FOUND", "缺少用户 ID,用法: sc-vrchat users avatar <userId>");
         }
         outputJson(await client.users.getAvatar(id));
         return;
@@ -370,7 +370,7 @@ async function runUsers(context: CliContext, args: ReturnType<typeof parseArgs>)
       case "update-status": {
         const text = args.positionals.slice(2).join(" ");
         if (text === "") {
-          throw new VrchatError("NOT_FOUND", "缺少状态文本,用法: amechan-vrchat users update-status <text>");
+          throw new VrchatError("NOT_FOUND", "缺少状态文本,用法: sc-vrchat users update-status <text>");
         }
         const me = await client.auth.currentUser();
         const updated = await client.users.updateCurrent(me.id, { statusDescription: text });
@@ -380,7 +380,7 @@ async function runUsers(context: CliContext, args: ReturnType<typeof parseArgs>)
       case "update-bio": {
         const text = args.positionals.slice(2).join(" ");
         if (text === "") {
-          throw new VrchatError("NOT_FOUND", "缺少简介内容,用法: amechan-vrchat users update-bio <text>");
+          throw new VrchatError("NOT_FOUND", "缺少简介内容,用法: sc-vrchat users update-bio <text>");
         }
         const me = await client.auth.currentUser();
         const updated = await client.users.updateCurrent(me.id, { bio: text });
@@ -389,7 +389,7 @@ async function runUsers(context: CliContext, args: ReturnType<typeof parseArgs>)
       }
       default:
         outputError(`Unknown subcommand: users ${sub}`);
-        printHelp("amechan-vrchat users <subcommand>", USERS_COMMANDS, OPTIONS);
+        printHelp("sc-vrchat users <subcommand>", USERS_COMMANDS, OPTIONS);
         process.exitCode = 1;
     }
   } finally {
@@ -402,14 +402,14 @@ async function runWorlds(context: CliContext, args: ReturnType<typeof parseArgs>
   const client = await makeClient(context);
   try {
     if (sub === undefined || sub === "help") {
-      printHelp("amechan-vrchat worlds <subcommand>", WORLDS_COMMANDS, OPTIONS);
+      printHelp("sc-vrchat worlds <subcommand>", WORLDS_COMMANDS, OPTIONS);
       return;
     }
     switch (sub) {
       case "get": {
         const id = args.positionals[2];
         if (id === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少世界 ID,用法: amechan-vrchat worlds get <worldId>");
+          throw new VrchatError("NOT_FOUND", "缺少世界 ID,用法: sc-vrchat worlds get <worldId>");
         }
         outputJson(await client.worlds.getById(id));
         return;
@@ -417,7 +417,7 @@ async function runWorlds(context: CliContext, args: ReturnType<typeof parseArgs>
       case "search": {
         const query = args.positionals[2];
         if (query === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少搜索词,用法: amechan-vrchat worlds search <query>");
+          throw new VrchatError("NOT_FOUND", "缺少搜索词,用法: sc-vrchat worlds search <query>");
         }
         const sort = getString(args, "sort");
         const list = await client.worlds.search({
@@ -431,7 +431,7 @@ async function runWorlds(context: CliContext, args: ReturnType<typeof parseArgs>
       case "publish": {
         const id = args.positionals[2];
         if (id === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少世界 ID,用法: amechan-vrchat worlds publish <worldId>");
+          throw new VrchatError("NOT_FOUND", "缺少世界 ID,用法: sc-vrchat worlds publish <worldId>");
         }
         const world = await client.worlds.publish(id);
         outputJson({ ok: true, worldId: world.id, publicationStatus: world.publicationStatus });
@@ -456,7 +456,7 @@ async function runWorlds(context: CliContext, args: ReturnType<typeof parseArgs>
         const id = args.positionals[2];
         const tag = args.positionals[3];
         if (id === undefined || tag === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少参数,用法: amechan-vrchat worlds add-tags <worldId> <tag>");
+          throw new VrchatError("NOT_FOUND", "缺少参数,用法: sc-vrchat worlds add-tags <worldId> <tag>");
         }
         const world = await client.worlds.addTags(id, [tag]);
         outputJson({ ok: true, worldId: world.id });
@@ -466,7 +466,7 @@ async function runWorlds(context: CliContext, args: ReturnType<typeof parseArgs>
         const id = args.positionals[2];
         const tag = args.positionals[3];
         if (id === undefined || tag === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少参数,用法: amechan-vrchat worlds remove-tags <worldId> <tag>");
+          throw new VrchatError("NOT_FOUND", "缺少参数,用法: sc-vrchat worlds remove-tags <worldId> <tag>");
         }
         const world = await client.worlds.removeTags(id, [tag]);
         outputJson({ ok: true, worldId: world.id });
@@ -474,7 +474,7 @@ async function runWorlds(context: CliContext, args: ReturnType<typeof parseArgs>
       }
       default:
         outputError(`Unknown subcommand: worlds ${sub}`);
-        printHelp("amechan-vrchat worlds <subcommand>", WORLDS_COMMANDS, OPTIONS);
+        printHelp("sc-vrchat worlds <subcommand>", WORLDS_COMMANDS, OPTIONS);
         process.exitCode = 1;
     }
   } finally {
@@ -487,14 +487,14 @@ async function runAvatars(context: CliContext, args: ReturnType<typeof parseArgs
   const client = await makeClient(context);
   try {
     if (sub === undefined || sub === "help") {
-      printHelp("amechan-vrchat avatars <subcommand>", AVATARS_COMMANDS, OPTIONS);
+      printHelp("sc-vrchat avatars <subcommand>", AVATARS_COMMANDS, OPTIONS);
       return;
     }
     switch (sub) {
       case "get": {
         const id = args.positionals[2];
         if (id === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少头像 ID,用法: amechan-vrchat avatars get <avatarId>");
+          throw new VrchatError("NOT_FOUND", "缺少头像 ID,用法: sc-vrchat avatars get <avatarId>");
         }
         outputJson(await client.avatars.getById(id));
         return;
@@ -502,7 +502,7 @@ async function runAvatars(context: CliContext, args: ReturnType<typeof parseArgs
       case "search": {
         const query = args.positionals[2];
         if (query === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少搜索词,用法: amechan-vrchat avatars search <query>");
+          throw new VrchatError("NOT_FOUND", "缺少搜索词,用法: sc-vrchat avatars search <query>");
         }
         const list = await client.avatars.search({ search: query, ...pageParams(args) });
         outputJson({ count: list.length, avatars: list.map(pickAvatar) });
@@ -511,7 +511,7 @@ async function runAvatars(context: CliContext, args: ReturnType<typeof parseArgs
       case "owned": {
         const id = args.positionals[2];
         if (id === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少用户 ID,用法: amechan-vrchat avatars owned <userId>");
+          throw new VrchatError("NOT_FOUND", "缺少用户 ID,用法: sc-vrchat avatars owned <userId>");
         }
         const list = await client.avatars.listOwned(id);
         outputJson({ count: list.length, avatars: list.map(pickAvatar) });
@@ -520,7 +520,7 @@ async function runAvatars(context: CliContext, args: ReturnType<typeof parseArgs
       case "select": {
         const id = args.positionals[2];
         if (id === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少头像 ID,用法: amechan-vrchat avatars select <avatarId>");
+          throw new VrchatError("NOT_FOUND", "缺少头像 ID,用法: sc-vrchat avatars select <avatarId>");
         }
         const me = await client.avatars.selectCurrent(id);
         outputJson({ ok: true, avatarId: me.avatarId });
@@ -543,7 +543,7 @@ async function runAvatars(context: CliContext, args: ReturnType<typeof parseArgs
       }
       default:
         outputError(`Unknown subcommand: avatars ${sub}`);
-        printHelp("amechan-vrchat avatars <subcommand>", AVATARS_COMMANDS, OPTIONS);
+        printHelp("sc-vrchat avatars <subcommand>", AVATARS_COMMANDS, OPTIONS);
         process.exitCode = 1;
     }
   } finally {
@@ -556,7 +556,7 @@ async function runInstances(context: CliContext, args: ReturnType<typeof parseAr
   const client = await makeClient(context);
   try {
     if (sub === undefined || sub === "help") {
-      printHelp("amechan-vrchat instances <subcommand>", INSTANCES_COMMANDS, OPTIONS);
+      printHelp("sc-vrchat instances <subcommand>", INSTANCES_COMMANDS, OPTIONS);
       return;
     }
     switch (sub) {
@@ -566,7 +566,7 @@ async function runInstances(context: CliContext, args: ReturnType<typeof parseAr
         if (worldId === undefined || instanceId === undefined) {
           throw new VrchatError(
             "NOT_FOUND",
-            "缺少参数,用法: amechan-vrchat instances get <worldId> <instanceId>",
+            "缺少参数,用法: sc-vrchat instances get <worldId> <instanceId>",
           );
         }
         outputJson(await client.instances.getById(worldId, instanceId));
@@ -578,7 +578,7 @@ async function runInstances(context: CliContext, args: ReturnType<typeof parseAr
         if (worldId === undefined || instanceId === undefined) {
           throw new VrchatError(
             "NOT_FOUND",
-            "缺少参数,用法: amechan-vrchat instances short-name <worldId> <instanceId>",
+            "缺少参数,用法: sc-vrchat instances short-name <worldId> <instanceId>",
           );
         }
         outputJson(await client.instances.getShortName(worldId, instanceId));
@@ -591,7 +591,7 @@ async function runInstances(context: CliContext, args: ReturnType<typeof parseAr
       }
       default:
         outputError(`Unknown subcommand: instances ${sub}`);
-        printHelp("amechan-vrchat instances <subcommand>", INSTANCES_COMMANDS, OPTIONS);
+        printHelp("sc-vrchat instances <subcommand>", INSTANCES_COMMANDS, OPTIONS);
         process.exitCode = 1;
     }
   } finally {
@@ -604,7 +604,7 @@ async function runFriends(context: CliContext, args: ReturnType<typeof parseArgs
   const client = await makeClient(context);
   try {
     if (sub === undefined || sub === "help") {
-      printHelp("amechan-vrchat friends <subcommand>", FRIENDS_COMMANDS, OPTIONS);
+      printHelp("sc-vrchat friends <subcommand>", FRIENDS_COMMANDS, OPTIONS);
       return;
     }
     switch (sub) {
@@ -655,7 +655,7 @@ async function runFriends(context: CliContext, args: ReturnType<typeof parseArgs
       case "add": {
         const id = args.positionals[2];
         if (id === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少用户 ID,用法: amechan-vrchat friends add <userId>");
+          throw new VrchatError("NOT_FOUND", "缺少用户 ID,用法: sc-vrchat friends add <userId>");
         }
         const result = await client.friends.sendRequest(id);
         outputJson({ ok: true, message: result.success.message });
@@ -664,7 +664,7 @@ async function runFriends(context: CliContext, args: ReturnType<typeof parseArgs
       case "remove": {
         const id = args.positionals[2];
         if (id === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少用户 ID,用法: amechan-vrchat friends remove <userId>");
+          throw new VrchatError("NOT_FOUND", "缺少用户 ID,用法: sc-vrchat friends remove <userId>");
         }
         const result = await client.friends.delete(id);
         outputJson({ ok: true, message: result.success.message });
@@ -672,7 +672,7 @@ async function runFriends(context: CliContext, args: ReturnType<typeof parseArgs
       }
       default:
         outputError(`Unknown subcommand: friends ${sub}`);
-        printHelp("amechan-vrchat friends <subcommand>", FRIENDS_COMMANDS, OPTIONS);
+        printHelp("sc-vrchat friends <subcommand>", FRIENDS_COMMANDS, OPTIONS);
         process.exitCode = 1;
     }
   } finally {
@@ -685,7 +685,7 @@ async function runNotifications(context: CliContext, args: ReturnType<typeof par
   const client = await makeClient(context);
   try {
     if (sub === undefined || sub === "help") {
-      printHelp("amechan-vrchat notifications <subcommand>", NOTIFICATIONS_COMMANDS, OPTIONS);
+      printHelp("sc-vrchat notifications <subcommand>", NOTIFICATIONS_COMMANDS, OPTIONS);
       return;
     }
     switch (sub) {
@@ -701,7 +701,7 @@ async function runNotifications(context: CliContext, args: ReturnType<typeof par
       case "get": {
         const id = args.positionals[2];
         if (id === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少通知 ID,用法: amechan-vrchat notifications get <notificationId>");
+          throw new VrchatError("NOT_FOUND", "缺少通知 ID,用法: sc-vrchat notifications get <notificationId>");
         }
         outputJson(await client.notifications.getById(id));
         return;
@@ -709,7 +709,7 @@ async function runNotifications(context: CliContext, args: ReturnType<typeof par
       case "accept": {
         const id = args.positionals[2];
         if (id === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少通知 ID,用法: amechan-vrchat notifications accept <notificationId>");
+          throw new VrchatError("NOT_FOUND", "缺少通知 ID,用法: sc-vrchat notifications accept <notificationId>");
         }
         const updated = await client.notifications.accept(id);
         outputJson({ ok: true, id: updated.id, type: updated.type });
@@ -718,7 +718,7 @@ async function runNotifications(context: CliContext, args: ReturnType<typeof par
       case "hide": {
         const id = args.positionals[2];
         if (id === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少通知 ID,用法: amechan-vrchat notifications hide <notificationId>");
+          throw new VrchatError("NOT_FOUND", "缺少通知 ID,用法: sc-vrchat notifications hide <notificationId>");
         }
         const updated = await client.notifications.hide(id);
         outputJson({ ok: true, id: updated.id, type: updated.type });
@@ -727,7 +727,7 @@ async function runNotifications(context: CliContext, args: ReturnType<typeof par
       case "see": {
         const id = args.positionals[2];
         if (id === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少通知 ID,用法: amechan-vrchat notifications see <notificationId>");
+          throw new VrchatError("NOT_FOUND", "缺少通知 ID,用法: sc-vrchat notifications see <notificationId>");
         }
         const updated = await client.notifications.markSeen(id);
         outputJson({ ok: true, id: updated.id, type: updated.type });
@@ -737,7 +737,7 @@ async function runNotifications(context: CliContext, args: ReturnType<typeof par
         const id = args.positionals[2];
         const message = args.positionals.slice(3).join(" ");
         if (id === undefined || message === "") {
-          throw new VrchatError("NOT_FOUND", "缺少参数,用法: amechan-vrchat notifications reply <notificationId> <message>");
+          throw new VrchatError("NOT_FOUND", "缺少参数,用法: sc-vrchat notifications reply <notificationId> <message>");
         }
         const updated = await client.notifications.reply(id, message);
         outputJson({ ok: true, id: updated.id, type: updated.type });
@@ -750,7 +750,7 @@ async function runNotifications(context: CliContext, args: ReturnType<typeof par
       }
       default:
         outputError(`Unknown subcommand: notifications ${sub}`);
-        printHelp("amechan-vrchat notifications <subcommand>", NOTIFICATIONS_COMMANDS, OPTIONS);
+        printHelp("sc-vrchat notifications <subcommand>", NOTIFICATIONS_COMMANDS, OPTIONS);
         process.exitCode = 1;
     }
   } finally {
@@ -778,7 +778,7 @@ async function runFavorites(context: CliContext, args: ReturnType<typeof parseAr
   const client = await makeClient(context);
   try {
     if (sub === undefined || sub === "help") {
-      printHelp("amechan-vrchat favorites <subcommand>", FAVORITES_COMMANDS, OPTIONS);
+      printHelp("sc-vrchat favorites <subcommand>", FAVORITES_COMMANDS, OPTIONS);
       return;
     }
     switch (sub) {
@@ -797,7 +797,7 @@ async function runFavorites(context: CliContext, args: ReturnType<typeof parseAr
         if (type === undefined || favoriteId === undefined) {
           throw new VrchatError(
             "NOT_FOUND",
-            "缺少参数,用法: amechan-vrchat favorites add <type> <favoriteId>",
+            "缺少参数,用法: sc-vrchat favorites add <type> <favoriteId>",
           );
         }
         const result = await client.favorites.add({
@@ -811,7 +811,7 @@ async function runFavorites(context: CliContext, args: ReturnType<typeof parseAr
       case "remove": {
         const id = args.positionals[2];
         if (id === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少收藏 ID,用法: amechan-vrchat favorites remove <favoriteId>");
+          throw new VrchatError("NOT_FOUND", "缺少收藏 ID,用法: sc-vrchat favorites remove <favoriteId>");
         }
         const result = await client.favorites.remove(id);
         outputJson({ ok: true, message: result.success.message });
@@ -830,7 +830,7 @@ async function runFavorites(context: CliContext, args: ReturnType<typeof parseAr
         if (type === undefined || groupName === undefined || userId === undefined) {
           throw new VrchatError(
             "NOT_FOUND",
-            "缺少参数,用法: amechan-vrchat favorites by-group <type> <groupName> <userId>",
+            "缺少参数,用法: sc-vrchat favorites by-group <type> <groupName> <userId>",
           );
         }
         const list = await client.favorites.getByGroup(type as never, groupName, userId, pageParams(args));
@@ -839,7 +839,7 @@ async function runFavorites(context: CliContext, args: ReturnType<typeof parseAr
       }
       default:
         outputError(`Unknown subcommand: favorites ${sub}`);
-        printHelp("amechan-vrchat favorites <subcommand>", FAVORITES_COMMANDS, OPTIONS);
+        printHelp("sc-vrchat favorites <subcommand>", FAVORITES_COMMANDS, OPTIONS);
         process.exitCode = 1;
     }
   } finally {
@@ -861,14 +861,14 @@ async function runGroups(context: CliContext, args: ReturnType<typeof parseArgs>
   const client = await makeClient(context);
   try {
     if (sub === undefined || sub === "help") {
-      printHelp("amechan-vrchat groups <subcommand>", GROUPS_COMMANDS, OPTIONS);
+      printHelp("sc-vrchat groups <subcommand>", GROUPS_COMMANDS, OPTIONS);
       return;
     }
     switch (sub) {
       case "get": {
         const id = args.positionals[2];
         if (id === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少群组 ID,用法: amechan-vrchat groups get <groupId>");
+          throw new VrchatError("NOT_FOUND", "缺少群组 ID,用法: sc-vrchat groups get <groupId>");
         }
         outputJson(await client.groups.getById(id));
         return;
@@ -876,7 +876,7 @@ async function runGroups(context: CliContext, args: ReturnType<typeof parseArgs>
       case "search": {
         const query = args.positionals[2];
         if (query === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少搜索词,用法: amechan-vrchat groups search <query>");
+          throw new VrchatError("NOT_FOUND", "缺少搜索词,用法: sc-vrchat groups search <query>");
         }
         const list = await client.groups.search({ search: query, ...pageParams(args) });
         outputJson({ count: list.length, groups: list.map(pickGroup) });
@@ -885,7 +885,7 @@ async function runGroups(context: CliContext, args: ReturnType<typeof parseArgs>
       case "members": {
         const id = args.positionals[2];
         if (id === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少群组 ID,用法: amechan-vrchat groups members <groupId>");
+          throw new VrchatError("NOT_FOUND", "缺少群组 ID,用法: sc-vrchat groups members <groupId>");
         }
         const list = await client.groups.listMembers(id, pageParams(args));
         outputJson({ count: list.length, members: list.map(pickUser) });
@@ -895,7 +895,7 @@ async function runGroups(context: CliContext, args: ReturnType<typeof parseArgs>
         const gid = args.positionals[2];
         const uid = args.positionals[3];
         if (gid === undefined || uid === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少参数,用法: amechan-vrchat groups member <groupId> <userId>");
+          throw new VrchatError("NOT_FOUND", "缺少参数,用法: sc-vrchat groups member <groupId> <userId>");
         }
         outputJson(await client.groups.getMember(gid, uid));
         return;
@@ -904,7 +904,7 @@ async function runGroups(context: CliContext, args: ReturnType<typeof parseArgs>
         const gid = args.positionals[2];
         const uid = args.positionals[3];
         if (gid === undefined || uid === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少参数,用法: amechan-vrchat groups remove-member <groupId> <userId>");
+          throw new VrchatError("NOT_FOUND", "缺少参数,用法: sc-vrchat groups remove-member <groupId> <userId>");
         }
         const result = await client.groups.removeMember(gid, uid);
         outputJson({ ok: true, message: result.success.message });
@@ -915,7 +915,7 @@ async function runGroups(context: CliContext, args: ReturnType<typeof parseArgs>
         const uid = args.positionals[3];
         const rid = args.positionals[4];
         if (gid === undefined || uid === undefined || rid === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少参数,用法: amechan-vrchat groups add-role <groupId> <userId> <roleId>");
+          throw new VrchatError("NOT_FOUND", "缺少参数,用法: sc-vrchat groups add-role <groupId> <userId> <roleId>");
         }
         const member = await client.groups.addRoleToMember(gid, uid, rid);
         outputJson({ ok: true, userId: member.id, roleIds: member.roleIds });
@@ -926,7 +926,7 @@ async function runGroups(context: CliContext, args: ReturnType<typeof parseArgs>
         const uid = args.positionals[3];
         const rid = args.positionals[4];
         if (gid === undefined || uid === undefined || rid === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少参数,用法: amechan-vrchat groups remove-role <groupId> <userId> <roleId>");
+          throw new VrchatError("NOT_FOUND", "缺少参数,用法: sc-vrchat groups remove-role <groupId> <userId> <roleId>");
         }
         const member = await client.groups.removeRoleFromMember(gid, uid, rid);
         outputJson({ ok: true, userId: member.id, roleIds: member.roleIds });
@@ -940,7 +940,7 @@ async function runGroups(context: CliContext, args: ReturnType<typeof parseArgs>
       case "instances": {
         const id = args.positionals[2];
         if (id === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少群组 ID,用法: amechan-vrchat groups instances <groupId>");
+          throw new VrchatError("NOT_FOUND", "缺少群组 ID,用法: sc-vrchat groups instances <groupId>");
         }
         const list = await client.groups.listInstances(id);
         outputJson({ count: list.length, instances: list });
@@ -949,7 +949,7 @@ async function runGroups(context: CliContext, args: ReturnType<typeof parseArgs>
       case "permissions": {
         const id = args.positionals[2];
         if (id === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少群组 ID,用法: amechan-vrchat groups permissions <groupId>");
+          throw new VrchatError("NOT_FOUND", "缺少群组 ID,用法: sc-vrchat groups permissions <groupId>");
         }
         const list = await client.groups.listPermissions(id);
         outputJson({ count: list.length, permissions: list });
@@ -958,7 +958,7 @@ async function runGroups(context: CliContext, args: ReturnType<typeof parseArgs>
       case "requests": {
         const id = args.positionals[2];
         if (id === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少群组 ID,用法: amechan-vrchat groups requests <groupId>");
+          throw new VrchatError("NOT_FOUND", "缺少群组 ID,用法: sc-vrchat groups requests <groupId>");
         }
         const list = await client.groups.listRequests(id, pageParams(args));
         outputJson({ count: list.length, requests: list.map(pickUser) });
@@ -968,7 +968,7 @@ async function runGroups(context: CliContext, args: ReturnType<typeof parseArgs>
         const gid = args.positionals[2];
         const uid = args.positionals[3];
         if (gid === undefined || uid === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少参数,用法: amechan-vrchat groups approve <groupId> <userId>");
+          throw new VrchatError("NOT_FOUND", "缺少参数,用法: sc-vrchat groups approve <groupId> <userId>");
         }
         const member = await client.groups.approveRequest(gid, uid);
         outputJson({ ok: true, userId: member.id });
@@ -977,7 +977,7 @@ async function runGroups(context: CliContext, args: ReturnType<typeof parseArgs>
       case "bans": {
         const id = args.positionals[2];
         if (id === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少群组 ID,用法: amechan-vrchat groups bans <groupId>");
+          throw new VrchatError("NOT_FOUND", "缺少群组 ID,用法: sc-vrchat groups bans <groupId>");
         }
         const list = await client.groups.listBans(id);
         outputJson({ count: list.length, bans: list.map((b) => ({ userId: b.user.id, username: b.user.username, bannedAt: b.bannedAt })) });
@@ -987,7 +987,7 @@ async function runGroups(context: CliContext, args: ReturnType<typeof parseArgs>
         const gid = args.positionals[2];
         const uid = args.positionals[3];
         if (gid === undefined || uid === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少参数,用法: amechan-vrchat groups ban <groupId> <userId>");
+          throw new VrchatError("NOT_FOUND", "缺少参数,用法: sc-vrchat groups ban <groupId> <userId>");
         }
         const ban = await client.groups.banMember(gid, uid);
         outputJson({ ok: true, userId: ban.user.id });
@@ -997,7 +997,7 @@ async function runGroups(context: CliContext, args: ReturnType<typeof parseArgs>
         const gid = args.positionals[2];
         const uid = args.positionals[3];
         if (gid === undefined || uid === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少参数,用法: amechan-vrchat groups unban <groupId> <userId>");
+          throw new VrchatError("NOT_FOUND", "缺少参数,用法: sc-vrchat groups unban <groupId> <userId>");
         }
         const result = await client.groups.unbanMember(gid, uid);
         outputJson({ ok: true, message: result.success.message });
@@ -1006,7 +1006,7 @@ async function runGroups(context: CliContext, args: ReturnType<typeof parseArgs>
       case "roles": {
         const id = args.positionals[2];
         if (id === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少群组 ID,用法: amechan-vrchat groups roles <groupId>");
+          throw new VrchatError("NOT_FOUND", "缺少群组 ID,用法: sc-vrchat groups roles <groupId>");
         }
         const list = await client.groups.listRoles(id);
         outputJson({ count: list.length, roles: list });
@@ -1015,7 +1015,7 @@ async function runGroups(context: CliContext, args: ReturnType<typeof parseArgs>
       case "join": {
         const id = args.positionals[2];
         if (id === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少群组 ID,用法: amechan-vrchat groups join <groupId>");
+          throw new VrchatError("NOT_FOUND", "缺少群组 ID,用法: sc-vrchat groups join <groupId>");
         }
         const group = await client.groups.join(id);
         outputJson({ ok: true, groupId: group.id });
@@ -1024,7 +1024,7 @@ async function runGroups(context: CliContext, args: ReturnType<typeof parseArgs>
       case "leave": {
         const id = args.positionals[2];
         if (id === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少群组 ID,用法: amechan-vrchat groups leave <groupId>");
+          throw new VrchatError("NOT_FOUND", "缺少群组 ID,用法: sc-vrchat groups leave <groupId>");
         }
         const result = await client.groups.leave(id);
         outputJson({ ok: true, message: result.success.message });
@@ -1033,7 +1033,7 @@ async function runGroups(context: CliContext, args: ReturnType<typeof parseArgs>
       case "announcement": {
         const id = args.positionals[2];
         if (id === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少群组 ID,用法: amechan-vrchat groups announcement <groupId>");
+          throw new VrchatError("NOT_FOUND", "缺少群组 ID,用法: sc-vrchat groups announcement <groupId>");
         }
         outputJson(await client.groups.getAnnouncement(id));
         return;
@@ -1042,14 +1042,14 @@ async function runGroups(context: CliContext, args: ReturnType<typeof parseArgs>
         const id = args.positionals[2];
         const message = args.positionals.slice(3).join(" ");
         if (id === undefined || message === "") {
-          throw new VrchatError("NOT_FOUND", "缺少参数,用法: amechan-vrchat groups announce <groupId> <message>");
+          throw new VrchatError("NOT_FOUND", "缺少参数,用法: sc-vrchat groups announce <groupId> <message>");
         }
         outputJson(await client.groups.setAnnouncement(id, message));
         return;
       }
       default:
         outputError(`Unknown subcommand: groups ${sub}`);
-        printHelp("amechan-vrchat groups <subcommand>", GROUPS_COMMANDS, OPTIONS);
+        printHelp("sc-vrchat groups <subcommand>", GROUPS_COMMANDS, OPTIONS);
         process.exitCode = 1;
     }
   } finally {
@@ -1062,14 +1062,14 @@ async function runFiles(context: CliContext, args: ReturnType<typeof parseArgs>)
   const client = await makeClient(context);
   try {
     if (sub === undefined || sub === "help") {
-      printHelp("amechan-vrchat files <subcommand>", FILES_COMMANDS, OPTIONS);
+      printHelp("sc-vrchat files <subcommand>", FILES_COMMANDS, OPTIONS);
       return;
     }
     switch (sub) {
       case "get": {
         const id = args.positionals[2];
         if (id === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少文件 ID,用法: amechan-vrchat files get <fileId>");
+          throw new VrchatError("NOT_FOUND", "缺少文件 ID,用法: sc-vrchat files get <fileId>");
         }
         outputJson(await client.files.getById(id));
         return;
@@ -1086,7 +1086,7 @@ async function runFiles(context: CliContext, args: ReturnType<typeof parseArgs>)
         if (name === undefined || mimeType === undefined || extension === undefined) {
           throw new VrchatError(
             "NOT_FOUND",
-            "缺少参数,用法: amechan-vrchat files create <name> <mimeType> <extension>",
+            "缺少参数,用法: sc-vrchat files create <name> <mimeType> <extension>",
           );
         }
         outputJson(await client.files.create({ name, mimeType, extension }));
@@ -1099,7 +1099,7 @@ async function runFiles(context: CliContext, args: ReturnType<typeof parseArgs>)
         if (name === undefined || mimeType === undefined || extension === undefined) {
           throw new VrchatError(
             "NOT_FOUND",
-            "缺少参数,用法: amechan-vrchat files create-image <name> <mimeType> <extension>",
+            "缺少参数,用法: sc-vrchat files create-image <name> <mimeType> <extension>",
           );
         }
         outputJson(await client.files.createImage({ name, mimeType, extension }));
@@ -1108,7 +1108,7 @@ async function runFiles(context: CliContext, args: ReturnType<typeof parseArgs>)
       case "delete": {
         const id = args.positionals[2];
         if (id === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少文件 ID,用法: amechan-vrchat files delete <fileId>");
+          throw new VrchatError("NOT_FOUND", "缺少文件 ID,用法: sc-vrchat files delete <fileId>");
         }
         const result = await client.files.delete(id);
         outputJson({ ok: true, message: result.success.message });
@@ -1116,7 +1116,7 @@ async function runFiles(context: CliContext, args: ReturnType<typeof parseArgs>)
       }
       default:
         outputError(`Unknown subcommand: files ${sub}`);
-        printHelp("amechan-vrchat files <subcommand>", FILES_COMMANDS, OPTIONS);
+        printHelp("sc-vrchat files <subcommand>", FILES_COMMANDS, OPTIONS);
         process.exitCode = 1;
     }
   } finally {
@@ -1129,7 +1129,7 @@ async function runPermissions(context: CliContext, args: ReturnType<typeof parse
   const client = await makeClient(context);
   try {
     if (sub === undefined || sub === "help") {
-      printHelp("amechan-vrchat permissions <subcommand>", PERMISSIONS_COMMANDS, OPTIONS);
+      printHelp("sc-vrchat permissions <subcommand>", PERMISSIONS_COMMANDS, OPTIONS);
       return;
     }
     switch (sub) {
@@ -1141,14 +1141,14 @@ async function runPermissions(context: CliContext, args: ReturnType<typeof parse
       case "get": {
         const id = args.positionals[2];
         if (id === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少权限 ID,用法: amechan-vrchat permissions get <permissionId>");
+          throw new VrchatError("NOT_FOUND", "缺少权限 ID,用法: sc-vrchat permissions get <permissionId>");
         }
         outputJson(await client.permissions.getById(id));
         return;
       }
       default:
         outputError(`Unknown subcommand: permissions ${sub}`);
-        printHelp("amechan-vrchat permissions <subcommand>", PERMISSIONS_COMMANDS, OPTIONS);
+        printHelp("sc-vrchat permissions <subcommand>", PERMISSIONS_COMMANDS, OPTIONS);
         process.exitCode = 1;
     }
   } finally {
@@ -1175,7 +1175,7 @@ async function runSystem(context: CliContext, args: ReturnType<typeof parseArgs>
   const client = await makeClient(context);
   try {
     if (sub === undefined || sub === "help") {
-      printHelp("amechan-vrchat system <subcommand>", SYSTEM_COMMANDS, OPTIONS);
+      printHelp("sc-vrchat system <subcommand>", SYSTEM_COMMANDS, OPTIONS);
       return;
     }
     switch (sub) {
@@ -1190,7 +1190,7 @@ async function runSystem(context: CliContext, args: ReturnType<typeof parseArgs>
         return;
       default:
         outputError(`Unknown subcommand: system ${sub}`);
-        printHelp("amechan-vrchat system <subcommand>", SYSTEM_COMMANDS, OPTIONS);
+        printHelp("sc-vrchat system <subcommand>", SYSTEM_COMMANDS, OPTIONS);
         process.exitCode = 1;
     }
   } finally {
@@ -1203,14 +1203,14 @@ async function runEconomy(context: CliContext, args: ReturnType<typeof parseArgs
   const client = await makeClient(context);
   try {
     if (sub === undefined || sub === "help") {
-      printHelp("amechan-vrchat economy <subcommand>", ECONOMY_COMMANDS, OPTIONS);
+      printHelp("sc-vrchat economy <subcommand>", ECONOMY_COMMANDS, OPTIONS);
       return;
     }
     switch (sub) {
       case "balance": {
         const userId = args.positionals[2];
         if (userId === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少用户 ID,用法: amechan-vrchat economy balance <userId>");
+          throw new VrchatError("NOT_FOUND", "缺少用户 ID,用法: sc-vrchat economy balance <userId>");
         }
         outputJson(await client.economy.getBalance(userId));
         return;
@@ -1218,7 +1218,7 @@ async function runEconomy(context: CliContext, args: ReturnType<typeof parseArgs
       case "transactions": {
         const userId = args.positionals[2];
         if (userId === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少用户 ID,用法: amechan-vrchat economy transactions <userId>");
+          throw new VrchatError("NOT_FOUND", "缺少用户 ID,用法: sc-vrchat economy transactions <userId>");
         }
         const list = await client.economy.getTransactions(userId, pageParams(args));
         outputJson({ count: list.length, transactions: list });
@@ -1226,7 +1226,7 @@ async function runEconomy(context: CliContext, args: ReturnType<typeof parseArgs
       }
       default:
         outputError(`Unknown subcommand: economy ${sub}`);
-        printHelp("amechan-vrchat economy <subcommand>", ECONOMY_COMMANDS, OPTIONS);
+        printHelp("sc-vrchat economy <subcommand>", ECONOMY_COMMANDS, OPTIONS);
         process.exitCode = 1;
     }
   } finally {
@@ -1239,7 +1239,7 @@ async function runModeration(context: CliContext, args: ReturnType<typeof parseA
   const client = await makeClient(context);
   try {
     if (sub === undefined || sub === "help") {
-      printHelp("amechan-vrchat moderation <subcommand>", MODERATION_COMMANDS, OPTIONS);
+      printHelp("sc-vrchat moderation <subcommand>", MODERATION_COMMANDS, OPTIONS);
       return;
     }
     switch (sub) {
@@ -1257,7 +1257,7 @@ async function runModeration(context: CliContext, args: ReturnType<typeof parseA
         if (type === undefined || userId === undefined) {
           throw new VrchatError(
             "NOT_FOUND",
-            "缺少参数,用法: amechan-vrchat moderation create <type> <userId>",
+            "缺少参数,用法: sc-vrchat moderation create <type> <userId>",
           );
         }
         outputJson(await client.moderation.create({ type: type as never, moderated: userId }));
@@ -1269,7 +1269,7 @@ async function runModeration(context: CliContext, args: ReturnType<typeof parseA
         if (type === undefined || userId === undefined) {
           throw new VrchatError(
             "NOT_FOUND",
-            "缺少参数,用法: amechan-vrchat moderation unmoderate <type> <userId>",
+            "缺少参数,用法: sc-vrchat moderation unmoderate <type> <userId>",
           );
         }
         outputJson(await client.moderation.unmoderate({ type: type as never, moderated: userId }));
@@ -1278,7 +1278,7 @@ async function runModeration(context: CliContext, args: ReturnType<typeof parseA
       case "report": {
         const reported = args.positionals[2];
         if (reported === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少被举报用户 ID,用法: amechan-vrchat moderation report <reportedUserId>");
+          throw new VrchatError("NOT_FOUND", "缺少被举报用户 ID,用法: sc-vrchat moderation report <reportedUserId>");
         }
         const me = await client.auth.currentUser();
         const result = await client.moderation.report({
@@ -1291,7 +1291,7 @@ async function runModeration(context: CliContext, args: ReturnType<typeof parseA
       }
       default:
         outputError(`Unknown subcommand: moderation ${sub}`);
-        printHelp("amechan-vrchat moderation <subcommand>", MODERATION_COMMANDS, OPTIONS);
+        printHelp("sc-vrchat moderation <subcommand>", MODERATION_COMMANDS, OPTIONS);
         process.exitCode = 1;
     }
   } finally {
@@ -1304,7 +1304,7 @@ async function runInvite(context: CliContext, args: ReturnType<typeof parseArgs>
   const client = await makeClient(context);
   try {
     if (sub === undefined || sub === "help") {
-      printHelp("amechan-vrchat invite <subcommand>", INVITE_COMMANDS, OPTIONS);
+      printHelp("sc-vrchat invite <subcommand>", INVITE_COMMANDS, OPTIONS);
       return;
     }
     switch (sub) {
@@ -1315,7 +1315,7 @@ async function runInvite(context: CliContext, args: ReturnType<typeof parseArgs>
         if (userId === undefined || worldId === undefined || instanceId === undefined) {
           throw new VrchatError(
             "NOT_FOUND",
-            "缺少参数,用法: amechan-vrchat invite invite <userId> <worldId> <instanceId>",
+            "缺少参数,用法: sc-vrchat invite invite <userId> <worldId> <instanceId>",
           );
         }
         const result = await client.invite.invite(userId, { worldId, instanceId });
@@ -1325,7 +1325,7 @@ async function runInvite(context: CliContext, args: ReturnType<typeof parseArgs>
       case "request": {
         const userId = args.positionals[2];
         if (userId === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少用户 ID,用法: amechan-vrchat invite request <userId>");
+          throw new VrchatError("NOT_FOUND", "缺少用户 ID,用法: sc-vrchat invite request <userId>");
         }
         const result = await client.invite.requestInvite(userId);
         outputJson({ ok: true, notificationId: result.id, type: result.type });
@@ -1337,7 +1337,7 @@ async function runInvite(context: CliContext, args: ReturnType<typeof parseArgs>
         if (worldId === undefined || instanceId === undefined) {
           throw new VrchatError(
             "NOT_FOUND",
-            "缺少参数,用法: amechan-vrchat invite join <worldId> <instanceId>",
+            "缺少参数,用法: sc-vrchat invite join <worldId> <instanceId>",
           );
         }
         const result = await client.invite.joinSelf(worldId, instanceId);
@@ -1350,7 +1350,7 @@ async function runInvite(context: CliContext, args: ReturnType<typeof parseArgs>
         if (notificationId === undefined || (response !== "yes" && response !== "no")) {
           throw new VrchatError(
             "NOT_FOUND",
-            "缺少参数,用法: amechan-vrchat invite respond <notificationId> <yes|no>",
+            "缺少参数,用法: sc-vrchat invite respond <notificationId> <yes|no>",
           );
         }
         const result = await client.invite.respond(notificationId, response);
@@ -1359,7 +1359,7 @@ async function runInvite(context: CliContext, args: ReturnType<typeof parseArgs>
       }
       default:
         outputError(`Unknown subcommand: invite ${sub}`);
-        printHelp("amechan-vrchat invite <subcommand>", INVITE_COMMANDS, OPTIONS);
+        printHelp("sc-vrchat invite <subcommand>", INVITE_COMMANDS, OPTIONS);
         process.exitCode = 1;
     }
   } finally {
@@ -1372,7 +1372,7 @@ async function runMessages(context: CliContext, args: ReturnType<typeof parseArg
   const client = await makeClient(context);
   try {
     if (sub === undefined || sub === "help") {
-      printHelp("amechan-vrchat messages <subcommand>", MESSAGES_COMMANDS, OPTIONS);
+      printHelp("sc-vrchat messages <subcommand>", MESSAGES_COMMANDS, OPTIONS);
       return;
     }
     switch (sub) {
@@ -1380,7 +1380,7 @@ async function runMessages(context: CliContext, args: ReturnType<typeof parseArg
         const userId = args.positionals[2];
         const type = args.positionals[3];
         if (userId === undefined || type === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少参数,用法: amechan-vrchat messages list <userId> <type>");
+          throw new VrchatError("NOT_FOUND", "缺少参数,用法: sc-vrchat messages list <userId> <type>");
         }
         const list = await client.messages.list(userId, type as never);
         outputJson({ count: list.length, messages: list });
@@ -1391,7 +1391,7 @@ async function runMessages(context: CliContext, args: ReturnType<typeof parseArg
         const type = args.positionals[3];
         const slot = args.positionals[4];
         if (userId === undefined || type === undefined || slot === undefined) {
-          throw new VrchatError("NOT_FOUND", "缺少参数,用法: amechan-vrchat messages get <userId> <type> <slot>");
+          throw new VrchatError("NOT_FOUND", "缺少参数,用法: sc-vrchat messages get <userId> <type> <slot>");
         }
         outputJson(await client.messages.get(userId, type as never, Number(slot)));
         return;
@@ -1404,7 +1404,7 @@ async function runMessages(context: CliContext, args: ReturnType<typeof parseArg
         if (userId === undefined || type === undefined || slot === undefined || text === "") {
           throw new VrchatError(
             "NOT_FOUND",
-            "缺少参数,用法: amechan-vrchat messages update <userId> <type> <slot> <text>",
+            "缺少参数,用法: sc-vrchat messages update <userId> <type> <slot> <text>",
           );
         }
         outputJson(await client.messages.update(userId, type as never, Number(slot), text));
@@ -1412,7 +1412,7 @@ async function runMessages(context: CliContext, args: ReturnType<typeof parseArg
       }
       default:
         outputError(`Unknown subcommand: messages ${sub}`);
-        printHelp("amechan-vrchat messages <subcommand>", MESSAGES_COMMANDS, OPTIONS);
+        printHelp("sc-vrchat messages <subcommand>", MESSAGES_COMMANDS, OPTIONS);
         process.exitCode = 1;
     }
   } finally {
@@ -1493,7 +1493,7 @@ async function runStatus(context: CliContext): Promise<void> {
   });
   const payload = store.loadSync();
   if (payload === null) {
-    outputJson({ loggedIn: false, message: "未登录,请运行 amechan-vrchat login" });
+    outputJson({ loggedIn: false, message: "未登录,请运行 sc-vrchat login" });
     return;
   }
   const cookie = payload.credentials?.authCookie;

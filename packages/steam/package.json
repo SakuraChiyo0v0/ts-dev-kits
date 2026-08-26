@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/steam",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Steam SDK (query-only): Web API / Storefront / Community endpoints, login session (password+Guard / TOTP / QR / cookie import), zero write operations",
   "license": "UNLICENSED",
   "type": "module",
@@ -19,7 +19,7 @@
     }
   },
   "bin": {
-    "amechan-steam": "./dist/cli/steam.js"
+    "sc-steam": "./dist/cli/steam.js"
   },
   "files": [
     "dist",

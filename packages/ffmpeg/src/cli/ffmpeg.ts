@@ -28,7 +28,7 @@ function scaleFromArgs(args: ReturnType<typeof parseArgs>): { width?: number; he
   };
 }
 
-const USAGE = "Usage: amechan-ffmpeg <command> [options]";
+const USAGE = "Usage: sc-ffmpeg <command> [options]";
 
 const COMMANDS = [
   { name: "probe", desc: "Read media metadata" },

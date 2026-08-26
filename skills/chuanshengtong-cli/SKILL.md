@@ -1,12 +1,12 @@
-# amechan-chuanshengtong CLI
+# sc-chuanshengtong CLI
 
-让 AI 直接用 `amechan-chuanshengtong` 命令行把文字套用内置图像模板生成图片(传声筒)。**基于 `@sakurachiyo0v0/chuanshengtong` SDK**。
+让 AI 直接用 `sc-chuanshengtong` 命令行把文字套用内置图像模板生成图片(传声筒)。**基于 `@sakurachiyo0v0/chuanshengtong` SDK**。
 
 ## 环境检查
 
 ```bash
-amechan-chuanshengtong help    # 查看命令与选项
-which amechan-chuanshengtong   # 确认已安装
+sc-chuanshengtong help    # 查看命令与选项
+which sc-chuanshengtong   # 确认已安装
 ```
 
 未安装:`npm i -g @sakurachiyo0v0/chuanshengtong`。
@@ -14,7 +14,7 @@ which amechan-chuanshengtong   # 确认已安装
 ## 模板
 
 ```bash
-amechan-chuanshengtong list    # 列出内置模板(id/名称/尺寸/容量)
+sc-chuanshengtong list    # 列出内置模板(id/名称/尺寸/容量)
 ```
 
 模板 id 一览:
@@ -29,13 +29,13 @@ amechan-chuanshengtong list    # 列出内置模板(id/名称/尺寸/容量)
 ## 命令速查
 
 ```bash
-amechan-chuanshengtong help                                            # 显示帮助
-amechan-chuanshengtong list                                            # 列出全部模板(JSON)
-amechan-chuanshengtong render "要传的话"                                # 默认 dazibao 模板,输出 chuanshengtong-<时间戳>.png
-amechan-chuanshengtong render "我会回来的!" --template speech-bubble --output bubble.png
-amechan-chuanshengtong render "通知" --template notice --format jpeg --width 600 --quality 80
-amechan-chuanshengtong render "愿你好" --template card --font-size 48 --color "#ffcc00"
-amechan-chuanshengtong render "**[c:red]重点[/c]**提醒" --output highlight.png   # 富文本
+sc-chuanshengtong help                                            # 显示帮助
+sc-chuanshengtong list                                            # 列出全部模板(JSON)
+sc-chuanshengtong render "要传的话"                                # 默认 dazibao 模板,输出 chuanshengtong-<时间戳>.png
+sc-chuanshengtong render "我会回来的!" --template speech-bubble --output bubble.png
+sc-chuanshengtong render "通知" --template notice --format jpeg --width 600 --quality 80
+sc-chuanshengtong render "愿你好" --template card --font-size 48 --color "#ffcc00"
+sc-chuanshengtong render "**[c:red]重点[/c]**提醒" --output highlight.png   # 富文本
 ```
 
 ### 富文本(行内标记)

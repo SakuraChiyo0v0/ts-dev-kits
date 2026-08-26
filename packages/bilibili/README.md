@@ -60,9 +60,9 @@ await bili.download(items[0]!, {
 CLI 弹出浏览器窗口扫码登录,自动收集 cookie 并持久化,无需手动复制:
 
 ```powershell
-amechan-bilibili login     # 打开浏览器窗口,用哔哩哔哩 App 扫码
-amechan-bilibili status    # 查看登录状态(不打印 cookie)
-amechan-bilibili logout    # 清除登录态
+sc-bilibili login     # 打开浏览器窗口,用哔哩哔哩 App 扫码
+sc-bilibili status    # 查看登录状态(不打印 cookie)
+sc-bilibili logout    # 清除登录态
 ```
 
 无头环境可用 `--no-browser`(仅打印扫码链接)与 `--timeout <sec>`(默认 180 秒)。登录后 `parse` / `streams` / `download` 自动使用存储的 cookie(高画质无需再传 `--cookie`);cookie 过期时自动用 refresh_token 续期。
@@ -223,15 +223,15 @@ const page = await bili.fav.listResources(mediaId, { pn: 1, ps: 20 }); // 内容
 CLI:
 
 ```powershell
-amechan-bilibili fav list <mid>                 # 用户创建的收藏夹
-amechan-bilibili fav collected <mid>            # 用户收藏的收藏夹
-amechan-bilibili fav info <mediaId>             # 收藏夹元数据
-amechan-bilibili fav videos <mediaId>           # 收藏夹内容(--pn --ps)
-amechan-bilibili fav create <title> [--intro] [--private]
-amechan-bilibili fav edit <mediaId> <title> [--intro] [--private]
-amechan-bilibili fav delete <mediaIds...>
-amechan-bilibili fav add <rid> <mediaIds...>    # 收藏视频到收藏夹
-amechan-bilibili fav remove <rid> <mediaIds...> # 取消收藏
+sc-bilibili fav list <mid>                 # 用户创建的收藏夹
+sc-bilibili fav collected <mid>            # 用户收藏的收藏夹
+sc-bilibili fav info <mediaId>             # 收藏夹元数据
+sc-bilibili fav videos <mediaId>           # 收藏夹内容(--pn --ps)
+sc-bilibili fav create <title> [--intro] [--private]
+sc-bilibili fav edit <mediaId> <title> [--intro] [--private]
+sc-bilibili fav delete <mediaIds...>
+sc-bilibili fav add <rid> <mediaIds...>    # 收藏视频到收藏夹
+sc-bilibili fav remove <rid> <mediaIds...> # 取消收藏
 ```
 
 > 后续块(关注/分组/三连/评论/弹幕/动态/稍后再看/历史等)按 [`docs/superpowers/specs/2026-08-23-bilibili-control-apis-design.md`](../../docs/superpowers/specs/2026-08-23-bilibili-control-apis-design.md) 的清单逐块实现。

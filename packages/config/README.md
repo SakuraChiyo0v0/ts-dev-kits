@@ -8,7 +8,7 @@
 - namespace 隔离:`cc.namespace("xiaoheihe", { encrypt: true })` → 自动映射 `/amechan/secrets/xiaoheihe/*`(加密)或 `/amechan/configs/bilibili/*`(明文)
 - 加密按域开关:`encrypt` 默认 false,敏感域显式 true——"敏感才加密"
 - 复用 `@sakurachiyo0v0/webdav`(ConfigStore/EncryptedConfigStore),不重复造轮子
-- CLI `amechan-config`:setup / status / get / set / list / remove / clear
+- CLI `sc-config`:setup / status / get / set / list / remove / clear
 
 ## 适用环境
 
@@ -26,7 +26,7 @@ pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/c
 ```ts
 import { createConfigCenter } from "@sakurachiyo0v0/config";
 
-// 1. 一次性设置(也可用 CLI: amechan-config setup --url ... --username ... --password ... --key ...)
+// 1. 一次性设置(也可用 CLI: sc-config setup --url ... --username ... --password ... --key ...)
 //    之后 createConfigCenter() 自动读取本地全局配置
 const cc = createConfigCenter();   // 读 <配置根>/amechan/config.json
 
@@ -82,9 +82,9 @@ namespace 不允许路径分隔符/`..`(防越界)。
 ## CLI
 
 ```powershell
-amechan-config setup --url ... --username ... --password ... --key ...
-amechan-config status | clear
-amechan-config get|set|list|remove <namespace> <key> [--encrypt] [--json <JSON>|--file <path>]
+sc-config setup --url ... --username ... --password ... --key ...
+sc-config status | clear
+sc-config get|set|list|remove <namespace> <key> [--encrypt] [--json <JSON>|--file <path>]
 ```
 
 完整命令速查见 [`skills/config-cli/SKILL.md`](../../skills/config-cli/SKILL.md)。

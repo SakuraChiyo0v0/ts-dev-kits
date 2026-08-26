@@ -27,11 +27,11 @@ allowBuilds:
 ## CLI 用法
 
 ```powershell
-amechan-chuanshengtong list                          # 列出内置模板(JSON)
-amechan-chuanshengtong render "要传的话"              # 默认大字报模板,输出 chuanshengtong-<时间戳>.png
-amechan-chuanshengtong render "台词" --template speech-bubble --output bubble.png
-amechan-chuanshengtong render "通知" --template notice --format jpeg --width 600 --quality 80
-amechan-chuanshengtong render "愿你好" --template card --font-size 48 --color "#ffcc00"
+sc-chuanshengtong list                          # 列出内置模板(JSON)
+sc-chuanshengtong render "要传的话"              # 默认大字报模板,输出 chuanshengtong-<时间戳>.png
+sc-chuanshengtong render "台词" --template speech-bubble --output bubble.png
+sc-chuanshengtong render "通知" --template notice --format jpeg --width 600 --quality 80
+sc-chuanshengtong render "愿你好" --template card --font-size 48 --color "#ffcc00"
 ```
 
 | 选项 | 说明 | 默认 |

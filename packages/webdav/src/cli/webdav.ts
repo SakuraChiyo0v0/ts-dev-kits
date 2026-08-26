@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * amechan-webdav CLI:ping / list / get / put / delete / mkdir / rmdir / move / config-load / config-save。
+ * sc-webdav CLI:ping / list / get / put / delete / mkdir / rmdir / move / config-load / config-save。
  * 连接参数(优先命令行,其次环境变量):
  *   WEBDAV_URL       — WebDAV 地址
  *   WEBDAV_USERNAME  — 用户名
@@ -24,7 +24,7 @@ import { createEncryptedConfigStore } from "../encrypted-config-store.js";
 import { WebdavError } from "../errors.js";
 import type { WebdavClient } from "../types.js";
 
-const USAGE = "amechan-webdav <command> [options]";
+const USAGE = "sc-webdav <command> [options]";
 const COMMANDS = [
   { name: "help", desc: "显示帮助" },
   { name: "ping", desc: "连通性检查" },
@@ -148,7 +148,7 @@ async function run(): Promise<void> {
       return;
     }
     default:
-      throw new CliError(`未知命令: ${command}(运行 amechan-webdav help 查看用法)`);
+      throw new CliError(`未知命令: ${command}(运行 sc-webdav help 查看用法)`);
   }
 }
 

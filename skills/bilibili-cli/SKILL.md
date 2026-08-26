@@ -1,12 +1,12 @@
-# amechan-bilibili CLI
+# sc-bilibili CLI
 
-让 AI 直接用 `amechan-bilibili` 命令行操作 B 站:下载视频 + 平台控制(收藏夹/关注/分组/登录)。无需写代码。
+让 AI 直接用 `sc-bilibili` 命令行操作 B 站:下载视频 + 平台控制(收藏夹/关注/分组/登录)。无需写代码。
 
 ## 环境检查
 
 ```bash
-amechan-bilibili help    # 查看命令与选项
-which amechan-bilibili   # 确认已安装
+sc-bilibili help    # 查看命令与选项
+which sc-bilibili   # 确认已安装
 ```
 
 未安装:`npm i -g @sakurachiyo0v0/bilibili`(需系统已装 ffmpeg 用于合并)。
@@ -16,11 +16,11 @@ which amechan-bilibili   # 确认已安装
 登录态自动从 `auth.json` 加载(默认 `<配置根>/amechan/bilibili/auth.json`),**无需手动传 cookie**:
 
 ```bash
-amechan-bilibili login        # 扫码登录(自动打开浏览器窗口)
-amechan-bilibili login --no-browser   # 不弹浏览器,只打印二维码 URL 手动扫码
-amechan-bilibili login --qr-image qr.png   # 把二维码图片写入 qr.png(供聊天/远程渠道展示给用户扫码),不弹浏览器
-amechan-bilibili status       # 查看登录状态(登录用户 mid)
-amechan-bilibili logout       # 清除本地登录态
+sc-bilibili login        # 扫码登录(自动打开浏览器窗口)
+sc-bilibili login --no-browser   # 不弹浏览器,只打印二维码 URL 手动扫码
+sc-bilibili login --qr-image qr.png   # 把二维码图片写入 qr.png(供聊天/远程渠道展示给用户扫码),不弹浏览器
+sc-bilibili status       # 查看登录状态(登录用户 mid)
+sc-bilibili logout       # 清除本地登录态
 ```
 
 - `--auth-path <path>` 可指定登录态文件路径(或环境变量 `BILI_AUTH_PATH`)。
@@ -32,62 +32,62 @@ amechan-bilibili logout       # 清除本地登录态
 ### 解析 / 下载
 
 ```bash
-amechan-bilibili parse --url "https://www.bilibili.com/video/BV1xx411c7mD"
+sc-bilibili parse --url "https://www.bilibili.com/video/BV1xx411c7mD"
 # 输出 JSON 数组,每项含 type/bvid/cid/title/时长/分P
 
-amechan-bilibili streams --url "BV链接" --quality 80
+sc-bilibili streams --url "BV链接" --quality 80
 # 输出清晰度、视频流列表(编码)、音频流列表
 
-amechan-bilibili download --url "BV链接" --output-dir ./videos
+sc-bilibili download --url "BV链接" --output-dir ./videos
 # 默认 720P,合并音视频输出 mp4
 
-amechan-bilibili download --url "BV链接" --output-dir ./videos --quality 80 --codec 12
+sc-bilibili download --url "BV链接" --output-dir ./videos --quality 80 --codec 12
 # 指定清晰度与编码
 
-amechan-bilibili download --url "BV链接" --output-dir ./videos --no-merge
+sc-bilibili download --url "BV链接" --output-dir ./videos --no-merge
 # 不合并(单独 .m4s 文件)
 
-amechan-bilibili download --url "BV链接" --output-dir ./videos --index 1
+sc-bilibili download --url "BV链接" --output-dir ./videos --index 1
 # 多P视频选第几P
 ```
 
 ### 收藏夹(`fav`)
 
 ```bash
-amechan-bilibili fav list <mid>              # 用户创建的收藏夹列表
-amechan-bilibili fav collected <mid>         # 用户收藏的收藏夹列表
-amechan-bilibili fav info <mediaId>          # 收藏夹元数据
-amechan-bilibili fav videos <mediaId>        # 收藏夹内容(--pn --ps)
-amechan-bilibili fav create <title>          # 创建收藏夹(--intro --private)
-amechan-bilibili fav edit <mediaId> <title>  # 编辑收藏夹(--intro --private)
-amechan-bilibili fav delete <mediaIds...>    # 删除收藏夹(逗号或空格分隔)
-amechan-bilibili fav add <rid> <mediaIds...> # 收藏视频到收藏夹(rid 为视频 id)
-amechan-bilibili fav remove <rid> <mediaIds...> # 从收藏夹移除视频
+sc-bilibili fav list <mid>              # 用户创建的收藏夹列表
+sc-bilibili fav collected <mid>         # 用户收藏的收藏夹列表
+sc-bilibili fav info <mediaId>          # 收藏夹元数据
+sc-bilibili fav videos <mediaId>        # 收藏夹内容(--pn --ps)
+sc-bilibili fav create <title>          # 创建收藏夹(--intro --private)
+sc-bilibili fav edit <mediaId> <title>  # 编辑收藏夹(--intro --private)
+sc-bilibili fav delete <mediaIds...>    # 删除收藏夹(逗号或空格分隔)
+sc-bilibili fav add <rid> <mediaIds...> # 收藏视频到收藏夹(rid 为视频 id)
+sc-bilibili fav remove <rid> <mediaIds...> # 从收藏夹移除视频
 ```
 
 ### 关注(`relation`)
 
 ```bash
-amechan-bilibili relation follow <mid>       # 关注用户
-amechan-bilibili relation unfollow <mid>     # 取关
-amechan-bilibili relation block <mid>        # 拉黑
-amechan-bilibili relation unblock <mid>      # 取消拉黑
-amechan-bilibili relation followings <vmid>  # 关注列表(--pn --ps)
-amechan-bilibili relation followers <vmid>   # 粉丝列表(--pn --ps)
-amechan-bilibili relation stat <vmid>        # 关系统计(关注/粉丝数)
-amechan-bilibili relation blacks             # 黑名单列表
+sc-bilibili relation follow <mid>       # 关注用户
+sc-bilibili relation unfollow <mid>     # 取关
+sc-bilibili relation block <mid>        # 拉黑
+sc-bilibili relation unblock <mid>      # 取消拉黑
+sc-bilibili relation followings <vmid>  # 关注列表(--pn --ps)
+sc-bilibili relation followers <vmid>   # 粉丝列表(--pn --ps)
+sc-bilibili relation stat <vmid>        # 关系统计(关注/粉丝数)
+sc-bilibili relation blacks             # 黑名单列表
 ```
 
 ### 关注分组(`tag`)
 
 ```bash
-amechan-bilibili tag list                    # 关注分组列表
-amechan-bilibili tag users <tagid>           # 分组内用户(--pn --ps)
-amechan-bilibili tag create <name>           # 创建分组
-amechan-bilibili tag rename <tagid> <name>   # 重命名分组
-amechan-bilibili tag delete <tagid>          # 删除分组
-amechan-bilibili tag add <mid> <tagids...>   # 把用户加入分组
-amechan-bilibili tag remove <mid>            # 用户移出分组(回默认)
+sc-bilibili tag list                    # 关注分组列表
+sc-bilibili tag users <tagid>           # 分组内用户(--pn --ps)
+sc-bilibili tag create <name>           # 创建分组
+sc-bilibili tag rename <tagid> <name>   # 重命名分组
+sc-bilibili tag delete <tagid>          # 删除分组
+sc-bilibili tag add <mid> <tagids...>   # 把用户加入分组
+sc-bilibili tag remove <mid>            # 用户移出分组(回默认)
 ```
 
 ## 清晰度 / 编码对照
@@ -114,30 +114,30 @@ amechan-bilibili tag remove <mid>            # 用户移出分组(回默认)
 ### 下载一个视频(默认流程)
 
 ```bash
-amechan-bilibili download --url "https://www.bilibili.com/video/BV1GJ411x7h7" --output-dir ./downloads
+sc-bilibili download --url "https://www.bilibili.com/video/BV1GJ411x7h7" --output-dir ./downloads
 ```
 
 ### 登录后下载 1080P
 
 ```bash
-amechan-bilibili login
-amechan-bilibili download --url "BV链接" --output-dir ./downloads --quality 80
+sc-bilibili login
+sc-bilibili download --url "BV链接" --output-dir ./downloads --quality 80
 ```
 
 ### 把视频加入收藏夹并创建分组管理
 
 ```bash
-amechan-bilibili fav create "我的收藏"
-amechan-bilibili fav list <自己的mid>       # 找到新收藏夹 mediaId
-amechan-bilibili fav add 170001 <mediaId>   # 收藏视频(aid 170001)
-amechan-bilibili tag create "科技"
-amechan-bilibili tag add 14082 <tagid>      # 把 UP 主加入分组
+sc-bilibili fav create "我的收藏"
+sc-bilibili fav list <自己的mid>       # 找到新收藏夹 mediaId
+sc-bilibili fav add 170001 <mediaId>   # 收藏视频(aid 170001)
+sc-bilibili tag create "科技"
+sc-bilibili tag add 14082 <tagid>      # 把 UP 主加入分组
 ```
 
 ### 批量下载 UP 主空间视频
 
 ```bash
-amechan-bilibili parse --url "https://space.bilibili.com/123456"   # 先解析出所有视频
+sc-bilibili parse --url "https://space.bilibili.com/123456"   # 先解析出所有视频
 # 再逐个 download
 ```
 
@@ -154,4 +154,4 @@ amechan-bilibili parse --url "https://space.bilibili.com/123456"   # 先解析�
 
 - `download` 成功输出 `{"ok":true,"output":"...mp4"}`。
 - `login` 后 `status` 应显示登录 mid。
-- 用 `amechan-ffmpeg probe -i <输出>` 检查分辨率/时长。
+- 用 `sc-ffmpeg probe -i <输出>` 检查分辨率/时长。

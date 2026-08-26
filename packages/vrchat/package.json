@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/vrchat",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "VRChat official REST API SDK (auth/users/worlds/avatars/instances/friends/notifications/favorites/groups/files/permissions/system/economy/moderation)",
   "license": "UNLICENSED",
   "type": "module",
@@ -19,7 +19,7 @@
     }
   },
   "bin": {
-    "amechan-vrchat": "./dist/cli/vrchat.js"
+    "sc-vrchat": "./dist/cli/vrchat.js"
   },
   "files": [
     "dist",

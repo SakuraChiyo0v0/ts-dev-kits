@@ -9,7 +9,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const repo = process.cwd();
-const work = mkdtempSync(join(tmpdir(), "amechan-email-pack-"));
+const work = mkdtempSync(join(tmpdir(), "sc-email-pack-"));
 const packDirectory = join(work, "pack");
 const consumerDirectory = join(work, "consumer");
 const pnpmCli = process.env.npm_execpath;

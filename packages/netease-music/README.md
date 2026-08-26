@@ -34,24 +34,24 @@ await client.download(songs[0]!, {
 ## CLI
 
 ```powershell
-amechan-netease login     # 二维码扫码登录并持久化登录态
-amechan-netease status    # 登录状态
-amechan-netease logout    # 删除登录态
-amechan-netease parse <url>          # 解析链接,输出歌曲清单
-amechan-netease download <url|id>    # 下载(默认品质 exhigh)
-amechan-netease download <url> --level lossless --output-dir ./music
+sc-netease login     # 二维码扫码登录并持久化登录态
+sc-netease status    # 登录状态
+sc-netease logout    # 删除登录态
+sc-netease parse <url>          # 解析链接,输出歌曲清单
+sc-netease download <url|id>    # 下载(默认品质 exhigh)
+sc-netease download <url> --level lossless --output-dir ./music
 
 # 收藏夹管理
-amechan-netease favorites                    # 列出用户歌单(含"我喜欢的音乐")
-amechan-netease likes                        # 列出红心(喜欢)歌曲 ID
-amechan-netease like <songId>                # 红心收藏一首歌
-amechan-netease unlike <songId>              # 取消红心收藏
-amechan-netease playlist-create <name>       # 创建歌单(--privacy 10 隐私)
-amechan-netease playlist-delete <playlistId> # 删除歌单
-amechan-netease playlist-add <pid> <songId...>    # 歌单添加歌曲
-amechan-netease playlist-remove <pid> <songId...> # 歌单移除歌曲
-amechan-netease subscribe <playlistId>       # 收藏歌单
-amechan-netease unsubscribe <playlistId>     # 取消收藏歌单
+sc-netease favorites                    # 列出用户歌单(含"我喜欢的音乐")
+sc-netease likes                        # 列出红心(喜欢)歌曲 ID
+sc-netease like <songId>                # 红心收藏一首歌
+sc-netease unlike <songId>              # 取消红心收藏
+sc-netease playlist-create <name>       # 创建歌单(--privacy 10 隐私)
+sc-netease playlist-delete <playlistId> # 删除歌单
+sc-netease playlist-add <pid> <songId...>    # 歌单添加歌曲
+sc-netease playlist-remove <pid> <songId...> # 歌单移除歌曲
+sc-netease subscribe <playlistId>       # 收藏歌单
+sc-netease unsubscribe <playlistId>     # 取消收藏歌单
 ```
 
 选项:`--auth-path <path>` / `--no-browser` / `--level` / `--output-dir` / `--no-lyric` / `--no-cover` / `--lyric-mode original|translated|both` / `--uid <uid>`(查他人歌单/红心)。

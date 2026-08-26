@@ -6,7 +6,7 @@
 ## 1. 当前问题与目标
 
 - 现状:有一些 WebDAV 服务(坚果云/Nextcloud 等),配置文件(JSON/文本)需要多端同步存取。用 SQL 存配置过重(无 schema、连接池、部署成本),直接手写 WebDAV HTTP+XML 又繁琐易错。
-- 目标:新增 `@sakurachiyo0v0/webdav` 包——包装成熟 WebDAV 客户端,提供**基础文件操作**(读/写/列/删/建目录/移动/复制)与**配置文件存储高层 API**(load/save/原子写/备份),并带 CLI(`amechan-webdav`)方便命令行存取,配套 skill 手册。
+- 目标:新增 `@sakurachiyo0v0/webdav` 包——包装成熟 WebDAV 客户端,提供**基础文件操作**(读/写/列/删/建目录/移动/复制)与**配置文件存储高层 API**(load/save/原子写/备份),并带 CLI(`sc-webdav`)方便命令行存取,配套 skill 手册。
 
 ## 2. 用户可见的前后变化
 
@@ -14,7 +14,7 @@
 | --- | --- |
 | 存配置文件要么塞 SQL(重),要么手写 WebDAV 请求(繁琐易错) | `createWebdavClient()` 一行连接,`ConfigStore` 一条 API 读写配置 |
 | 配置文件更新无原子性/无备份,写一半崩了文件就坏 | `save()` 原子写(临时文件+move 覆盖)+ 自动保留历史备份 |
-| 命令行想看一眼远端配置要 curl 拼 XML | `amechan-webdav config-load/config-save` 等命令直达 |
+| 命令行想看一眼远端配置要 curl 拼 XML | `sc-webdav config-load/config-save` 等命令直达 |
 
 ## 3. 方案选择
 
@@ -44,7 +44,7 @@ packages/webdav/
 │  ├─ client.ts           createWebdavClient(包装 webdav 库)
 │  ├─ config-store.ts     ConfigStore(load/save/原子写/备份)
 │  └─ cli/
-│     └─ webdav.ts        amechan-webdav CLI
+│     └─ webdav.ts        sc-webdav CLI
 ├─ tests/
 │  ├─ helpers/webdav-test-server.ts   本地 WebDAV 服务器(webdav-server)
 │  ├─ client.test.ts      基础操作真实协议路径
@@ -135,7 +135,7 @@ await store.remove("app.json");
 
 ## 8. CLI 与 skill 同步
 
-- 新增 CLI `amechan-webdav`:
+- 新增 CLI `sc-webdav`:
   - `ping` — 连通性检查
   - `list <path>` — 列目录
   - `get <path>` — 读文件(打印内容)
@@ -160,7 +160,7 @@ await store.remove("app.json");
 - [ ] 基础文件操作 + ConfigStore 最小示例跑通(本地 webdav-server)
 - [ ] `pnpm --filter @sakurachiyo0v0/webdav typecheck && test` 全绿(真实协议路径)
 - [ ] `pnpm --filter @sakurachiyo0v0/webdav build` 产出 ESM + CJS + d.ts
-- [ ] CLI `amechan-webdav` 可用,`skills/webdav-cli/SKILL.md` 同步
+- [ ] CLI `sc-webdav` 可用,`skills/webdav-cli/SKILL.md` 同步
 - [ ] README + packages-index 更新,根 build / publish 顺序接线
 - [ ] `pnpm check` 全仓通过
 - [ ] 用户确认后提交推送,CI 发布成功,`pnpm verify:published` 消费验证通过

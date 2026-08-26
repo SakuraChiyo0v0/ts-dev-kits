@@ -182,24 +182,24 @@ await steam.close();
 | `client.trade` | `getTradeOffers` / `getTradeOffer` / `getTradeHistory` / `getTradeUrl`(只读,零写操作) |
 | `client.redeem` | `redeemActivationKey`(**写操作**;全 SDK 唯一写能力,需登录态,经用户拍板扩展红线) |
 
-## CLI(`amechan-steam`)
+## CLI(`sc-steam`)
 
 ```powershell
-amechan-steam login --account <账号名>        # 密码登录(自动识别邮箱码/TOTP/设备确认)
-amechan-steam login --qr                      # 二维码登录(手机 App 扫码)
-amechan-steam login --cookie "steamLoginSecure=...; sessionid=..."   # 导入浏览器 cookie
-amechan-steam status                          # 登录状态
-amechan-steam user "76561198006483290"        # 资料摘要(vanity/URL 自动解析)
-amechan-steam owned-games "76561198006483290" # 游戏库
-amechan-steam achievements "76561198006483290" 440
-amechan-steam price 730 "AK-47 | Redline (Field-Tested)" --currency 23
-amechan-steam search "AK-47" --appid 730
-amechan-steam inventory "76561198006483290" 730 2
-amechan-steam my-listings                     # 我的挂单(需登录态)
-amechan-steam reviews 730 --language schinese # 商店评测(公开)
-amechan-steam watch 730 "AK-47 | Redline (Field-Tested)" --currency 23  # 价格监控:即时价+订单簿+历史
-amechan-steam redeem "AAAAA-BBBBB-CCCCC"      # 兑换激活码(写操作,需登录态)
-amechan-steam logout
+sc-steam login --account <账号名>        # 密码登录(自动识别邮箱码/TOTP/设备确认)
+sc-steam login --qr                      # 二维码登录(手机 App 扫码)
+sc-steam login --cookie "steamLoginSecure=...; sessionid=..."   # 导入浏览器 cookie
+sc-steam status                          # 登录状态
+sc-steam user "76561198006483290"        # 资料摘要(vanity/URL 自动解析)
+sc-steam owned-games "76561198006483290" # 游戏库
+sc-steam achievements "76561198006483290" 440
+sc-steam price 730 "AK-47 | Redline (Field-Tested)" --currency 23
+sc-steam search "AK-47" --appid 730
+sc-steam inventory "76561198006483290" 730 2
+sc-steam my-listings                     # 我的挂单(需登录态)
+sc-steam reviews 730 --language schinese # 商店评测(公开)
+sc-steam watch 730 "AK-47 | Redline (Field-Tested)" --currency 23  # 价格监控:即时价+订单簿+历史
+sc-steam redeem "AAAAA-BBBBB-CCCCC"      # 兑换激活码(写操作,需登录态)
+sc-steam logout
 ```
 
 - 默认输出 JSON;`--proxy`/`AMECHAN_STEAM_PROXY` 配置代理(community 国内不可达)。
@@ -249,7 +249,7 @@ amechan-steam logout
 - [x] P1 公开查询:user / library / stats / news / store / 公开库存 / 市场价格(只读)
 - [x] P2 登录态:密码+Guard(邮箱码/TOTP/设备确认)/ QR 扫码 / cookie 导入 / 会话续期与持久化(AuthStore)+ 好友/等级/徽章/群组/近期游戏/愿望单读/创意工坊
 - [x] P3 登录后只读深水区:订单簿 / 价格历史 / 我的挂单与成交 / 自己库存 / 物品定义(publisher key)/ 交易报价与历史只读 / 动态流与评论读
-- [x] P5 收尾(部分):README / packages-index / spec 标记、`amechan-steam` CLI + skill(11 命令,守卫校验通过)、版本 0.4.0
+- [x] P5 收尾(部分):README / packages-index / spec 标记、`sc-steam` CLI + skill(11 命令,守卫校验通过)、版本 0.4.0
 - [ ] P5 剩余:用户确认后提交推送 → CI 发布 → `pnpm verify:published @sakurachiyo0v0/steam` 消费验证
 
 设计 spec:[`docs/superpowers/specs/2026-08-23-steam-sdk-design.md`](../../docs/superpowers/specs/2026-08-23-steam-sdk-design.md);调研报告:[`docs/steam-api-research.md`](../../docs/steam-api-research.md)。

@@ -1,13 +1,13 @@
 # @sakurachiyo0v0/webdav
 
-WebDAV 配置存取 SDK：**基础文件操作**（读/写/列/删/建目录/移动/复制）+ **配置文件存储高层 API**（原子写 + 自动备份），并带 CLI（`amechan-webdav`）。适合存配置文件、多端同步的轻量场景（SQL 过重、WebDAV 刚刚好）。
+WebDAV 配置存取 SDK：**基础文件操作**（读/写/列/删/建目录/移动/复制）+ **配置文件存储高层 API**（原子写 + 自动备份），并带 CLI（`sc-webdav`）。适合存配置文件、多端同步的轻量场景（SQL 过重、WebDAV 刚刚好）。
 
 ## 特性
 
 - 基于成熟 `webdav` 库（HTTP + PROPFIND + XML 细节已处理），统一错误 + 消息脱敏
 - `ConfigStore.save()` 原子写（临时文件 + move 覆盖，写一半不损坏）+ 旧版本自动滚动备份（`.bak.1/.bak.2/...`）
 - 配置格式：`json`（自动序列化/解析）与 `text`
-- CLI `amechan-webdav`：文件操作 + 配置存取，JSON 输出，报错带错误码
+- CLI `sc-webdav`：文件操作 + 配置存取，JSON 输出，报错带错误码
 
 ## 适用环境
 
@@ -133,17 +133,17 @@ const creds = await store.load<{ cookie: string }>("bilibili.json");
 ## CLI
 
 ```powershell
-amechan-webdav ping|list|get|put|delete|mkdir|rmdir|move|config-load|config-save
+sc-webdav ping|list|get|put|delete|mkdir|rmdir|move|config-load|config-save
 # 连接:--url/--username/--password 或环境变量 WEBDAV_URL/WEBDAV_USERNAME/WEBDAV_PASSWORD
 ```
 
 用法示例：
 
 ```powershell
-amechan-webdav ping
-amechan-webdav put /configs/app.json --data '{"theme":"dark"}'
-amechan-webdav config-load app.json
-amechan-webdav config-save app.json --json '{"theme":"light"}'
+sc-webdav ping
+sc-webdav put /configs/app.json --data '{"theme":"dark"}'
+sc-webdav config-load app.json
+sc-webdav config-save app.json --json '{"theme":"light"}'
 ```
 
 完整命令速查见 [`skills/webdav-cli/SKILL.md`](../../skills/webdav-cli/SKILL.md)。

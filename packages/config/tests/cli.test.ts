@@ -28,7 +28,7 @@ async function runCli(
   }
 }
 
-describe("amechan-config CLI(冒烟,真实本地服务器)", () => {
+describe("sc-config CLI(冒烟,真实本地服务器)", () => {
   let srv: TestWebdavServer;
   const configPath = join(mkdtempSync(join(tmpdir(), "ame-config-cli-")), "config.json");
   const env = (): Record<string, string> => ({ AME_CONFIG_PATH: configPath });

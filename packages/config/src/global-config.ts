@@ -46,7 +46,7 @@ export function loadGlobalConfig(customPath?: string): GlobalConfig {
   if (!existsSync(path)) {
     throw new WebdavError(
       WebdavErrorCode.VALIDATION,
-      `未找到全局配置 ${path},请先运行 amechan-config setup`,
+      `未找到全局配置 ${path},请先运行 sc-config setup`,
     );
   }
   try {

@@ -1,12 +1,12 @@
-# amechan-webdav CLI
+# sc-webdav CLI
 
-让 AI 直接用 `amechan-webdav` 命令行操作 WebDAV 服务(坚果云/Nextcloud 等):文件读写、目录管理、配置文件存取。**基于 `@sakurachiyo0v0/webdav` SDK**。
+让 AI 直接用 `sc-webdav` 命令行操作 WebDAV 服务(坚果云/Nextcloud 等):文件读写、目录管理、配置文件存取。**基于 `@sakurachiyo0v0/webdav` SDK**。
 
 ## 环境检查
 
 ```bash
-amechan-webdav help    # 查看命令与选项
-which amechan-webdav   # 确认已安装
+sc-webdav help    # 查看命令与选项
+which sc-webdav   # 确认已安装
 ```
 
 未安装:`npm i -g @sakurachiyo0v0/webdav`。
@@ -28,24 +28,24 @@ export WEBDAV_PASSWORD="password"
 ### 基础文件操作
 
 ```bash
-amechan-webdav ping                     # 连通性检查
-amechan-webdav list <path>              # 列目录(默认 /)
-amechan-webdav get <path>               # 读文件内容(默认 JSON 包裹;--raw 原样输出)
-amechan-webdav put <path> --data "文本"  # 写文件(直接给内容)
-amechan-webdav put <path> --file ./a.json # 写文件(从本地文件读)
-amechan-webdav delete <path>            # 删文件/空目录
-amechan-webdav mkdir <path>             # 建目录
-amechan-webdav rmdir <path>             # 删目录
-amechan-webdav move <src> <dst>         # 移动/重命名
+sc-webdav ping                     # 连通性检查
+sc-webdav list <path>              # 列目录(默认 /)
+sc-webdav get <path>               # 读文件内容(默认 JSON 包裹;--raw 原样输出)
+sc-webdav put <path> --data "文本"  # 写文件(直接给内容)
+sc-webdav put <path> --file ./a.json # 写文件(从本地文件读)
+sc-webdav delete <path>            # 删文件/空目录
+sc-webdav mkdir <path>             # 建目录
+sc-webdav rmdir <path>             # 删目录
+sc-webdav move <src> <dst>         # 移动/重命名
 ```
 
 ### 配置文件存取(高层 API,原子写+自动备份)
 
 ```bash
-amechan-webdav config-load <name> --base-path /configs    # 读取配置(JSON 自动解析)
-amechan-webdav config-save <name> --json '{"a":1}'        # 保存配置(直接给 JSON)
-amechan-webdav config-save <name> --file ./local.json     # 保存配置(从本地文件)
-amechan-webdav config-load <name> --base-path /dir --backup-count 5  # 自定义目录/备份数
+sc-webdav config-load <name> --base-path /configs    # 读取配置(JSON 自动解析)
+sc-webdav config-save <name> --json '{"a":1}'        # 保存配置(直接给 JSON)
+sc-webdav config-save <name> --file ./local.json     # 保存配置(从本地文件)
+sc-webdav config-load <name> --base-path /dir --backup-count 5  # 自定义目录/备份数
 ```
 
 - `config-save` 原子写(临时文件+move 覆盖),旧版本自动滚动备份为 `<name>.bak.1/.bak.2/...`(默认保留 3 份,`--backup-count 0` 关闭)。
@@ -55,8 +55,8 @@ amechan-webdav config-load <name> --base-path /dir --backup-count 5  # 自定义
 
 ```bash
 export WEBDAV_CONFIG_KEY="你的加密密钥"      # 32 字节 hex/base64 或任意字符串(自动派生)
-amechan-webdav config-save <name> --json '{"cookie":"..."}' --encrypt   # 加密保存
-amechan-webdav config-load <name> --encrypt                             # 解密读取
+sc-webdav config-save <name> --json '{"cookie":"..."}' --encrypt   # 加密保存
+sc-webdav config-load <name> --encrypt                             # 解密读取
 ```
 
 - 加 `--encrypt` 后云端只存 AES-256-GCM 密文,明文不出本地;密钥经 `--key` 或环境变量 `WEBDAV_CONFIG_KEY` 提供。

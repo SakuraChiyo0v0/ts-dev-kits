@@ -42,7 +42,7 @@ afterEach(async () => {
   }
 });
 
-describe("amechan-vrchat CLI 子命令", () => {
+describe("sc-vrchat CLI 子命令", () => {
   it("system time(无需登录)", async () => {
     const out = await captureOutput(() => main(["system", "time"]));
     const parsed = JSON.parse(out) as string;

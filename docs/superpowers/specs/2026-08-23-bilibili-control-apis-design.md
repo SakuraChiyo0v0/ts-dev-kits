@@ -155,18 +155,18 @@ interface FavResourceItem {
 
 `client.ts`:`get fav(): FavApi`(懒加载 `this.#fav ??= new FavApi(this.#session)`)。`index.ts` 导出 `FavApi` + 类型。
 
-### 4.6 CLI 子命令(`amechan-bilibili fav ...`)
+### 4.6 CLI 子命令(`sc-bilibili fav ...`)
 
 ```
-amechan-bilibili fav list <mid>                # 用户创建的收藏夹
-amechan-bilibili fav collected <mid>           # 用户收藏的收藏夹
-amechan-bilibili fav info <mediaId>            # 收藏夹元数据
-amechan-bilibili fav videos <mediaId>          # 收藏夹内容(支持 --pn --ps)
-amechan-bilibili fav create <title> [--intro] [--private]
-amechan-bilibili fav edit <mediaId> <title> [--intro] [--private]
-amechan-bilibili fav delete <mediaId...>       # 逗号分隔多个
-amechan-bilibili fav add <rid> <mediaIds...>   # 收藏视频到收藏夹
-amechan-bilibili fav remove <rid> <mediaIds...># 取消收藏
+sc-bilibili fav list <mid>                # 用户创建的收藏夹
+sc-bilibili fav collected <mid>           # 用户收藏的收藏夹
+sc-bilibili fav info <mediaId>            # 收藏夹元数据
+sc-bilibili fav videos <mediaId>          # 收藏夹内容(支持 --pn --ps)
+sc-bilibili fav create <title> [--intro] [--private]
+sc-bilibili fav edit <mediaId> <title> [--intro] [--private]
+sc-bilibili fav delete <mediaId...>       # 逗号分隔多个
+sc-bilibili fav add <rid> <mediaIds...>   # 收藏视频到收藏夹
+sc-bilibili fav remove <rid> <mediaIds...># 取消收藏
 ```
 
 需登录的子命令自动从 cookie/默认 AuthStore 取登录态(复用现有 `makeClient`),未登录报 `LOGIN_REQUIRED`。

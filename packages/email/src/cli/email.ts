@@ -12,7 +12,7 @@ import {
 } from "@sakurachiyo0v0/cli-utils";
 import { createEmailClient, smtpProvider } from "../index.js";
 
-const USAGE = "Usage: amechan-email <command> [options]";
+const USAGE = "Usage: sc-email <command> [options]";
 
 const COMMANDS = [
   { name: "send", desc: "Send an email" },

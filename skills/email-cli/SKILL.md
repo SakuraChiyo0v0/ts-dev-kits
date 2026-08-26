@@ -1,11 +1,11 @@
-# amechan-email 邮件发送 CLI
+# sc-email 邮件发送 CLI
 
-让 AI 直接用 `amechan-email` 命令行发送邮件、验证 SMTP 连接。无需写代码。
+让 AI 直接用 `sc-email` 命令行发送邮件、验证 SMTP 连接。无需写代码。
 
 ## 环境检查
 
 ```bash
-amechan-email help    # 查看命令
+sc-email help    # 查看命令
 ```
 
 未安装:`npm i -g @sakurachiyo0v0/email`。
@@ -15,13 +15,13 @@ amechan-email help    # 查看命令
 ### 验证 SMTP 连接
 
 ```bash
-amechan-email verify --host smtp.example.com --port 465 --secure --user mailer@example.com --password xxx
+sc-email verify --host smtp.example.com --port 465 --secure --user mailer@example.com --password xxx
 ```
 
 ### 发送邮件
 
 ```bash
-amechan-email send \
+sc-email send \
   --host smtp.example.com --port 587 \
   --user mailer@example.com --password xxx \
   --from "Ame <mailer@example.com>" \
@@ -44,7 +44,7 @@ export SMTP_USER=mailer@example.com
 export SMTP_PASSWORD=xxx
 export SMTP_FROM="Ame <mailer@example.com>"
 
-amechan-email send --to "user@example.com" --subject "Hi" --text "Hello"
+sc-email send --to "user@example.com" --subject "Hi" --text "Hello"
 ```
 
 ## 端口与 secure 配对
@@ -59,7 +59,7 @@ amechan-email send --to "user@example.com" --subject "Hi" --text "Hello"
 ### 发 HTML 邮件
 
 ```bash
-amechan-email send --host smtp.example.com --port 465 --secure --user u --password p \
+sc-email send --host smtp.example.com --port 465 --secure --user u --password p \
   --from "noreply@example.com" --to "a@example.com,b@example.com" \
   --subject "周报" --html "<h1>本周摘要</h1><p>内容</p>"
 ```
@@ -67,8 +67,8 @@ amechan-email send --host smtp.example.com --port 465 --secure --user u --passwo
 ### 先验证再发送
 
 ```bash
-amechan-email verify --host smtp.example.com --port 465 --secure --user u --password p
-amechan-email send --host smtp.example.com --port 465 --secure --user u --password p \
+sc-email verify --host smtp.example.com --port 465 --secure --user u --password p
+sc-email send --host smtp.example.com --port 465 --secure --user u --password p \
   --from "noreply@example.com" --to "a@example.com" --subject "Hi" --text "body"
 ```
 

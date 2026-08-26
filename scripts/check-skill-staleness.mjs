@@ -26,52 +26,57 @@ const SKILL_MAP = [
   {
     skill: "config-cli",
     cli: "packages/config/src/cli/config.ts",
-    bin: "amechan-config",
+    bin: "sc-config",
   },
   {
     skill: "webdav-cli",
     cli: "packages/webdav/src/cli/webdav.ts",
-    bin: "amechan-webdav",
+    bin: "sc-webdav",
   },
   {
     skill: "bilibili-cli",
     cli: "packages/bilibili/src/cli/bilibili.ts",
-    bin: "amechan-bilibili",
+    bin: "sc-bilibili",
   },
   {
     skill: "email-cli",
     cli: "packages/email/src/cli/email.ts",
-    bin: "amechan-email",
+    bin: "sc-email",
   },
   {
     skill: "ffmpeg-cli",
     cli: "packages/ffmpeg/src/cli/ffmpeg.ts",
-    bin: "amechan-ffmpeg",
+    bin: "sc-ffmpeg",
   },
   {
     skill: "vrchat-cli",
     cli: "packages/vrchat/src/cli/vrchat.ts",
-    bin: "amechan-vrchat",
+    bin: "sc-vrchat",
   },
   {
     skill: "booth-cli",
     cli: "packages/booth/src/cli/booth.ts",
-    bin: "amechan-booth",
+    bin: "sc-booth",
   },
   {
     skill: "steam-cli",
     cli: "packages/steam/src/cli/steam.ts",
-    bin: "amechan-steam",
+    bin: "sc-steam",
   },
   {
     skill: "xiaoheihe-cli",
     cli: "packages/xiaoheihe/src/cli/xiaoheihe.ts",
-    bin: "amechan-xiaoheihe",
+    bin: "sc-xiaoheihe",
   },
   {
     skill: "chuanshengtong-cli",
     cli: "packages/chuanshengtong/src/cli/chuanshengtong.ts",
-    bin: "amechan-chuanshengtong",
+    bin: "sc-chuanshengtong",
+  },
+  {
+    skill: "netease-music-cli",
+    cli: "packages/netease-music/src/cli/netease.ts",
+    bin: "sc-netease",
   },
 ];
 

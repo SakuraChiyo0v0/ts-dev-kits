@@ -12,7 +12,7 @@
 - 封装 VRChat 官方 REST API 的**全功能域**:认证 / 用户 / 世界 / 头像 / 实例 / 好友 / 通知 / 收藏 / 群组 / 文件 / 权限;
 - 提供统一、类型安全、可测试的调用接口,能力分阶段交付,每阶段独立可用;
 - 同步为 `@sakurachiyo0v0/account` 增加**通用密码登录骨架**(`PasswordLoginAdapter` + `passwordLogin()`),与既有扫码骨架(`QrLoginAdapter` + `qrcodeLogin`)平行,未来任何密码登录平台可复用;
-- 提供 CLI(`amechan-vrchat`)与 skill,走仓库完整开发流程。
+- 提供 CLI(`sc-vrchat`)与 skill,走仓库完整开发流程。
 
 **运行形态(硬约束)**:VRChat API 是远程 HTTPS API,消费方是运行在用户机器或服务器上的 Node 20+ 进程。认证凭证只保存 cookie,**不保存密码**。
 
@@ -85,7 +85,7 @@ ts-dev-kits/
 │     │     ├─ files.ts          文件域
 │     │     └─ permissions.ts    权限域
 │     │  └─ cli/
-│     │     ├─ index.ts          amechan-vrchat 入口
+│     │     ├─ index.ts          sc-vrchat 入口
 │     │     ├─ login.ts          login / logout / status
 │     │     └─ ...               各域命令(按阶段逐个加)
 │     ├─ tests/
@@ -249,7 +249,7 @@ await client.close();
 
 ## 10. CLI 与 skill 同步
 
-- CLI 命令集(`amechan-vrchat`):`login [username]` / `logout` / `status` 起步,各域查询命令按阶段逐个加;
+- CLI 命令集(`sc-vrchat`):`login [username]` / `logout` / `status` 起步,各域查询命令按阶段逐个加;
 - **改了 CLI 命令(新增/改名/删除/参数/语义)必须同步 `skills/vrchat-cli/SKILL.md`**,否则 pre-commit 的 `scripts/check-skill-staleness.mjs` 会阻止提交。
 
 ## 11. 能力清单与阶段划分

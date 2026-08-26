@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * amechan-xiaoheihe CLI:login / status / logout / feed / link / comments / messages / user。
+ * sc-xiaoheihe CLI:login / status / logout / feed / link / comments / messages / user。
  * 环境变量注入(测试/自定义网关):
  *   AMECHAN_XIAOHEIHE_AUTH_PATH  — 覆盖登录态存储路径
  *   AMECHAN_XIAOHEIHE_BASE_URL   — 覆盖 base URL(mock 测试用)
@@ -14,7 +14,7 @@ import { createXiaoheiheClient } from "../client.js";
 import { xiaoheiheQrAdapter } from "../api/qrcode.js";
 import { XiaoheiheError } from "../errors.js";
 
-const USAGE = "amechan-xiaoheihe <command> [options]";
+const USAGE = "sc-xiaoheihe <command> [options]";
 const COMMANDS = [
   { name: "help", desc: "显示帮助" },
   { name: "login", desc: "扫码登录并持久化(--no-browser 关闭自动打开浏览器)" },
@@ -132,7 +132,7 @@ async function runStatus(context: CliContext): Promise<void> {
     outputJson(status);
   } catch (error) {
     if (error instanceof XiaoheiheError && error.code === "LOGIN_REQUIRED") {
-      outputJson({ loggedIn: false, message: "未登录,请运行 amechan-xiaoheihe login" });
+      outputJson({ loggedIn: false, message: "未登录,请运行 sc-xiaoheihe login" });
       return;
     }
     if (error instanceof XiaoheiheError && error.code === "AUTH_EXPIRED") {
