@@ -10,6 +10,8 @@ on:
       - "pnpm-workspace.yaml"
       - "scripts/publish-packages.mjs"
       - "scripts/check-package-bumps.mjs"
+      - "scripts/check-dependency-chain.mjs"
+      - "scripts/packages-list.mjs"
       - ".github/workflows/publish.yml"
   pull_request:
     paths:
@@ -48,6 +50,13 @@ jobs:
           fi
           echo "comparing against: ${BASE}"
           node scripts/check-package-bumps.mjs "${BASE}"
+
+      # 依赖链守卫:workspace:* 发布后会替换成本地版本,若依赖的版本不存在
+      # (未发布/发布顺序错误)则消费者安装断链。CI 必须带 token 验证 registry。
+      - name: Check dependency chain
+        run: node scripts/check-dependency-chain.mjs
+        env:
+          GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
 
   publish:
     needs: check-versions
