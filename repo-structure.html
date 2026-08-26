@@ -173,12 +173,28 @@
   .edge.hl.src { stroke: var(--amber); }
   .edge.dim { opacity: .15; }
   .gnode { cursor: pointer; transition: opacity .18s ease; }
-  .gnode rect { transition: filter .18s ease; }
+  .gnode rect { transition: filter .18s ease, stroke .18s ease, stroke-width .18s ease; }
   .gnode:hover rect, .gnode:focus rect { filter: drop-shadow(0 0 6px currentColor); }
   .gnode.dim, .gnode.hov-dim { opacity: .28; }
+  .gnode.up rect { stroke: var(--amber); stroke-width: 2.4; }
+  .gnode.down rect { stroke: var(--accent); stroke-width: 2.4; }
+  .gnode.focused rect { stroke: var(--text); stroke-width: 2.6; filter: drop-shadow(0 0 8px var(--accent)); }
   .gnode .n-name { font-size: 12.5px; font-weight: 600; font-family: var(--mono); }
   .gnode .n-ver { font-size: 10px; font-family: var(--mono); opacity: .85; }
   .gnode .dom-strip { opacity: .9; }
+
+  /* ---------- 节点聚焦工具条 ---------- */
+  .focus-bar {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 8px 12px; margin: 0 2px 14px; font-size: 13px;
+  }
+  .focus-bar[hidden] { display: none; }
+  .fb-label { color: var(--muted); font-size: 12.5px; }
+  .fb-pkg { font-family: var(--mono); font-weight: 700; color: var(--accent); }
+  .fb-actions { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap; }
+  .fb-btn { padding: 4px 11px; font-size: 12px; border-radius: 8px; background: var(--surface); }
+  .fb-btn.active { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
   .graph-note { font-size: 13px; color: var(--muted); margin: 12px 2px 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .build-order { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 12px; font-family: var(--mono); font-size: 12.5px; }
   .build-order .bo { background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px; padding: 3px 8px; color: var(--text-2); }
@@ -342,6 +358,17 @@
       <span class="hint" id="edgeCount"></span>
     </div>
     <div class="legend" id="graphLegend" role="group" aria-label="按域聚焦依赖图"></div>
+    <div class="focus-bar" id="focusBar" hidden>
+      <span class="fb-label">聚焦</span>
+      <code class="fb-pkg" id="focusPkgName"></code>
+      <div class="fb-actions">
+        <button id="fbUp" type="button" class="btn fb-btn" title="只看该包的上游依赖链">上游</button>
+        <button id="fbDown" type="button" class="btn fb-btn" title="只看该包的下游被依赖链">下游</button>
+        <button id="fbBoth" type="button" class="btn fb-btn" title="同时显示上下游">上下游</button>
+        <button id="fbCard" type="button" class="btn fb-btn" title="跳到包卡片">卡片</button>
+        <button id="fbClose" type="button" class="btn fb-btn" title="退出聚焦 (Esc)">✕</button>
+      </div>
+    </div>
     <div class="graph-wrap">
       <svg id="depGraph" viewBox="0 0 900 400" role="img" aria-label="包依赖关系图:按依赖深度分层的单向无环图,可点击域标签聚焦"></svg>
     </div>
@@ -389,7 +416,7 @@
 
 <footer>
   由仓库实际目录扫描生成 · 静态自包含页面,可直接双击打开 · 已排除 <code>.git</code> / <code>node_modules</code> / <code>dist</code><br>
-  数据快照生成于 <code id="genAt">2026-08-26 06:19:01</code> · 仓库结构变化后,在根目录运行 <code>pnpm gen:structure</code> 即可刷新本页
+  数据快照生成于 <code id="genAt">2026-08-26 06:30:57</code> · 仓库结构变化后,在根目录运行 <code>pnpm gen:structure</code> 即可刷新本页
 </footer>
 
 <script>
@@ -432,7 +459,7 @@ const PACKAGES = [
   {
     "id": "cli-utils",
     "name": "cli-utils",
-    "version": "0.1.2",
+    "version": "0.1.3",
     "color": "#38bdf8",
     "deps": [
       "logger"
@@ -442,7 +469,7 @@ const PACKAGES = [
   {
     "id": "chuanshengtong",
     "name": "chuanshengtong",
-    "version": "0.3.1",
+    "version": "0.3.2",
     "color": "#f472b6",
     "deps": [
       "cli-utils",
@@ -453,7 +480,7 @@ const PACKAGES = [
   {
     "id": "webdav",
     "name": "webdav",
-    "version": "0.3.1",
+    "version": "0.3.2",
     "color": "#60a5fa",
     "deps": [
       "cli-utils",
@@ -476,7 +503,7 @@ const PACKAGES = [
   {
     "id": "account",
     "name": "account",
-    "version": "0.5.2",
+    "version": "0.5.3",
     "color": "#fb923c",
     "deps": [
       "config",
@@ -487,7 +514,7 @@ const PACKAGES = [
   {
     "id": "email",
     "name": "email",
-    "version": "0.2.1",
+    "version": "0.2.2",
     "color": "#f472b6",
     "deps": [
       "cli-utils",
@@ -509,7 +536,7 @@ const PACKAGES = [
   {
     "id": "lol",
     "name": "lol",
-    "version": "0.1.2",
+    "version": "0.1.3",
     "color": "#a78bfa",
     "deps": [
       "logger"
@@ -519,7 +546,7 @@ const PACKAGES = [
   {
     "id": "netease-music",
     "name": "netease-music",
-    "version": "0.4.1",
+    "version": "0.4.2",
     "color": "#f87171",
     "deps": [
       "account",
@@ -533,7 +560,7 @@ const PACKAGES = [
   {
     "id": "booth",
     "name": "booth",
-    "version": "0.4.1",
+    "version": "0.4.2",
     "color": "#34d399",
     "deps": [
       "account",
@@ -560,7 +587,7 @@ const PACKAGES = [
   {
     "id": "chat-platforms",
     "name": "chat-platforms",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "color": "#34d399",
     "deps": [
       "logger"
@@ -570,7 +597,7 @@ const PACKAGES = [
   {
     "id": "vrchat",
     "name": "vrchat",
-    "version": "0.4.1",
+    "version": "0.4.2",
     "color": "#22d3ee",
     "deps": [
       "account",
@@ -583,7 +610,7 @@ const PACKAGES = [
   {
     "id": "steam",
     "name": "steam",
-    "version": "0.8.1",
+    "version": "0.8.2",
     "color": "#94a3b8",
     "deps": [
       "account",
@@ -596,7 +623,7 @@ const PACKAGES = [
   {
     "id": "xiaoheihe",
     "name": "xiaoheihe",
-    "version": "0.4.1",
+    "version": "0.4.2",
     "color": "#f87171",
     "deps": [
       "account",
@@ -609,7 +636,7 @@ const PACKAGES = [
   {
     "id": "database",
     "name": "database",
-    "version": "0.2.0",
+    "version": "0.2.1",
     "color": "#f87171",
     "deps": [
       "cli-utils",
@@ -620,7 +647,7 @@ const PACKAGES = [
   {
     "id": "dsh-sdk-tools",
     "name": "dsh-sdk-tools",
-    "version": "0.3.2",
+    "version": "0.3.3",
     "color": "#e879f9",
     "deps": [
       "bilibili",
@@ -943,20 +970,28 @@ function buildGraph() {
   svg.querySelectorAll('.gnode').forEach(g => {
     const id = g.dataset.id;
     const hi = (on) => {
+      const ups = new Set(PKG[id]?.deps || []);
+      const downs = new Set(PACKAGES.filter(p => p.deps.includes(id)).map(p => p.id));
       svg.querySelectorAll('.edge').forEach(e => {
         const rel = e.dataset.from === id || e.dataset.to === id;
         e.classList.toggle('hl', on && rel);
         e.classList.toggle('src', on && e.dataset.from === id);
       });
-      svg.querySelectorAll('.gnode').forEach(o => o.classList.toggle('hov-dim', on && o.dataset.id !== id));
+      svg.querySelectorAll('.gnode').forEach(o => {
+        const oid = o.dataset.id;
+        o.classList.toggle('hov-dim', on && oid !== id && !ups.has(oid) && !downs.has(oid));
+        o.classList.toggle('up', on && ups.has(oid));    // 上游(被依赖):琥珀描边
+        o.classList.toggle('down', on && downs.has(oid)); // 下游(依赖者):蓝色描边
+      });
     };
     g.addEventListener('mouseenter', () => hi(true));
     g.addEventListener('mouseleave', () => hi(false));
     g.addEventListener('focus', () => hi(true));
     g.addEventListener('blur', () => hi(false));
-    g.addEventListener('click', () => document.getElementById('pkg-' + id).scrollIntoView({ behavior: 'smooth', block: 'center' }));
+    g.addEventListener('click', () => setFocus(id));
   });
   applyDomainFocus();
+  applyFocus();
   document.getElementById('edgeCount').textContent = `${edges.length} 条依赖关系`;
 }
 
@@ -974,8 +1009,10 @@ function renderLegend() {
     chip.innerHTML = `<span class="dot" style="background:${v.color}"></span>${esc(v.label)}<span class="cnt">${v.ids.length}</span>`;
     chip.addEventListener('click', () => {
       activeDomain = activeDomain === k ? null : k;
+      if (activeDomain && focusPkg) { focusPkg = null; focusBar.hidden = true; }
       renderLegend();
       applyDomainFocus();
+      applyFocus();
     });
     el.appendChild(chip);
   });
@@ -990,6 +1027,83 @@ function applyDomainFocus() {
     e.classList.toggle('dim', !!on && !rel);
   });
 }
+
+/* ---------- 节点聚焦:点击进入,切换上游 / 下游 / 上下游链 ---------- */
+let focusPkg = null;
+let focusMode = 'both';
+const focusBar = document.getElementById('focusBar');
+const focusPkgName = document.getElementById('focusPkgName');
+const fbUp = document.getElementById('fbUp');
+const fbDown = document.getElementById('fbDown');
+const fbBoth = document.getElementById('fbBoth');
+const fbCard = document.getElementById('fbCard');
+const fbClose = document.getElementById('fbClose');
+
+function upstreamOf(id) {
+  const set = new Set();
+  const walk = (pid) => {
+    (PKG[pid]?.deps || []).forEach(d => { if (!set.has(d)) { set.add(d); walk(d); } });
+  };
+  walk(id);
+  return set;
+}
+function downstreamOf(id) {
+  const set = new Set();
+  const walk = (pid) => {
+    PACKAGES.forEach(p => { if (p.deps.includes(pid) && !set.has(p.id)) { set.add(p.id); walk(p.id); } });
+  };
+  walk(id);
+  return set;
+}
+function setFocus(id) {
+  focusPkg = id;
+  focusMode = 'both';
+  if (activeDomain) { activeDomain = null; renderLegend(); }
+  renderFocusBar();
+  applyFocus();
+}
+function clearFocus() {
+  focusPkg = null;
+  focusBar.hidden = true;
+  applyFocus();
+}
+function renderFocusBar() {
+  if (!focusPkg) { focusBar.hidden = true; return; }
+  focusBar.hidden = false;
+  focusPkgName.textContent = focusPkg;
+  fbUp.textContent = `上游 ${upstreamOf(focusPkg).size}`;
+  fbUp.classList.toggle('active', focusMode === 'up');
+  fbDown.textContent = `下游 ${downstreamOf(focusPkg).size}`;
+  fbDown.classList.toggle('active', focusMode === 'down');
+  fbBoth.textContent = '上下游';
+  fbBoth.classList.toggle('active', focusMode === 'both');
+}
+function applyFocus() {
+  const svg = document.getElementById('depGraph');
+  if (!svg) return;
+  const chain = new Set();
+  if (focusPkg) {
+    chain.add(focusPkg);
+    if (focusMode === 'up') upstreamOf(focusPkg).forEach(x => chain.add(x));
+    else if (focusMode === 'down') downstreamOf(focusPkg).forEach(x => chain.add(x));
+    else { upstreamOf(focusPkg).forEach(x => chain.add(x)); downstreamOf(focusPkg).forEach(x => chain.add(x)); }
+  }
+  const on = !!focusPkg;
+  svg.querySelectorAll('.gnode').forEach(g => {
+    g.classList.toggle('dim', on && !chain.has(g.dataset.id));
+    g.classList.toggle('focused', g.dataset.id === focusPkg);
+  });
+  svg.querySelectorAll('.edge').forEach(e => {
+    const inC = on && chain.has(e.dataset.from) && chain.has(e.dataset.to);
+    e.classList.toggle('dim', on && !inC);
+  });
+}
+fbUp.addEventListener('click', () => { if (focusPkg) { focusMode = 'up'; renderFocusBar(); applyFocus(); } });
+fbDown.addEventListener('click', () => { if (focusPkg) { focusMode = 'down'; renderFocusBar(); applyFocus(); } });
+fbBoth.addEventListener('click', () => { if (focusPkg) { focusMode = 'both'; renderFocusBar(); applyFocus(); } });
+fbCard.addEventListener('click', () => { if (focusPkg) document.getElementById('pkg-' + focusPkg).scrollIntoView({ behavior: 'smooth', block: 'center' }); });
+fbClose.addEventListener('click', clearFocus);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && focusPkg) clearFocus(); });
 renderLegend();
 buildGraph();
 

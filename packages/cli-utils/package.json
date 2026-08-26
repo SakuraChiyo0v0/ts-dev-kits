@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/cli-utils",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Shared CLI helpers for @sakurachiyo0v0 SDK command-line tools",
   "license": "UNLICENSED",
   "publishConfig": {

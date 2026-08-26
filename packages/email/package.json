@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/email",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Provider-neutral email SDK with SMTP support",
   "license": "UNLICENSED",
   "publishConfig": {
