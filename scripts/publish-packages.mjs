@@ -30,6 +30,7 @@ function spawnCommand(command, args, options = {}) {
 
 // [包名, 目录] —— 依赖图单向无环,被依赖者先发布。
 const PACKAGES = [
+  ["@sakurachiyo0v0/logger", "packages/logger"],
   ["@sakurachiyo0v0/cli-utils", "packages/cli-utils"],
   ["@sakurachiyo0v0/chuanshengtong", "packages/chuanshengtong"],
   ["@sakurachiyo0v0/webdav", "packages/webdav"],
