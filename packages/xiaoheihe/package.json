@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/xiaoheihe",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "Xiaoheihe (xiaoheihe.cn) SDK: QR login + hkey/nonce signature + read-only queries (post/comment/feed/message/user)",
   "license": "UNLICENSED",
   "type": "module",
