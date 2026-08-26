@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/ffmpeg",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "FFmpeg/ffprobe process wrapper with progress events and high-level media helpers",
   "license": "UNLICENSED",
   "publishConfig": {
