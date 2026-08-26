@@ -13,6 +13,7 @@ function entryConfig(overrides: Partial<ResolvedConfig> = {}): ResolvedConfig {
     email: { enabled: false },
     lol: { enabled: true },
     vrchat: { enabled: false },
+    logs: { enabled: true, remote: true, local: false },
     ...overrides,
   };
 }
@@ -43,6 +44,7 @@ describe("SettingsSchema", () => {
       email: false,
       lol: true,
       vrchat: false,
+      logs: true,
     });
   });
 });
@@ -51,7 +53,7 @@ describe("toSettingsShape / applySettingsShape", () => {
   it("round-trips enabled flags without touching other fields", () => {
     const entry = entryConfig();
     expect(toSettingsShape(entry)).toEqual({
-      bilibili: true, netease: true, ffmpeg: true, email: false, lol: true, vrchat: false,
+      bilibili: true, netease: true, ffmpeg: true, email: false, lol: true, vrchat: false, logs: true,
     });
     expect(applySettingsShape(entry, toSettingsShape(entry))).toEqual(entry);
   });
@@ -96,6 +98,7 @@ describe("registerCapabilities", () => {
       netease: { enabled: false, outputDir: "", level: "" },
       ffmpeg: { enabled: false },
       lol: { enabled: false },
+      logs: { enabled: false, remote: true, local: false },
     }));
     expect(active()).toBe(0);
   });

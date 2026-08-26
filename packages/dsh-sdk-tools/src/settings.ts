@@ -27,6 +27,7 @@ export interface SettingsShapeInput {
   email?: boolean;
   lol?: boolean;
   vrchat?: boolean;
+  logs?: boolean;
 }
 
 /** settings 文档里的扁平开关形状(schema 填充默认后)。 */
@@ -37,6 +38,7 @@ export interface SettingsShape {
   email: boolean;
   lol: boolean;
   vrchat: boolean;
+  logs: boolean;
 }
 
 /** settings namespace 的 schema:与预设 entry 的默认 enabled 保持一致。 */
@@ -47,6 +49,7 @@ export const SettingsSchema: z<SettingsShapeInput> = z.object({
   email: z.boolean().default(false),
   lol: z.boolean().default(true),
   vrchat: z.boolean().default(false),
+  logs: z.boolean().default(true),
 });
 
 /** 嵌套 entry config → 扁平 settings 形状(installSettingsSection 的 base 层)。 */
@@ -58,6 +61,7 @@ export function toSettingsShape(config: ResolvedConfig): SettingsShape {
     email: config.email.enabled,
     lol: config.lol.enabled,
     vrchat: config.vrchat.enabled,
+    logs: config.logs.enabled,
   };
 }
 
@@ -71,6 +75,7 @@ export function applySettingsShape(config: ResolvedConfig, shape: SettingsShapeI
     email: { ...config.email, enabled: shape.email ?? config.email.enabled },
     lol: { ...config.lol, enabled: shape.lol ?? config.lol.enabled },
     vrchat: { ...config.vrchat, enabled: shape.vrchat ?? config.vrchat.enabled },
+    logs: { ...config.logs, enabled: shape.logs ?? config.logs.enabled },
   };
 }
 

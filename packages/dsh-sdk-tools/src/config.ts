@@ -91,6 +91,22 @@ export interface VrchatConfig {
   enabled: boolean;
 }
 
+/** 插件配置输入(logs 日志查询)。 */
+export interface LogsConfigInput {
+  enabled?: boolean;
+  /** 查询远程(服务器 PostgreSQL);缺省 true。 */
+  remote?: boolean;
+  /** 查询本地 SQLite;缺省 false。 */
+  local?: boolean;
+}
+
+/** logs 日志查询配置输出。 */
+export interface LogsConfig {
+  enabled: boolean;
+  remote: boolean;
+  local: boolean;
+}
+
 /** 插件配置输入(schemastery 校验前)。 */
 export interface Config {
   bilibili?: BilibiliConfigInput;
@@ -99,6 +115,7 @@ export interface Config {
   email?: EmailConfigInput;
   lol?: LolConfigInput;
   vrchat?: VrchatConfigInput;
+  logs?: LogsConfigInput;
 }
 
 /** 插件配置输出(schemastery 填充默认值后,apply 收到即此形状)。 */
@@ -109,6 +126,7 @@ export interface ResolvedConfig {
   email: EmailConfig;
   lol: LolConfig;
   vrchat: VrchatConfig;
+  logs: LogsConfig;
 }
 
 export const Config: z<Config> = z.object({
@@ -140,5 +158,10 @@ export const Config: z<Config> = z.object({
   }),
   vrchat: z.object({
     enabled: z.boolean().default(false),
+  }),
+  logs: z.object({
+    enabled: z.boolean().default(true),
+    remote: z.boolean().default(true),
+    local: z.boolean().default(false),
   }),
 });

@@ -286,6 +286,9 @@ importers:
       '@sakurachiyo0v0/bilibili':
         specifier: workspace:*
         version: link:../bilibili
+      '@sakurachiyo0v0/database':
+        specifier: workspace:*
+        version: link:../database
       '@sakurachiyo0v0/email':
         specifier: workspace:*
         version: link:../email

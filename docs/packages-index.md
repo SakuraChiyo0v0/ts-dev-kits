@@ -702,6 +702,7 @@ DSH(DeepSeek Harness)host 插件,把本仓库功能包包装成 agent 工具,通
 - email:`email_verify` / `email_send`(默认关,配置 SMTP 后启用)
 - lol:`lol_summoner` / `lol_match_history` / `lol_ranked`
 - vrchat:`vrchat_whoami` / `vrchat_user` / `vrchat_worlds_search`(默认关,需本地 VRChat 登录态 auth.json)
+- logs:`logs_query` — 查询 SDK 日志(等级/设备/命名空间/关键词/时间,默认查远程跨机聚合)
 
 **安全与合规：** SMTP 密码等敏感配置只存在于 host 端预设 config;工具返回与错误消息脱敏;netease 的试听拦截/权限拒绝硬规则在 SDK 层强制,工具层不绕过。
 

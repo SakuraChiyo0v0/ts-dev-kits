@@ -44,6 +44,7 @@ function entry(): ResolvedConfig {
     email: { enabled: false },
     lol: { enabled: true },
     vrchat: { enabled: false },
+    logs: { enabled: true, remote: true, local: false },
   };
 }
 

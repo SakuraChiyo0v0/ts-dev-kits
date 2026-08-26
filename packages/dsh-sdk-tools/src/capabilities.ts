@@ -7,6 +7,7 @@ import { applyFfmpegTools } from "./tools/ffmpeg.js";
 import { applyEmailTools } from "./tools/email.js";
 import { applyLolTools } from "./tools/lol.js";
 import { applyVrchatTools } from "./tools/vrchat.js";
+import { applyLogsTools } from "./tools/logs.js";
 
 const logger = createLogger({ namespace: "dsh-sdk-tools" }).child("capabilities");
 
@@ -43,6 +44,10 @@ export function registerCapabilities(ctx: Context, config: ResolvedConfig): () =
   if (config.vrchat.enabled) {
     disposers.push(applyVrchatTools(ctx, config.vrchat));
     enabled.push("vrchat");
+  }
+  if (config.logs.enabled) {
+    disposers.push(applyLogsTools(ctx, config.logs));
+    enabled.push("logs");
   }
   logger.info("sdk tools registered", { enabled });
   return () => { for (const dispose of disposers) dispose(); };

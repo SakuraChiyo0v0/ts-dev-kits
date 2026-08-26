@@ -32,3 +32,9 @@
       enabled: true
     vrchat:
       enabled: false
+    logs:
+      enabled: true
+      # 日志查询:默认查远程(服务器 PostgreSQL,跨机聚合)。
+      # local 开启后可查本机 SQLite 日志(需本机已用 DatabaseLogTransport 写入)。
+      # remote: true
+      # local: false
