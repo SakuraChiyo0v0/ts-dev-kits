@@ -1,6 +1,9 @@
 import { createWriteStream, existsSync, mkdirSync, statSync } from "node:fs";
+import { createLogger } from "@sakurachiyo0v0/logger";
 import { BilibiliError } from "./errors.js";
 import type { DownloadConfig, DownloadProgress, MediaStream } from "./types.js";
+
+const logger = createLogger({ namespace: "bilibili" }).child("download");
 
 const RETRYABLE_STATUS = new Set([408, 429, 500, 502, 503, 504]);
 const PERMANENT_STATUS = new Set([400, 401, 403, 404, 405, 410, 416]);
@@ -163,6 +166,12 @@ export async function downloadStream(
     timeoutSeconds: config.timeoutSeconds,
     filterPcdn: config.filterPcdn,
   });
+  logger.info("download started", {
+    streamId: stream.id,
+    fileSize,
+    filePath,
+    concurrency: Math.max(1, config.concurrency),
+  });
 
   mkdirSync(filePath.split(/[/\\]/u).slice(0, -1).join("/") || ".", { recursive: true });
 
@@ -175,6 +184,7 @@ export async function downloadStream(
       speed: 0,
       stage: "video",
     });
+    logger.info("download skipped, file already complete", { streamId: stream.id, filePath });
     return fileSize;
   }
 
@@ -238,11 +248,23 @@ async function downloadSingle(
         writeStream.end((error?: Error | null) => (error ? reject(error) : resolve()));
       });
       options.onProgress?.({ downloaded: total, total, percent: 100, speed: 0, stage: "video" });
+      logger.debug("download single completed", { filePath, total });
       return downloaded;
     } catch (error) {
       if (attempt >= config.retries) {
+        logger.error("download failed after retries", {
+          filePath,
+          attempts: config.retries + 1,
+          error,
+        });
         throw classifyDownloadError(error, config.retries + 1);
       }
+      logger.warn("download attempt failed, retrying", {
+        filePath,
+        attempt: attempt + 1,
+        maxAttempts: config.retries + 1,
+        error,
+      });
       await new Promise((resolve) => setTimeout(resolve, Math.min(2 ** attempt * 500, 8000)));
     }
   }

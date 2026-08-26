@@ -3,6 +3,7 @@
  * 领域能力以 client.summoner / matchHistory / ranked / gameData / gameflow 提供。
  */
 
+import { createLogger } from "@sakurachiyo0v0/logger";
 import { discoverLcuClient, isTencentServer } from "./discovery.js";
 import { HttpLcuTransport } from "./http-transport.js";
 import { EventBus } from "./events.js";
@@ -19,6 +20,8 @@ import { ChatApi } from "./endpoints/chat.js";
 import { LiveClientApi } from "./live-client.js";
 import { ChampionNamesService } from "./champion-names.js";
 import type { LcuConnectionInfo, LolClientOptions } from "./types.js";
+
+const logger = createLogger({ namespace: "lol" }).child("client");
 
 export interface LolClient {
   /** 当前连接的 LCU 信息（含 server，若有） */
@@ -51,6 +54,10 @@ export interface LolClient {
 export async function createLolClient(options: LolClientOptions = {}): Promise<LolClient> {
   const connection =
     options.connection ?? (await discoverLcuClient());
+  logger.info("lcu client created", {
+    port: connection.port,
+    server: connection.server ?? "unknown",
+  });
 
   const transport = new HttpLcuTransport({
     port: connection.port,
@@ -116,6 +123,7 @@ export async function createLolClient(options: LolClientOptions = {}): Promise<L
       if (sgp) {
         await sgp.close();
       }
+      logger.info("lcu client closed", { port: connection.port });
     },
   };
 

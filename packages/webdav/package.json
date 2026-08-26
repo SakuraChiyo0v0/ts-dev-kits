@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/webdav",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "WebDAV config storage SDK: basic file operations + atomic ConfigStore with backups, plus CLI",
   "license": "UNLICENSED",
   "publishConfig": {
@@ -36,6 +36,7 @@
   },
   "dependencies": {
     "@sakurachiyo0v0/cli-utils": "workspace:*",
+    "@sakurachiyo0v0/logger": "workspace:*",
     "webdav": "^5.10.0"
   },
   "devDependencies": {

@@ -3,12 +3,15 @@
  */
 import { writeFile } from "node:fs/promises";
 import sharp from "sharp";
+import { createLogger } from "@sakurachiyo0v0/logger";
 import { ChuanshengtongError, ChuanshengtongErrorCode } from "./errors.js";
 import { parseRichText } from "./richtext.js";
 import { buildTextLayer } from "./svg.js";
 import { TEMPLATES, getTemplateDefinition } from "./templates/index.js";
 import { wrapRichText } from "./wrap.js";
 import type { OutputFormat, RenderOptions, RenderResult, TemplateInfo } from "./types.js";
+
+const logger = createLogger({ namespace: "chuanshengtong" }).child("render");
 
 const FORMATS: readonly OutputFormat[] = ["png", "jpeg"];
 
@@ -102,6 +105,7 @@ function validateOptions(options: RenderOptions): {
 /** 渲染:文字 + 模板 → 图片文件 */
 export async function render(options: RenderOptions): Promise<RenderResult> {
   const { def, format, width, fontSize, color, quality } = validateOptions(options);
+  logger.info("render started", { template: def.id, format, width, textLength: options.text.length });
 
   // 富文本解析 → 排版;行数超出模板容量 → TEXT_TOO_LONG(不静默丢字)
   const runs = parseRichText(options.text);
@@ -111,6 +115,10 @@ export async function render(options: RenderOptions): Promise<RenderResult> {
     maxLines: def.textRegion.maxLines,
   });
   if (truncated) {
+    logger.warn("text exceeds template line capacity", {
+      template: def.id,
+      maxLines: def.textRegion.maxLines,
+    });
     throw new ChuanshengtongError(
       ChuanshengtongErrorCode.TEXT_TOO_LONG,
       `文字在模板 "${def.id}" 中超过 ${def.textRegion.maxLines} 行,请缩短或换模板`,
@@ -133,6 +141,7 @@ export async function render(options: RenderOptions): Promise<RenderResult> {
     buffer = await pipeline.toBuffer();
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    logger.error("image render failed", { template: def.id, error: err });
     throw new ChuanshengtongError(
       ChuanshengtongErrorCode.RENDER_FAILED,
       `图片渲染失败:${message}`,
@@ -144,12 +153,18 @@ export async function render(options: RenderOptions): Promise<RenderResult> {
     await writeFile(options.output, buffer);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    logger.error("failed to write output file", { output: options.output, error: err });
     throw new ChuanshengtongError(
       ChuanshengtongErrorCode.WRITE_FAILED,
       `写入输出文件失败:${message}`,
     );
   }
 
+  logger.info("render completed", {
+    output: options.output,
+    format,
+    bytes: buffer.length,
+  });
   return {
     outputPath: options.output,
     width,

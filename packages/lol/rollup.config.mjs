@@ -1,6 +1,10 @@
 export default {
   input: ".build/index.js",
-  external: (id) => id === "ws" || id === "undici" || id.startsWith("node:"),
+  external: (id) =>
+    id === "@sakurachiyo0v0/logger" ||
+    id === "ws" ||
+    id === "undici" ||
+    id.startsWith("node:"),
   output: [
     {
       file: "dist/index.js",

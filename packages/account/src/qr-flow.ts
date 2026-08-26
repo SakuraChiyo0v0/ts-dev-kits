@@ -9,6 +9,7 @@ import { spawn } from "node:child_process";
 import { createServer, type Server } from "node:http";
 import { randomBytes } from "node:crypto";
 import QRCode from "qrcode";
+import { createLogger } from "@sakurachiyo0v0/logger";
 import { AccountError } from "./errors.js";
 import type {
   LoginResult,
@@ -17,6 +18,8 @@ import type {
   QrLoginAdapter,
   QrLoginOptions,
 } from "./types.js";
+
+const logger = createLogger({ namespace: "account" }).child("qr-login");
 
 /** 打开系统浏览器(Windows start / macOS open / Linux xdg-open)。 */
 export async function openBrowserDefault(url: string): Promise<void> {
@@ -97,6 +100,12 @@ export async function qrcodeLogin(options: QrLoginOptions): Promise<LoginResult>
   const timeoutMs = options.timeoutMs ?? 180_000;
   const maxRegenerates = options.maxRegenerates ?? 3;
   const deadline = Date.now() + timeoutMs;
+  logger.info("qr login started", {
+    platform: adapter.platform,
+    pollIntervalMs,
+    timeoutMs,
+    maxRegenerates,
+  });
 
   // 一次性 token,防止本机其它进程误触发本地接口。
   const token = randomBytes(16).toString("hex");
@@ -143,6 +152,10 @@ export async function qrcodeLogin(options: QrLoginOptions): Promise<LoginResult>
         if (error instanceof AccountError) {
           throw error;
         }
+        logger.error("failed to generate login qr key", {
+          platform: adapter.platform,
+          error,
+        });
         throw new AccountError("NETWORK", "生成登录二维码失败", { cause: error });
       }
       // 用 PNG data URL(SVG 带 XML 声明,内嵌 HTML 可能不渲染)。
@@ -156,6 +169,10 @@ export async function qrcodeLogin(options: QrLoginOptions): Promise<LoginResult>
         try {
           await opener(pageUrl);
         } catch (error) {
+          logger.warn("failed to open browser automatically", {
+            platform: adapter.platform,
+            error,
+          });
           emit({ state: "waiting", message: "自动打开浏览器失败,请手动访问二维码链接" });
           void error;
         }
@@ -166,6 +183,7 @@ export async function qrcodeLogin(options: QrLoginOptions): Promise<LoginResult>
       // 轮询直到成功 / 超时 / 二维码过期。
       for (;;) {
         if (Date.now() >= deadline) {
+          logger.warn("qr login timed out", { platform: adapter.platform, timeoutMs });
           emit({ state: "timeout", message: "登录超时,请重试" });
           throw new AccountError("LOGIN_REQUIRED", "登录超时,请重新执行 login");
         }
@@ -176,13 +194,21 @@ export async function qrcodeLogin(options: QrLoginOptions): Promise<LoginResult>
           if (error instanceof AccountError) {
             throw error;
           }
+          logger.error("failed to poll login status", {
+            platform: adapter.platform,
+            error,
+          });
           throw new AccountError("NETWORK", "轮询登录状态失败", { cause: error });
         }
         if (outcome.state === "success") {
           if (outcome.credentials === undefined) {
+            logger.error("login succeeded but adapter returned no credentials", {
+              platform: adapter.platform,
+            });
             throw new AccountError("API_ERROR", "登录成功但适配器未返回凭证");
           }
           emit({ state: "success", message: "登录成功" });
+          logger.info("qr login succeeded", { platform: adapter.platform });
           if (store !== undefined) {
             const payload = adapter.serialize(
               outcome.credentials,
@@ -195,10 +221,14 @@ export async function qrcodeLogin(options: QrLoginOptions): Promise<LoginResult>
           return { credentials: outcome.credentials, saved: store !== undefined };
         }
         if (outcome.state === "expired") {
+          logger.warn("qr code expired, regenerating", { platform: adapter.platform });
           emit({ state: "expired", message: "二维码已过期,正在重新生成" });
           break; // 重新生成二维码
         }
         if (outcome.state === "scanned") {
+          logger.debug("qr code scanned, awaiting confirmation", {
+            platform: adapter.platform,
+          });
           emit({ state: "scanned", message: "已扫码,请在手机上确认" });
         } else if (outcome.message !== "") {
           emit({ state: "waiting", message: outcome.message });
@@ -206,6 +236,10 @@ export async function qrcodeLogin(options: QrLoginOptions): Promise<LoginResult>
         await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
       }
     }
+    logger.warn("qr code regenerated too many times", {
+      platform: adapter.platform,
+      maxRegenerates,
+    });
     emit({ state: "failed", message: "二维码多次过期,请重试" });
     throw new AccountError("LOGIN_REQUIRED", "二维码多次过期,请重新执行 login");
   } finally {

@@ -1,4 +1,5 @@
 import * as lark from "@larksuiteoapi/node-sdk";
+import { createLogger } from "@sakurachiyo0v0/logger";
 import type {
   ChatCard,
   ChatCardAction,
@@ -16,6 +17,8 @@ import {
   validateFeishuEmoji,
   type FeishuConfig,
 } from "./feishu-types.js";
+
+const logger = createLogger({ namespace: "chat-platforms" }).child("feishu");
 
 /** 飞书 im.message.receive_v1 事件的 data 类型 */
 type FeishuMessageEvent = Parameters<
@@ -198,7 +201,9 @@ export function feishuProvider(config: FeishuConfig): ChatPlatformAdapter {
       value: value as ChatCardAction["value"],
       raw: event,
     })).catch((err) => {
-      console.error("[chat-platforms] 卡片回调处理失败:", err instanceof Error ? err.message : err);
+      logger.warn("card action handler failed", {
+        error: err instanceof Error ? err : String(err),
+      });
     });
   }
 
@@ -207,6 +212,10 @@ export function feishuProvider(config: FeishuConfig): ChatPlatformAdapter {
     try {
       // 交互卡片优先：cardkit.create 创建卡片实体 → im.message 发送 interactive
       if (message.card) {
+        logger.debug("sending feishu card message", {
+          chatType: source.type,
+          isReply: message.replyToMessageId !== undefined,
+        });
         return sendCard(source, message);
       }
 
@@ -224,6 +233,7 @@ export function feishuProvider(config: FeishuConfig): ChatPlatformAdapter {
           path: { message_id: message.replyToMessageId },
           data: { content, msg_type: "text" },
         });
+        logger.debug("feishu message sent (reply)", { chatType: source.type });
         return { platform: "feishu", ok: true, messageId: res.data?.message_id ?? "" };
       }
 
@@ -236,8 +246,10 @@ export function feishuProvider(config: FeishuConfig): ChatPlatformAdapter {
           content,
         },
       });
+      logger.debug("feishu message sent", { chatType: source.type });
       return { platform: "feishu", ok: true, messageId: res.data?.message_id ?? "" };
     } catch (error) {
+      logger.error("failed to send feishu message", { error });
       throw toFeishuError(error);
     }
   }
@@ -297,9 +309,11 @@ export function feishuProvider(config: FeishuConfig): ChatPlatformAdapter {
       if (config.transport === "webhook") {
         // webhook 模式：由外部 HTTP 服务把事件 POST 进来（见 handleWebhook）
         connected = true;
+        logger.info("feishu connected (webhook)");
         return;
       }
       // 长连接模式
+      logger.info("feishu connecting (websocket)");
       wsClient = new lark.WSClient({
         appId: config.appId,
         appSecret: config.appSecret,
@@ -313,12 +327,14 @@ export function feishuProvider(config: FeishuConfig): ChatPlatformAdapter {
         }),
       });
       connected = true;
+      logger.info("feishu connected (websocket)");
     },
     async disconnect(): Promise<void> {
       connected = false;
       if (wsClient) {
         await wsClient.close();
         wsClient = null;
+        logger.info("feishu disconnected");
       }
     },
     async send(source, message): Promise<ChatSendResult> {

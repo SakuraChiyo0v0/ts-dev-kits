@@ -1,3 +1,4 @@
+import { createLogger } from "@sakurachiyo0v0/logger";
 import { EmailError } from "./errors.js";
 import type {
   CreateEmailClientOptions,
@@ -8,6 +9,8 @@ import type {
   EmailProvider,
   EmailSendResult,
 } from "./types.js";
+
+const logger = createLogger({ namespace: "email" }).child("client");
 
 const hasNewline = (value: string): boolean => /[\r\n]/u.test(value);
 const asList = (value?: EmailAddressList): readonly EmailAddress[] =>
@@ -65,13 +68,32 @@ export class EmailClient {
     this.#provider = options.provider;
   }
 
-  verify(): Promise<void> {
-    return this.#provider.verify();
+  async verify(): Promise<void> {
+    await this.#provider.verify();
+    logger.debug("smtp connection verified");
   }
 
   async send(message: EmailMessage): Promise<EmailSendResult> {
     assertMessage(message);
-    return this.#provider.send(message);
+    // bcc 收件人不出现在日志(隐私语义);to/cc 计数即可,不记具体地址
+    logger.info("sending email", {
+      subject: message.subject,
+      toCount: asList(message.to).length,
+      ccCount: asList(message.cc).length,
+      attachmentCount: message.attachments?.length ?? 0,
+    });
+    try {
+      const result = await this.#provider.send(message);
+      logger.info("email sent", {
+        messageId: result.messageId,
+        acceptedCount: result.accepted.length,
+        rejectedCount: result.rejected.length,
+      });
+      return result;
+    } catch (error) {
+      logger.error("failed to send email", { subject: message.subject, error });
+      throw error;
+    }
   }
 
   close(): Promise<void> {

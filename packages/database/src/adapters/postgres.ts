@@ -1,4 +1,5 @@
 import pg from "pg";
+import { createLogger } from "@sakurachiyo0v0/logger";
 import { DataError, DataErrorCode, wrapDbError } from "../errors.js";
 import { convertPlaceholders } from "../placeholder.js";
 import type { DatabaseAdapter, ExecuteResult, Params, Row, PostgresConfig } from "../types.js";
@@ -6,6 +7,17 @@ import type { DatabaseAdapter, ExecuteResult, Params, Row, PostgresConfig } from
 const { Pool } = pg;
 type PgPool = pg.Pool;
 type PgPoolClient = pg.PoolClient;
+
+const logger = createLogger({ namespace: "database" }).child("postgres");
+
+/** 提取连接串 host 用于日志(不含凭据/路径) */
+function logHost(url: string): string {
+  try {
+    return new URL(url).host;
+  } catch {
+    return "(invalid url)";
+  }
+}
 
 /**
  * PostgreSQL 适配器:基于 pg 连接池。
@@ -25,6 +37,10 @@ export class PostgresAdapter implements DatabaseAdapter {
       throw new DataError(DataErrorCode.CONFIGURATION, "postgres url 非法,应为 postgresql://user:***@host:5432/db 形式");
     }
     this.pool = new Pool({ connectionString: config.url, max: config.maxConnections ?? 10 });
+    logger.debug("postgres pool created", {
+      host: logHost(config.url),
+      maxConnections: config.maxConnections ?? 10,
+    });
   }
 
   private execTarget(): PgPool | PgPoolClient {

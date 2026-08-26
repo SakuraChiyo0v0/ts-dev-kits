@@ -6,6 +6,7 @@
  *   - 品质必须与账号身份匹配:目标品质不在权限清单内 → PRIVILEGE_DENIED,不降级不绕行。
  */
 import { createWriteStream, mkdirSync, existsSync } from "node:fs";
+import { createLogger } from "@sakurachiyo0v0/logger";
 import { createFfmpegClient } from "@sakurachiyo0v0/ffmpeg";
 import { NeteaseError } from "../errors.js";
 import type {
@@ -19,6 +20,8 @@ import type {
 } from "../types.js";
 import { SongApi } from "../api/song.js";
 import { LyricApi } from "../api/playlist.js";
+
+const logger = createLogger({ namespace: "netease-music" }).child("download");
 
 /** 试听判定:时长占比低于该值视为试听片段。 */
 const TRIAL_DURATION_RATIO = 0.9;
@@ -37,6 +40,11 @@ export function assertLevelAllowed(
   availableLevels: QualityLevel[],
 ): void {
   if (!availableLevels.includes(level)) {
+    logger.warn("level not allowed for account, refusing", {
+      songId: id,
+      level,
+      availableLevels,
+    });
     throw new NeteaseError(
       "PRIVILEGE_DENIED",
       `song ${id}: level "${level}" not allowed for current account (available: ${
@@ -53,6 +61,7 @@ export function assertNotTrial(
   expectedDurationMs: number | undefined,
 ): void {
   if (stream.isTrial) {
+    logger.warn("trial fragment detected, refusing download", { songId: id });
     throw new NeteaseError(
       "TRIAL_ONLY",
       `song ${id}: server returned a trial fragment (freeTrialInfo), refusing to download an incomplete audio`,
@@ -65,6 +74,11 @@ export function assertNotTrial(
     stream.durationMs > 0 &&
     stream.durationMs < expectedDurationMs * TRIAL_DURATION_RATIO
   ) {
+    logger.warn("stream duration far shorter than full song, refusing trial fragment", {
+      songId: id,
+      streamDurationMs: stream.durationMs,
+      expectedDurationMs,
+    });
     throw new NeteaseError(
       "TRIAL_ONLY",
       `song ${id}: stream duration (${stream.durationMs}ms) is far shorter than full song (${expectedDurationMs}ms), refusing trial fragment`,
@@ -123,6 +137,7 @@ export class SongDownloader {
     const lyricMode = options.lyricMode ?? "both";
     const wantCover = options.cover ?? true;
     const wantTags = options.writeTags ?? true;
+    logger.info("download started", { songId: item.id, level, outputDir });
 
     // 1. 歌曲信息(标题/歌手/专辑/时长/封面)。
     let songInfo: SongInfo;
@@ -244,6 +259,13 @@ export class SongDownloader {
       }
     }
 
+    logger.info("download completed", {
+      songId: item.id,
+      filePath,
+      level: stream.level,
+      hasLyric: lyricPath !== undefined,
+      hasCover: coverPath !== undefined,
+    });
     return {
       filePath,
       level: stream.level,

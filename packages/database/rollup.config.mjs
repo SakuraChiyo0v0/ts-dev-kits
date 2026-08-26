@@ -1,6 +1,7 @@
 export default {
   input: ".build/index.js",
   external: (id) =>
+    id === "@sakurachiyo0v0/logger" ||
     id === "better-sqlite3" ||
     id === "pg" ||
     id === "mysql2" ||

@@ -5,8 +5,11 @@
  * 不感知业务,只提供 request。
  */
 import type { QrLoginAdapter } from "@sakurachiyo0v0/account";
+import { createLogger } from "@sakurachiyo0v0/logger";
 import { XiaoheiheError, toXiaoheiheError } from "./errors.js";
 import { getKeys } from "./sign.js";
+
+const logger = createLogger({ namespace: "xiaoheihe" }).child("transport");
 
 export type HttpMethod = "GET" | "POST";
 
@@ -165,22 +168,29 @@ export class XiaoheiheHttpTransport {
 
     // 风控信号:响应体含 captcha/ticket(风控页特征)
     if (text.includes("captcha") || text.includes("ticket")) {
+      logger.warn("risk control triggered (captcha/ticket in response)", {
+        method,
+        path: options.path,
+      });
       throw new XiaoheiheError("CAPTCHA", "触发小黑盒风控验证码拦截,请稍后再试", {
         statusCode: response.status,
       });
     }
 
     if (response.status === 401) {
+      logger.warn("auth expired", { method, path: options.path });
       throw new XiaoheiheError("AUTH_EXPIRED", "登录态已失效,请重新扫码登录", { statusCode: 401 });
     }
     if (response.status === 429) {
       const retryAfterSeconds = this.#retryAfterSeconds(response.headers);
+      logger.warn("rate limited", { method, path: options.path, retryAfterSeconds });
       throw new XiaoheiheError("RATE_LIMIT", "请求过于频繁,已被限流", {
         statusCode: 429,
         ...(retryAfterSeconds !== undefined ? { retryAfterSeconds } : {}),
       });
     }
     if (!response.ok) {
+      logger.error("api error", { method, path: options.path, status: response.status });
       throw new XiaoheiheError("API_ERROR", `接口错误(HTTP ${response.status})`, {
         statusCode: response.status,
       });
@@ -192,17 +202,24 @@ export class XiaoheiheHttpTransport {
       const msg = (payload as { msg?: unknown }).msg;
       const statusText = typeof status === "string" ? status : "";
       if (statusText === "show_captcha" || statusText === "error_captcha") {
+        logger.warn("risk control triggered (status field)", { method, path: options.path });
         throw new XiaoheiheError("CAPTCHA", "触发小黑盒风控验证码拦截,请稍后再试", {
           ...(typeof msg === "string" && msg !== "" ? { serverMsg: msg } : {}),
         });
       }
       if (statusText !== "" && statusText !== "ok") {
+        logger.error("api returned non-ok status", {
+          method,
+          path: options.path,
+          statusText,
+        });
         throw new XiaoheiheError("API_ERROR", "小黑盒接口返回异常", {
           ...(typeof msg === "string" && msg !== "" ? { serverMsg: msg } : {}),
         });
       }
     }
 
+    logger.debug("request ok", { method, path: options.path, status: response.status });
     return payload as T;
   }
 

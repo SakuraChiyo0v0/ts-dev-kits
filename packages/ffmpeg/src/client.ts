@@ -1,3 +1,4 @@
+import { createLogger } from "@sakurachiyo0v0/logger";
 import { FfmpegError } from "./errors.js";
 import { createRunner } from "./runner.js";
 import type {
@@ -216,10 +217,16 @@ function qualityArgs(output: string, quality: number | undefined): string[] {
 }
 
 export function createFfmpegClient(options: FfmpegOptions = {}): FfmpegClient {
+  const logger = createLogger({ namespace: "ffmpeg" }).child("client");
   const runner = createRunner(options);
+  logger.debug("ffmpeg client created", {
+    ffmpegPath: runner.ffmpegPath,
+    ffprobePath: runner.ffprobePath,
+  });
 
   async function probe(input: string): Promise<ProbeResult> {
     requireInput(input, "input");
+    logger.debug("probing media", { input });
     const result = await runner.runFfprobe([
       "-v", "error",
       "-print_format", "json",
@@ -228,17 +235,25 @@ export function createFfmpegClient(options: FfmpegOptions = {}): FfmpegClient {
       input,
     ]);
     if (result.exitCode !== 0) {
+      logger.error("ffprobe failed", { input, exitCode: result.exitCode });
       throw new FfmpegError("PROCESS_ERROR", `ffprobe failed with exit code ${String(result.exitCode)}`, {
         ...(result.exitCode !== null ? { exitCode: result.exitCode } : {}),
         ...(result.stderr !== "" ? { stderr: result.stderr } : {}),
       });
     }
     try {
-      return parseProbeJson(JSON.parse(result.stdout) as unknown);
+      const parsed = parseProbeJson(JSON.parse(result.stdout) as unknown);
+      logger.debug("media probed", {
+        input,
+        durationMs: parsed.duration,
+        format: parsed.formatName,
+      });
+      return parsed;
     } catch (error) {
       if (error instanceof FfmpegError) {
         throw error;
       }
+      logger.error("failed to parse ffprobe output", { input, error });
       throw new FfmpegError("UNKNOWN", "Failed to parse ffprobe output", { cause: error });
     }
   }
@@ -258,6 +273,7 @@ export function createFfmpegClient(options: FfmpegOptions = {}): FfmpegClient {
       ...yArgs(options.overwrite),
       options.output,
     ];
+    logger.info("transcoding", { input: options.input, output: options.output });
     return runner.run(args, runOptions(options));
   }
 
@@ -274,6 +290,7 @@ export function createFfmpegClient(options: FfmpegOptions = {}): FfmpegClient {
       ...yArgs(options.overwrite),
       options.output,
     ];
+    logger.info("extracting audio", { input: options.input, output: options.output });
     return runner.run(args, runOptions(options));
   }
 

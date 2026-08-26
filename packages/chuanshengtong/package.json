@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/chuanshengtong",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "传声筒:输入文字 + 内置图像模板,程序化合成输出图片(CLI + SDK)",
   "license": "UNLICENSED",
   "publishConfig": {
@@ -36,6 +36,7 @@
   },
   "dependencies": {
     "@sakurachiyo0v0/cli-utils": "workspace:*",
+    "@sakurachiyo0v0/logger": "workspace:*",
     "sharp": "^0.35.3"
   },
   "devDependencies": {

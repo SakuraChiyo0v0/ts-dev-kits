@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/netease-music",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "NetEase Cloud Music download SDK: weapi encryption, QR-code login, privilege-aware quality selection and compliant downloading",
   "license": "UNLICENSED",
   "publishConfig": {
@@ -38,7 +38,8 @@
     "@sakurachiyo0v0/account": "workspace:*",
     "@sakurachiyo0v0/cli-utils": "workspace:*",
     "@sakurachiyo0v0/config": "workspace:*",
-    "@sakurachiyo0v0/ffmpeg": "workspace:*"
+    "@sakurachiyo0v0/ffmpeg": "workspace:*",
+    "@sakurachiyo0v0/logger": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^26.1.2",

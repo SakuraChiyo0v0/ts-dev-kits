@@ -1,4 +1,5 @@
 import { hostname as osHostname } from "node:os";
+import { inspect } from "node:util";
 import {
   LogLevel,
   type LogLevelName,
@@ -40,7 +41,8 @@ function resolveLevel(level: LogLevel | LogLevelName): LogLevel {
 }
 
 /**
- * Console transport：输出到控制台
+ * Console transport：输出到 stderr。
+ * 日志是诊断信息,一律走 stderr——保证 stdout 永远是纯数据(CLI 的 JSON 输出契约不被污染)。
  */
 class ConsoleTransport implements LogTransport {
   write(entry: LogEntry): void {
@@ -56,28 +58,11 @@ class ConsoleTransport implements LogTransport {
         stack: entry.error.stack,
         ...(entry.data ?? {}),
       };
-      this.#log(entry.level, base, errorInfo);
+      process.stderr.write(`${base} ${inspect(errorInfo)}\n`);
     } else if (entry.data && Object.keys(entry.data).length > 0) {
-      this.#log(entry.level, base, entry.data);
+      process.stderr.write(`${base} ${inspect(entry.data)}\n`);
     } else {
-      this.#log(entry.level, base);
-    }
-  }
-
-  #log(level: LogLevel, ...args: unknown[]): void {
-    switch (level) {
-      case LogLevel.DEBUG:
-        console.debug(...args);
-        break;
-      case LogLevel.INFO:
-        console.info(...args);
-        break;
-      case LogLevel.WARN:
-        console.warn(...args);
-        break;
-      case LogLevel.ERROR:
-        console.error(...args);
-        break;
+      process.stderr.write(`${base}\n`);
     }
   }
 }

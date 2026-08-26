@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/steam",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "Steam SDK (query-only): Web API / Storefront / Community endpoints, login session (password+Guard / TOTP / QR / cookie import), zero write operations",
   "license": "UNLICENSED",
   "type": "module",
@@ -35,6 +35,7 @@
     "@sakurachiyo0v0/account": "workspace:*",
     "@sakurachiyo0v0/cli-utils": "workspace:*",
     "@sakurachiyo0v0/config": "workspace:*",
+    "@sakurachiyo0v0/logger": "workspace:*",
     "undici": "^7.0.0"
   },
   "devDependencies": {

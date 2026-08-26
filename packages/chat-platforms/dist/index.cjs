@@ -1,5 +1,6 @@
 'use strict';
 
+var logger$2 = require('@sakurachiyo0v0/logger');
 var lark = require('@larksuiteoapi/node-sdk');
 
 function _interopNamespaceDefault(e) {
@@ -146,6 +147,7 @@ class PolicyChecker {
     }
 }
 
+const logger$1 = logger$2.createLogger({ namespace: "chat-platforms" }).child("client");
 /**
  * 多平台客户端：持有若干平台适配器，统一入口收发消息。
  * 上层（如 hoshino-ai 主进程）通过它管理所有已启用平台。
@@ -169,6 +171,7 @@ class ChatPlatformClient {
             onMessage: (message) => this.#route(adapter.name, message),
             onCardAction: (action) => this.#onCardAction?.(action),
         });
+        logger$1.info("platform connected", { platform: adapter.name, hasPolicy: policy !== undefined });
     }
     /** 更新某平台的响应策略（不改动连接） */
     setPolicy(name, policy) {
@@ -185,6 +188,7 @@ class ChatPlatformClient {
             return Promise.resolve();
         this.#adapters.delete(name);
         this.#checkers.delete(name);
+        logger$1.info("platform removed", { platform: name });
         return adapter.disconnect();
     }
     get(name) {
@@ -209,8 +213,10 @@ class ChatPlatformClient {
     async send(source, message) {
         const adapter = this.#adapters.get(source.platform);
         if (!adapter) {
+            logger$1.error("no adapter for platform", { platform: source.platform });
             throw new Error(`no adapter for platform "${source.platform}"`);
         }
+        logger$1.debug("sending message", { platform: source.platform, chatType: source.type });
         return adapter.send(source, message);
     }
     /** 更新已发送的卡片消息（流式回复用）；平台不支持时抛错 */
@@ -234,9 +240,11 @@ class ChatPlatformClient {
         if (checker) {
             const decision = checker.decide(message);
             if (decision.action === "ignore") {
+                logger$1.debug("message ignored by policy", { platform, chatId: message.source.chatId });
                 return;
             }
             if (decision.action === "blocked") {
+                logger$1.debug("message blocked by policy", { platform, chatId: message.source.chatId });
                 await this.#onBlocked?.(message, decision.replyText);
                 return;
             }
@@ -250,7 +258,11 @@ class ChatPlatformClient {
                     .get(platform)
                     ?.react?.(message, decision.reaction)
                     .catch((err) => {
-                    console.error(`[chat-platforms] 表情回应失败(${platform}):`, err instanceof Error ? err.message : err);
+                    logger$1.warn("reaction failed", {
+                        platform,
+                        chatId: message.source.chatId,
+                        error: err instanceof Error ? err : String(err),
+                    });
                 });
             }
         }
@@ -455,6 +467,7 @@ function validateFeishuEmoji(emoji) {
     return null;
 }
 
+const logger = logger$2.createLogger({ namespace: "chat-platforms" }).child("feishu");
 /**
  * 飞书适配器。
  * 入站：im.message.receive_v1 事件（长连接或 webhook 均可）→ 归一化 ChatMessage。
@@ -608,7 +621,9 @@ function feishuProvider(config) {
             value: value,
             raw: event,
         })).catch((err) => {
-            console.error("[chat-platforms] 卡片回调处理失败:", err instanceof Error ? err.message : err);
+            logger.warn("card action handler failed", {
+                error: err instanceof Error ? err : String(err),
+            });
         });
     }
     /** 发送消息：有 replyToMessageId 走回复，否则发新消息；带 card 时发交互卡片 */
@@ -616,6 +631,10 @@ function feishuProvider(config) {
         try {
             // 交互卡片优先：cardkit.create 创建卡片实体 → im.message 发送 interactive
             if (message.card) {
+                logger.debug("sending feishu card message", {
+                    chatType: source.type,
+                    isReply: message.replyToMessageId !== undefined,
+                });
                 return sendCard(source, message);
             }
             const content = JSON.stringify({ text: message.text });
@@ -626,6 +645,7 @@ function feishuProvider(config) {
                     path: { message_id: message.replyToMessageId },
                     data: { content, msg_type: "text" },
                 });
+                logger.debug("feishu message sent (reply)", { chatType: source.type });
                 return { platform: "feishu", ok: true, messageId: res.data?.message_id ?? "" };
             }
             const res = await client.im.message.create({
@@ -637,9 +657,11 @@ function feishuProvider(config) {
                     content,
                 },
             });
+            logger.debug("feishu message sent", { chatType: source.type });
             return { platform: "feishu", ok: true, messageId: res.data?.message_id ?? "" };
         }
         catch (error) {
+            logger.error("failed to send feishu message", { error });
             throw toFeishuError(error);
         }
     }
@@ -694,9 +716,11 @@ function feishuProvider(config) {
             // 异步拉取机器人自身 open_id（用于群聊 @ 门控精确匹配），失败不阻塞连接
             void fetchBotOpenId();
             if (config.transport === "webhook") {
+                logger.info("feishu connected (webhook)");
                 return;
             }
             // 长连接模式
+            logger.info("feishu connecting (websocket)");
             wsClient = new lark__namespace.WSClient({
                 appId: config.appId,
                 appSecret: config.appSecret,
@@ -709,11 +733,13 @@ function feishuProvider(config) {
                     "card.action.trigger": handleCardAction,
                 }),
             });
+            logger.info("feishu connected (websocket)");
         },
         async disconnect() {
             if (wsClient) {
                 await wsClient.close();
                 wsClient = null;
+                logger.info("feishu disconnected");
             }
         },
         async send(source, message) {

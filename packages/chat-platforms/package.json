@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/chat-platforms",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Provider-neutral chat platform SDK (Feishu first) with unified message model and adapter registry",
   "license": "UNLICENSED",
   "publishConfig": {
@@ -32,7 +32,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@larksuiteoapi/node-sdk": "^1.72.0"
+    "@larksuiteoapi/node-sdk": "^1.72.0",
+    "@sakurachiyo0v0/logger": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^26.1.2",

@@ -6,8 +6,11 @@
 import { promises as fs } from "node:fs";
 import { readFileSync, statSync } from "node:fs";
 import path from "node:path";
+import { createLogger } from "@sakurachiyo0v0/logger";
 import type { ConfigNamespace } from "@sakurachiyo0v0/config";
 import { defaultAuthPath } from "./paths.js";
+
+const logger = createLogger({ namespace: "account" }).child("store");
 
 /** 远程(WebDAV)操作超时:服务器不可达/挂起时及时降级本地,避免卡住 */
 export const REMOTE_TIMEOUT_MS = 5000;
@@ -95,7 +98,7 @@ export class AuthStore {
       if (code === "ENOENT") {
         return null;
       }
-      console.warn(`[account] 读取登录态失败(${this.#path}):`, error);
+      logger.warn("failed to read auth file", { path: this.#path, error });
       return null;
     }
     return parseAuthPayload(text, this.#path);
@@ -112,10 +115,14 @@ export class AuthStore {
         } catch {
           // 本地回写失败不影响返回
         }
+        logger.debug("remote auth loaded", { platform: this.#platform });
         return payload;
       } catch (error) {
         if (error instanceof Error && (error as { code?: string }).code !== "NOT_FOUND") {
-          console.warn(`[account] 远程登录态读取失败(${this.#platform}),降级本地:`, error);
+          logger.warn("remote auth read failed, falling back to local", {
+            platform: this.#platform,
+            error,
+          });
         }
       }
     }
@@ -127,7 +134,7 @@ export class AuthStore {
       if (code === "ENOENT") {
         return null;
       }
-      console.warn(`[account] 读取登录态失败(${this.#path}):`, error);
+      logger.warn("failed to read auth file", { path: this.#path, error });
       return null;
     }
     return parseAuthPayload(text, this.#path);
@@ -149,11 +156,16 @@ export class AuthStore {
   /** 原子写入登录态;配置远程时同步写远程(失败/超时降级告警,本地保留)。 */
   async save(payload: AuthPayload): Promise<void> {
     await this.saveLocal(payload);
+    logger.info("auth state saved", { platform: this.#platform });
     if (this.#remote !== undefined) {
       try {
         await withTimeout(this.#remote.set(this.#platform, payload), REMOTE_TIMEOUT_MS);
+        logger.debug("remote auth synced", { platform: this.#platform });
       } catch (error) {
-        console.warn(`[account] 远程登录态同步失败(${this.#platform}),已保留本地:`, error);
+        logger.warn("remote auth sync failed, kept local copy", {
+          platform: this.#platform,
+          error,
+        });
       }
     }
   }
@@ -168,11 +180,15 @@ export class AuthStore {
         throw error;
       }
     }
+    logger.info("auth state cleared", { platform: this.#platform });
     if (this.#remote !== undefined) {
       try {
         await withTimeout(this.#remote.remove(this.#platform), REMOTE_TIMEOUT_MS);
       } catch (error) {
-        console.warn(`[account] 远程登录态删除失败(${this.#platform}):`, error);
+        logger.warn("remote auth removal failed", {
+          platform: this.#platform,
+          error,
+        });
       }
     }
   }
@@ -189,7 +205,7 @@ function parseAuthPayload(text: string, filePath: string): AuthPayload | null {
       parsed.credentials === null ||
       Object.keys(parsed.credentials).length === 0
     ) {
-      console.warn(`[account] 登录态文件损坏(${filePath}),视为未登录`);
+      logger.warn("auth file corrupted, treated as logged out", { path: filePath });
       return null;
     }
     return {
@@ -201,7 +217,7 @@ function parseAuthPayload(text: string, filePath: string): AuthPayload | null {
         : {}),
     };
   } catch {
-    console.warn(`[account] 登录态文件损坏(${filePath}),视为未登录`);
+    logger.warn("auth file corrupted, treated as logged out", { path: filePath });
     return null;
   }
 }

@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/ffmpeg",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "FFmpeg/ffprobe process wrapper with progress events and high-level media helpers",
   "license": "UNLICENSED",
   "publishConfig": {
@@ -35,7 +35,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@sakurachiyo0v0/cli-utils": "workspace:*"
+    "@sakurachiyo0v0/cli-utils": "workspace:*",
+    "@sakurachiyo0v0/logger": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^26.1.2",

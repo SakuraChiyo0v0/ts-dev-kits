@@ -3,6 +3,7 @@ export default {
   external: (id) =>
     id === "sharp" ||
     id === "@sakurachiyo0v0/cli-utils" ||
+    id === "@sakurachiyo0v0/logger" ||
     id.startsWith("node:"),
   output: [
     {

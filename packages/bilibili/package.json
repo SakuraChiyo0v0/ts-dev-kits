@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/bilibili",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Bilibili video download SDK with pluggable parsers, configurable downloader and ffmpeg merge",
   "license": "UNLICENSED",
   "publishConfig": {
@@ -38,7 +38,8 @@
     "@sakurachiyo0v0/account": "workspace:*",
     "@sakurachiyo0v0/cli-utils": "workspace:*",
     "@sakurachiyo0v0/ffmpeg": "workspace:*",
-    "@sakurachiyo0v0/config": "workspace:*"
+    "@sakurachiyo0v0/config": "workspace:*",
+    "@sakurachiyo0v0/logger": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^26.1.2",

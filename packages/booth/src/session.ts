@@ -3,8 +3,11 @@
  * 与 netease-music 的 WeapiSession 同构,但请求不需要加密层,直接携带 cookie 发请求。
  */
 import { AuthStore } from "@sakurachiyo0v0/account";
+import { createLogger } from "@sakurachiyo0v0/logger";
 import type { ConfigNamespace } from "@sakurachiyo0v0/config";
 import { BoothError } from "./errors.js";
+
+const logger = createLogger({ namespace: "booth" }).child("session");
 
 const DEFAULT_BASE_URL = "https://booth.pm";
 const USER_AGENT =
@@ -100,6 +103,7 @@ export class BoothSession {
       cookie = typeof stored?.credentials?.cookies === "string" ? stored.credentials.cookies : undefined;
     }
     this.#cookieMap = cookie !== undefined ? parseCookieString(cookie) : {};
+    logger.debug("session initialized", { loggedIn: this.isLoggedIn });
   }
 
   get baseUrl(): string {
@@ -166,6 +170,7 @@ export class BoothSession {
         redirect: init.redirect ?? "manual",
       });
     } catch (error) {
+      logger.error("booth request failed", { path, error });
       throw new BoothError(
         "NETWORK",
         error instanceof Error ? `network error: ${error.message}` : "network error",
@@ -174,6 +179,7 @@ export class BoothSession {
 
     // 合并服务端 Set-Cookie(登录/会话续期)。
     this.mergeCookies(collectSetCookies(response.headers));
+    logger.debug("booth request ok", { path, status: response.status });
     return response;
   }
 
@@ -197,6 +203,7 @@ export class BoothSession {
       savedAt: new Date().toISOString(),
     };
     await store.save(payload);
+    logger.info("session persisted", { platform: "booth" });
   }
 
   /** 清除 AuthStore 中的登录态(配置 remote 时一并清除远程)。 */

@@ -7,3 +7,4 @@ export type {
   LoggerOptions,
 } from "./types.js";
 export { createLogger } from "./logger.js";
+export { timed, type TimedOptions } from "./timed.js";

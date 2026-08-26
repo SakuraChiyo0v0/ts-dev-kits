@@ -16,8 +16,11 @@ import {
   type PasswordLoginStep,
   type PlatformCredentials,
 } from "@sakurachiyo0v0/account";
+import { createLogger } from "@sakurachiyo0v0/logger";
 import { VrchatHttpTransport } from "./transport.js";
 import type { CurrentUser } from "./types.js";
+
+const logger = createLogger({ namespace: "vrchat" }).child("auth");
 
 export interface VrchatPasswordAdapterOptions {
   /** 传输层实例;登录成功后自动注入 cookie。 */
@@ -40,6 +43,7 @@ export class VrchatPasswordAdapter implements PasswordLoginAdapter {
     // 官方要求凭证 URL 编码后再 base64(VRCX 同款实现)。
     const encoded = `${encodeURIComponent(credentials.username)}:${encodeURIComponent(credentials.password)}`;
     const basic = `Basic ${Buffer.from(encoded, "utf-8").toString("base64")}`;
+    logger.debug("vrchat login submitted", { username: credentials.username });
     const response = await this.#request("/auth/user", {
       method: "GET",
       headers: {
@@ -50,12 +54,15 @@ export class VrchatPasswordAdapter implements PasswordLoginAdapter {
     });
 
     if (response.status === 401) {
+      logger.warn("login rejected, invalid credentials", { username: credentials.username });
       throw new AccountError("INVALID_CREDENTIALS", "用户名或密码错误");
     }
     if (response.status === 429) {
+      logger.warn("login rate limited", { username: credentials.username });
       throw new AccountError("AUTH_EXPIRED", "登录请求过于频繁,请稍后再试");
     }
     if (!response.ok) {
+      logger.error("login failed", { username: credentials.username, status: response.status });
       throw new AccountError("API_ERROR", `登录失败(HTTP ${response.status})`);
     }
 

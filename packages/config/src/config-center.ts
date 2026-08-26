@@ -7,8 +7,20 @@ import {
   type ConfigStore,
   type WebdavClient,
 } from "@sakurachiyo0v0/webdav";
+import { createLogger } from "@sakurachiyo0v0/logger";
 import { loadGlobalConfig } from "./global-config.js";
 import type { ConfigCenter, ConfigCenterOptions, ConfigNamespace, GlobalConfig, NamespaceOptions } from "./types.js";
+
+const logger = createLogger({ namespace: "config" }).child("config-center");
+
+/** 提取 URL 的 host 部分用于日志(不含凭据/路径,防 user:pass@ 泄露) */
+function logHost(url: string): string {
+  try {
+    return new URL(url).host;
+  } catch {
+    return "(invalid url)";
+  }
+}
 
 /** 校验命名空间:不允许路径分隔符/越界(防路径穿越) */
 function validateNamespace(name: string): void {
@@ -69,6 +81,7 @@ export class ConfigCenterImpl implements ConfigCenter {
       ...(global.username !== undefined ? { username: global.username } : {}),
       ...(global.password !== undefined ? { password: global.password } : {}),
     });
+    logger.debug("config center created", { host: logHost(global.url) });
   }
 
   namespace(name: string, options: NamespaceOptions = {}): ConfigNamespace {
@@ -83,6 +96,7 @@ export class ConfigCenterImpl implements ConfigCenter {
           ...(this.key !== undefined ? { key: this.key } : {}),
         })
       : createConfigStore({ client: this.client, basePath });
+    logger.debug("namespace created", { name, encrypt, basePath });
     return new ConfigNamespaceImpl(name, encrypt, store);
   }
 }

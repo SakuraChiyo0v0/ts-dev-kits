@@ -3,7 +3,10 @@
  * 职责:base URL / 强制 User-Agent / 认证 cookie 携带 / 429 限流退避 / 错误归类。
  * 不感知业务,只提供 request / requestRaw。
  */
+import { createLogger } from "@sakurachiyo0v0/logger";
 import { VrchatError } from "./errors.js";
+
+const logger = createLogger({ namespace: "vrchat" }).child("transport");
 
 export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
 
@@ -143,32 +146,53 @@ export class VrchatHttpTransport {
         const retryAfter = this.#retryAfterSeconds(response.headers);
         const delayMs = (retryAfter ?? 1) * 1000;
         attempt += 1;
+        logger.warn("rate limited, backing off", {
+          method: options.method,
+          path: options.path,
+          attempt,
+          maxRetries: this.#maxRetries,
+          retryAfterSeconds: retryAfter,
+        });
         await sleep(delayMs);
         continue;
       }
 
       if (response.status === 401) {
+        logger.warn("auth expired", { method: options.method, path: options.path });
         throw new VrchatError("AUTH_EXPIRED", "会话已失效,请重新登录", { statusCode: 401 });
       }
       if (response.status === 403) {
+        logger.warn("forbidden", { method: options.method, path: options.path });
         throw new VrchatError("FORBIDDEN", "权限不足", { statusCode: 403 });
       }
       if (response.status === 404) {
+        logger.warn("not found", { method: options.method, path: options.path });
         throw new VrchatError("NOT_FOUND", `资源不存在: ${options.path}`, { statusCode: 404 });
       }
       if (response.status === 429) {
         const retryAfterSeconds = this.#retryAfterSeconds(response.headers);
+        logger.error("rate limited, retries exhausted", {
+          method: options.method,
+          path: options.path,
+          retryAfterSeconds,
+        });
         throw new VrchatError("RATE_LIMIT", "请求过于频繁,已被限流", {
           statusCode: 429,
           ...(retryAfterSeconds !== undefined ? { retryAfterSeconds } : {}),
         });
       }
       if (!response.ok) {
+        logger.error("api error", { method: options.method, path: options.path, status: response.status });
         throw new VrchatError("UNKNOWN", `VRChat API 错误(HTTP ${response.status})`, {
           statusCode: response.status,
         });
       }
 
+      logger.debug("request ok", {
+        method: options.method,
+        path: options.path,
+        status: response.status,
+      });
       return { status: response.status, body, headers: response.headers };
     }
   }

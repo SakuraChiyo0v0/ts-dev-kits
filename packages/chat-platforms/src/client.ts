@@ -1,3 +1,4 @@
+import { createLogger } from "@sakurachiyo0v0/logger";
 import type {
   ChatCard,
   ChatCardAction,
@@ -9,6 +10,8 @@ import type {
 } from "./types.js";
 import type { ChatResponsePolicy } from "./policy.js";
 import { createPolicyChecker, type PolicyChecker } from "./policy-checker.js";
+
+const logger = createLogger({ namespace: "chat-platforms" }).child("client");
 
 /**
  * 多平台客户端：持有若干平台适配器，统一入口收发消息。
@@ -35,6 +38,7 @@ export class ChatPlatformClient {
       onMessage: (message) => this.#route(adapter.name, message),
       onCardAction: (action) => this.#onCardAction?.(action),
     });
+    logger.info("platform connected", { platform: adapter.name, hasPolicy: policy !== undefined });
   }
 
   /** 更新某平台的响应策略（不改动连接） */
@@ -51,6 +55,7 @@ export class ChatPlatformClient {
     if (!adapter) return Promise.resolve();
     this.#adapters.delete(name);
     this.#checkers.delete(name);
+    logger.info("platform removed", { platform: name });
     return adapter.disconnect();
   }
 
@@ -81,8 +86,10 @@ export class ChatPlatformClient {
   async send(source: ChatSource, message: ChatMessageOutbound): Promise<ChatSendResult> {
     const adapter = this.#adapters.get(source.platform);
     if (!adapter) {
+      logger.error("no adapter for platform", { platform: source.platform });
       throw new Error(`no adapter for platform "${source.platform}"`);
     }
+    logger.debug("sending message", { platform: source.platform, chatType: source.type });
     return adapter.send(source, message);
   }
 
@@ -109,9 +116,11 @@ export class ChatPlatformClient {
     if (checker) {
       const decision = checker.decide(message);
       if (decision.action === "ignore") {
+        logger.debug("message ignored by policy", { platform, chatId: message.source.chatId });
         return;
       }
       if (decision.action === "blocked") {
+        logger.debug("message blocked by policy", { platform, chatId: message.source.chatId });
         await this.#onBlocked?.(message, decision.replyText);
         return;
       }
@@ -125,7 +134,11 @@ export class ChatPlatformClient {
           .get(platform)
           ?.react?.(message, decision.reaction)
           .catch((err) => {
-            console.error(`[chat-platforms] 表情回应失败(${platform}):`, err instanceof Error ? err.message : err);
+            logger.warn("reaction failed", {
+              platform,
+              chatId: message.source.chatId,
+              error: err instanceof Error ? err : String(err),
+            });
           });
       }
     }

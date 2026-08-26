@@ -1,5 +1,8 @@
+import { createLogger } from "@sakurachiyo0v0/logger";
 import { WebdavError, WebdavErrorCode } from "./errors.js";
 import type { ConfigStore as ConfigStoreApi, ConfigStoreOptions, WebdavClient } from "./types.js";
+
+const logger = createLogger({ namespace: "webdav" }).child("config-store");
 
 /** 规范化 basePath:去首尾空白与尾部斜杠;空串视为根目录 "/" */
 function normalizeBasePath(path: string): string {
@@ -70,7 +73,9 @@ export class ConfigStoreImpl implements ConfigStoreApi {
 
   async load<T = unknown>(name: string): Promise<T> {
     const content = await this.client.get(this.resolvePath(name));
-    return this.deserialize<T>(content);
+    const result = this.deserialize<T>(content);
+    logger.debug("config loaded", { name });
+    return result;
   }
 
   async save(name: string, data: unknown): Promise<void> {
@@ -79,17 +84,21 @@ export class ConfigStoreImpl implements ConfigStoreApi {
     await this.rotateBackup(name);
     await this.client.put(tmp, this.serialize(data), { overwrite: true });
     await this.client.move(tmp, target);
+    logger.info("config saved", { name, format: this.format });
   }
 
   async list(): Promise<string[]> {
     const entries = await this.client.list(this.basePath);
-    return entries
+    const names = entries
       .filter((e) => e.type === "file" && !e.name.endsWith(".tmp") && !e.name.includes(".bak."))
       .map((e) => e.name);
+    logger.debug("listed configs", { count: names.length });
+    return names;
   }
 
   async remove(name: string): Promise<void> {
     await this.client.remove(this.resolvePath(name));
+    logger.info("config removed", { name });
   }
 }
 

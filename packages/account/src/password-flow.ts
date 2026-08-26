@@ -6,9 +6,12 @@
  * (login / verifyCode / serialize / deserialize),本文件不感知具体平台。
  * 所有新类型定义在本文件内,不写入 types.ts(与 Booth 开发零交集)。
  */
+import { createLogger } from "@sakurachiyo0v0/logger";
 import { AccountError, toAccountError } from "./errors.js";
 import type { AuthPayload, AuthStore } from "./store.js";
 import type { LoginResult, PlatformCredentials } from "./types.js";
+
+const logger = createLogger({ namespace: "account" }).child("password-login");
 
 /** 登录步骤:成功(含凭证)或需要 2FA 验证码。 */
 export type PasswordLoginStep =
@@ -79,19 +82,29 @@ export async function passwordLogin(options: PasswordLoginOptions): Promise<Logi
   };
 
   emit("submitting", `正在登录 ${adapter.platform} ...`);
+  logger.info("password login started", { platform: adapter.platform });
   let step: PasswordLoginStep;
   try {
     step = await adapter.login({ username, password }, fetchImpl);
   } catch (error) {
+    logger.error("password login failed", {
+      platform: adapter.platform,
+      error: toAccountError(error, "登录失败"),
+    });
     throw toAccountError(error, "登录失败");
   }
 
   if (step.status === "success") {
+    logger.info("password login succeeded", { platform: adapter.platform });
     return finish(adapter, step.credentials, store, emit);
   }
 
   // need_code:循环取码验证。
   if (options.onNeedCode === undefined) {
+    logger.warn("2fa required but no onNeedCode callback provided", {
+      platform: adapter.platform,
+      method: step.method,
+    });
     throw new AccountError(
       "TWO_FACTOR_REQUIRED",
       `需要 2FA 验证(${step.method}),但未提供 onNeedCode 回调`,
@@ -100,6 +113,12 @@ export async function passwordLogin(options: PasswordLoginOptions): Promise<Logi
 
   for (let attempt = 1; attempt <= maxCodeAttempts; attempt += 1) {
     emit("need_code", step.message);
+    logger.debug("2fa code requested", {
+      platform: adapter.platform,
+      method: step.method,
+      attempt,
+      maxCodeAttempts,
+    });
     let code: string;
     try {
       const value = await options.onNeedCode({
@@ -112,6 +131,10 @@ export async function passwordLogin(options: PasswordLoginOptions): Promise<Logi
       throw toAccountError(error, "获取验证码失败");
     }
     if (code === "") {
+      logger.warn("2fa code input empty, login cancelled", {
+        platform: adapter.platform,
+        attempt,
+      });
       throw new AccountError("TWO_FACTOR_FAILED", "验证码输入为空,登录已取消");
     }
     try {
@@ -121,14 +144,27 @@ export async function passwordLogin(options: PasswordLoginOptions): Promise<Logi
         fetchImpl,
       );
     } catch (error) {
+      logger.error("2fa verification failed", {
+        platform: adapter.platform,
+        attempt,
+        error: toAccountError(error, "验证 2FA 失败"),
+      });
       throw toAccountError(error, "验证 2FA 失败");
     }
     if (step.status === "success") {
+      logger.info("password login succeeded after 2fa", {
+        platform: adapter.platform,
+        attempt,
+      });
       return finish(adapter, step.credentials, store, emit);
     }
     // 仍为 need_code(验证码错误或平台要求重新验证),继续下一轮。
   }
 
+  logger.error("2fa attempts exhausted", {
+    platform: adapter.platform,
+    maxCodeAttempts,
+  });
   throw new AccountError("TWO_FACTOR_FAILED", `2FA 验证失败(超过 ${maxCodeAttempts} 次尝试)`);
 }
 

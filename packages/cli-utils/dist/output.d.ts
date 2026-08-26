@@ -9,7 +9,7 @@ export declare function outputJson(value: unknown): void;
 export declare function outputText(value: string): void;
 /** 输出错误到 stderr。 */
 export declare function outputError(message: string): void;
-/** 统一异常处理:格式化并退出。 */
+/** 统一异常处理:记录完整错误(含 stack),格式化并退出。 */
 export declare function handleCliError(error: unknown): never;
 /** 打印帮助文本。 */
 export declare function printHelp(usage: string, commands: Array<{

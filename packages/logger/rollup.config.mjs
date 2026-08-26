@@ -4,5 +4,5 @@ export default {
     { file: "dist/index.js", format: "esm" },
     { file: "dist/index.cjs", format: "cjs" },
   ],
-  external: ["node:os"],
+  external: (id) => id.startsWith("node:"),
 };

@@ -67,6 +67,41 @@ const boundLogger = logger.child({ videoId: "BV123" });
 // 每条日志自动带 videoId: "BV123"
 ```
 
+### `@timed()` 耗时装饰器
+
+为标准类方法自动记录耗时（ECMAScript 标准装饰器，无需 experimentalDecorators）。同步/异步方法均支持。
+
+```ts
+import { createLogger, timed } from "@sakurachiyo0v0/logger";
+
+class Downloader {
+  readonly logger = createLogger({ namespace: "bilibili" });
+
+  @timed()                                     // 默认取 this.logger，记录名 "Downloader.download"
+  async download(videoId: string): Promise<void> { ... }
+
+  @timed({ name: "merge", level: "debug" })    // 覆盖记录名 / 成功级别
+  merge(): void { ... }
+}
+```
+
+输出（logger 为 debug 级别时含 start 行）：
+
+```text
+[bilibili]@desktop-01 ... DEBUG timed start { name: 'Downloader.download' }
+[bilibili]@desktop-01 ... INFO timed done { name: 'Downloader.download', durationMs: 3210 }
+[bilibili]@desktop-01 ... ERROR timed failed { name: 'Downloader.download', durationMs: 1520, error: Error: ... }
+```
+
+选项：
+
+| 选项 | 说明 |
+|---|---|
+| `logger` | 显式指定 logger；缺省取实例 `this.logger`，再缺省用 namespace "timed" 的默认 logger |
+| `name` | 覆盖记录名（缺省 `<类名>.<方法名>`） |
+| `level` | 成功日志级别 `debug`/`info`（默认 `info`） |
+| `logStart` | 是否记录开始日志（默认 `true`） |
+
 ### 自定义 Transport
 
 实现 `LogTransport` 接口：

@@ -38,6 +38,9 @@ importers:
       '@sakurachiyo0v0/config':
         specifier: workspace:*
         version: link:../config
+      '@sakurachiyo0v0/logger':
+        specifier: workspace:*
+        version: link:../logger
       qrcode:
         specifier: ^1.5.4
         version: 1.5.4
@@ -81,6 +84,9 @@ importers:
       '@sakurachiyo0v0/ffmpeg':
         specifier: workspace:*
         version: link:../ffmpeg
+      '@sakurachiyo0v0/logger':
+        specifier: workspace:*
+        version: link:../logger
     devDependencies:
       '@sakurachiyo0v0/webdav':
         specifier: workspace:*
@@ -115,6 +121,9 @@ importers:
       '@sakurachiyo0v0/config':
         specifier: workspace:*
         version: link:../config
+      '@sakurachiyo0v0/logger':
+        specifier: workspace:*
+        version: link:../logger
     devDependencies:
       '@sakurachiyo0v0/webdav':
         specifier: workspace:*
@@ -143,6 +152,9 @@ importers:
       '@larksuiteoapi/node-sdk':
         specifier: ^1.72.0
         version: 1.72.0(debug@4.4.3)
+      '@sakurachiyo0v0/logger':
+        specifier: workspace:*
+        version: link:../logger
     devDependencies:
       '@types/node':
         specifier: ^26.1.2
@@ -159,6 +171,9 @@ importers:
       '@sakurachiyo0v0/cli-utils':
         specifier: workspace:*
         version: link:../cli-utils
+      '@sakurachiyo0v0/logger':
+        specifier: workspace:*
+        version: link:../logger
       sharp:
         specifier: ^0.35.3
         version: 0.35.3(@types/node@26.1.2)
@@ -177,6 +192,10 @@ importers:
         version: 7.0.2
 
   packages/cli-utils:
+    dependencies:
+      '@sakurachiyo0v0/logger':
+        specifier: workspace:*
+        version: link:../logger
     devDependencies:
       '@types/node':
         specifier: ^26.1.2
@@ -199,6 +218,9 @@ importers:
       '@sakurachiyo0v0/cli-utils':
         specifier: workspace:*
         version: link:../cli-utils
+      '@sakurachiyo0v0/logger':
+        specifier: workspace:*
+        version: link:../logger
       '@sakurachiyo0v0/webdav':
         specifier: workspace:*
         version: link:../webdav
@@ -221,6 +243,9 @@ importers:
 
   packages/database:
     dependencies:
+      '@sakurachiyo0v0/logger':
+        specifier: workspace:*
+        version: link:../logger
       better-sqlite3:
         specifier: ^13.0.3
         version: 13.0.3
@@ -261,6 +286,9 @@ importers:
       '@sakurachiyo0v0/ffmpeg':
         specifier: workspace:*
         version: link:../ffmpeg
+      '@sakurachiyo0v0/logger':
+        specifier: workspace:*
+        version: link:../logger
       '@sakurachiyo0v0/lol':
         specifier: workspace:*
         version: link:../lol
@@ -337,6 +365,9 @@ importers:
       '@sakurachiyo0v0/cli-utils':
         specifier: workspace:*
         version: link:../cli-utils
+      '@sakurachiyo0v0/logger':
+        specifier: workspace:*
+        version: link:../logger
       nodemailer:
         specifier: ^9.0.3
         version: 9.0.3
@@ -362,6 +393,9 @@ importers:
       '@sakurachiyo0v0/cli-utils':
         specifier: workspace:*
         version: link:../cli-utils
+      '@sakurachiyo0v0/logger':
+        specifier: workspace:*
+        version: link:../logger
     devDependencies:
       '@types/node':
         specifier: ^26.1.2
@@ -390,6 +424,9 @@ importers:
 
   packages/lol:
     dependencies:
+      '@sakurachiyo0v0/logger':
+        specifier: workspace:*
+        version: link:../logger
       undici:
         specifier: ^7.0.0
         version: 7.29.0
@@ -427,6 +464,9 @@ importers:
       '@sakurachiyo0v0/ffmpeg':
         specifier: workspace:*
         version: link:../ffmpeg
+      '@sakurachiyo0v0/logger':
+        specifier: workspace:*
+        version: link:../logger
     devDependencies:
       '@sakurachiyo0v0/webdav':
         specifier: workspace:*
@@ -461,6 +501,9 @@ importers:
       '@sakurachiyo0v0/config':
         specifier: workspace:*
         version: link:../config
+      '@sakurachiyo0v0/logger':
+        specifier: workspace:*
+        version: link:../logger
       undici:
         specifier: ^7.0.0
         version: 7.29.0
@@ -498,6 +541,9 @@ importers:
       '@sakurachiyo0v0/config':
         specifier: workspace:*
         version: link:../config
+      '@sakurachiyo0v0/logger':
+        specifier: workspace:*
+        version: link:../logger
     devDependencies:
       '@sakurachiyo0v0/webdav':
         specifier: workspace:*
@@ -526,6 +572,9 @@ importers:
       '@sakurachiyo0v0/cli-utils':
         specifier: workspace:*
         version: link:../cli-utils
+      '@sakurachiyo0v0/logger':
+        specifier: workspace:*
+        version: link:../logger
       webdav:
         specifier: ^5.10.0
         version: 5.10.0
@@ -557,6 +606,9 @@ importers:
       '@sakurachiyo0v0/config':
         specifier: workspace:*
         version: link:../config
+      '@sakurachiyo0v0/logger':
+        specifier: workspace:*
+        version: link:../logger
     devDependencies:
       '@sakurachiyo0v0/webdav':
         specifier: workspace:*

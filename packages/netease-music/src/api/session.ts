@@ -2,8 +2,11 @@
  * weapi 会话 —— 携带 cookie 发送加密请求并校验响应。
  * 所有 /weapi/* 接口统一走这里:参数加密、cookie 注入、非 200 code 抛错。
  */
+import { createLogger } from "@sakurachiyo0v0/logger";
 import { NeteaseError, checkApiResponse, toNeteaseError } from "../errors.js";
 import { weapiEncrypt, eapiEncrypt, eapiDecrypt } from "../weapi/encrypt.js";
+
+const logger = createLogger({ namespace: "netease-music" }).child("session");
 
 const DEFAULT_BASE_URL = "https://music.163.com";
 const USER_AGENT =
@@ -143,6 +146,7 @@ export class WeapiSession {
       throw new NeteaseError("NETWORK", `weapi request failed (${path})`, { cause: error });
     }
     if (!response.ok) {
+      logger.error("weapi request failed", { path, status: response.status });
       throw new NeteaseError("API_ERROR", `weapi request failed (${path}): HTTP ${response.status}`, {
         apiCode: response.status,
       });
@@ -158,7 +162,9 @@ export class WeapiSession {
     } catch (error) {
       throw new NeteaseError("API_ERROR", `weapi response is not JSON (${path})`, { cause: error });
     }
-    return checkApiResponse(bodyRecord, path);
+    const record = checkApiResponse(bodyRecord, path);
+    logger.debug("weapi request ok", { path });
+    return record;
   }
 
   /** 发送请求并容忍非 200 code(登录二维码 check 用;由调用方解释 code)。 */

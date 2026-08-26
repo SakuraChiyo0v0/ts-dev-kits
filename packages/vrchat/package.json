@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/vrchat",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "VRChat official REST API SDK (auth/users/worlds/avatars/instances/friends/notifications/favorites/groups/files/permissions/system/economy/moderation)",
   "license": "UNLICENSED",
   "type": "module",
@@ -34,7 +34,8 @@
   "dependencies": {
     "@sakurachiyo0v0/account": "workspace:*",
     "@sakurachiyo0v0/cli-utils": "workspace:*",
-    "@sakurachiyo0v0/config": "workspace:*"
+    "@sakurachiyo0v0/config": "workspace:*",
+    "@sakurachiyo0v0/logger": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^26.1.2",

@@ -233,36 +233,37 @@ describe("custom transport", () => {
 });
 
 describe("console transport", () => {
-  it("Error 日志输出 message + stack", () => {
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  it("Error 日志输出 message + stack 到 stderr", () => {
+    const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
     try {
       const logger = createLogger({ namespace: "bilibili", hostname: "desktop-01" });
       const error = new Error("boom");
       error.stack = "Error: boom\n    at test:1:1";
       logger.error("failed", error);
 
-      expect(errorSpy).toHaveBeenCalledTimes(1);
-      const [line, errorInfo] = errorSpy.mock.calls[0]!;
-      expect(line).toContain("[bilibili]@desktop-01");
-      expect(line).toContain("ERROR failed");
-      expect(errorInfo).toEqual({ message: "boom", stack: "Error: boom\n    at test:1:1" });
+      expect(stderrSpy).toHaveBeenCalledTimes(1);
+      const [line] = stderrSpy.mock.calls[0]!;
+      expect(String(line)).toContain("[bilibili]@desktop-01");
+      expect(String(line)).toContain("ERROR failed");
+      expect(String(line)).toContain("boom");
+      expect(String(line)).toContain("at test:1:1");
     } finally {
-      errorSpy.mockRestore();
+      stderrSpy.mockRestore();
     }
   });
 
-  it("普通日志输出命名空间和 hostname", () => {
-    const infoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
+  it("普通日志输出命名空间和 hostname 到 stderr", () => {
+    const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
     try {
       const logger = createLogger({ namespace: "bilibili", hostname: "desktop-01" });
       logger.info("hello");
 
-      expect(infoSpy).toHaveBeenCalledTimes(1);
-      const [line] = infoSpy.mock.calls[0]!;
-      expect(line).toContain("[bilibili]@desktop-01");
-      expect(line).toContain("INFO hello");
+      expect(stderrSpy).toHaveBeenCalledTimes(1);
+      const [line] = stderrSpy.mock.calls[0]!;
+      expect(String(line)).toContain("[bilibili]@desktop-01");
+      expect(String(line)).toContain("INFO hello");
     } finally {
-      infoSpy.mockRestore();
+      stderrSpy.mockRestore();
     }
   });
 });

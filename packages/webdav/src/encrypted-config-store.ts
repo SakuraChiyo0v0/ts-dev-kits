@@ -1,7 +1,10 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
+import { createLogger } from "@sakurachiyo0v0/logger";
 import { createConfigStore } from "./config-store.js";
 import { WebdavError, WebdavErrorCode } from "./errors.js";
 import type { ConfigStore, ConfigStoreOptions, WebdavClient } from "./types.js";
+
+const logger = createLogger({ namespace: "webdav" }).child("encrypted-config-store");
 
 /** 加密密钥的环境变量名(优先于 options.key 之外的兜底) */
 export const ENCRYPTION_KEY_ENV = "WEBDAV_CONFIG_KEY";
@@ -81,6 +84,11 @@ export class EncryptedConfigStoreImpl implements ConfigStore {
       decipher.setAuthTag(Buffer.from(parsed.tag, "base64"));
       return Buffer.concat([decipher.update(Buffer.from(parsed.data, "base64")), decipher.final()]).toString("utf8");
     } catch (err) {
+      logger.error("decryption failed", {
+        code: WebdavErrorCode.DECRYPTION,
+        hint: "key mismatch or corrupted data",
+        error: err,
+      });
       throw new WebdavError(WebdavErrorCode.DECRYPTION, "解密失败(密钥错误或数据损坏)", err);
     }
   }
@@ -91,6 +99,7 @@ export class EncryptedConfigStoreImpl implements ConfigStore {
     try {
       return JSON.parse(plain) as T;
     } catch (err) {
+      logger.error("decrypted content is not valid json", { name, error: err });
       throw new WebdavError(WebdavErrorCode.UNKNOWN, "解密内容不是合法 JSON", err);
     }
   }
@@ -98,6 +107,7 @@ export class EncryptedConfigStoreImpl implements ConfigStore {
   async save(name: string, data: unknown): Promise<void> {
     const plain = JSON.stringify(data);
     await this.inner.save(name, this.encrypt(plain));
+    logger.info("encrypted config saved", { name });
   }
 
   async list(): Promise<string[]> {

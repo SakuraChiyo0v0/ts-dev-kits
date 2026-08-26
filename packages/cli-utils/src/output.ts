@@ -1,3 +1,7 @@
+import { createLogger } from "@sakurachiyo0v0/logger";
+
+const logger = createLogger({ namespace: "cli-utils" }).child("output");
+
 /** CLI 运行错误。 */
 export class CliError extends Error {
   readonly exitCode: number;
@@ -23,16 +27,19 @@ export function outputError(message: string): void {
   process.stderr.write(`Error: ${message}\n`);
 }
 
-/** 统一异常处理:格式化并退出。 */
+/** 统一异常处理:记录完整错误(含 stack),格式化并退出。 */
 export function handleCliError(error: unknown): never {
   if (error instanceof CliError) {
+    logger.error("cli command failed", { exitCode: error.exitCode, error });
     outputError(error.message);
     process.exit(error.exitCode);
   }
   if (error instanceof Error) {
+    logger.error("cli command crashed", { error });
     outputError(error.message);
     process.exit(1);
   }
+  logger.error("cli command crashed with unknown error", { error: String(error) });
   outputError(String(error));
   process.exit(1);
 }

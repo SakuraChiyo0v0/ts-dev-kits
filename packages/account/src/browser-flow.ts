@@ -15,10 +15,13 @@ import { randomBytes } from "node:crypto";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { createLogger } from "@sakurachiyo0v0/logger";
 import { AccountError, toAccountError } from "./errors.js";
 import { openBrowserDefault } from "./qr-flow.js";
 import type { AuthPayload, AuthStore } from "./store.js";
 import type { LoginResult, LoginStatus, PlatformCredentials } from "./types.js";
+
+const logger = createLogger({ namespace: "account" }).child("browser-login");
 
 /** 平台浏览器登录适配器(平台包实现)。 */
 export interface BrowserLoginAdapter {
@@ -86,12 +89,18 @@ export async function browserLogin(options: BrowserLoginOptions): Promise<LoginR
   const emit = (status: LoginStatus): void => {
     options.onStatus?.(status);
   };
+  logger.info("browser login started", {
+    platform: adapter.platform,
+    reuseProfile: options.reuseBrowserProfile === true,
+    useCdp: options.useCdp !== false,
+  });
 
   // 1. 优先 CDP 自动捕获(零复制粘贴);useCdp: false 时跳过(测试/无头环境)。
   const browserPath =
     options.useCdp === false ? undefined : options.browserPath ?? detectBrowser();
   let cookieHeader: string;
   if (browserPath !== undefined) {
+    logger.debug("browser detected, using cdp capture", { browserPath });
     const profileDir =
       options.profileDir ??
       (options.reuseBrowserProfile === true
@@ -109,6 +118,9 @@ export async function browserLogin(options: BrowserLoginOptions): Promise<LoginR
     cookieHeader = result.cookieHeader;
   } else {
     // 2. 回退:捕获页(用户粘贴 Cookie 头)。
+    logger.info("no browser detected, falling back to capture page", {
+      platform: adapter.platform,
+    });
     emit({ state: "waiting", message: "未检测到可用浏览器,走捕获页登录" });
     cookieHeader = await capturePageLogin({
       platform: adapter.platform,
@@ -122,13 +134,19 @@ export async function browserLogin(options: BrowserLoginOptions): Promise<LoginR
   if (adapter.validate !== undefined) {
     try {
       await adapter.validate(cookieHeader, fetchImpl);
+      logger.debug("session validated by adapter", { platform: adapter.platform });
     } catch (error) {
+      logger.error("session validation failed", {
+        platform: adapter.platform,
+        error: toAccountError(error, "登录态校验失败"),
+      });
       throw toAccountError(error, "登录态校验失败");
     }
   }
 
   // 4. 序列化 + 可选持久化。
   emit({ state: "success", message: "登录成功" });
+  logger.info("browser login succeeded", { platform: adapter.platform });
   if (store !== undefined) {
     const payload = adapter.serialize({ cookieHeader }, new Date().toISOString());
     await store.save(payload);
@@ -234,6 +252,11 @@ async function cdpCaptureCookies(options: CdpCaptureOptions): Promise<CdpCapture
   const resolvedProfileDir =
     profileDir ?? mkdtempSync(path.join(tmpdir(), "sc-cdp-"));
   const port = 30000 + Math.floor(Math.random() * 20000);
+  logger.debug("cdp capture starting", {
+    port,
+    isTempProfile,
+    domainCount: cookieDomains.length,
+  });
 
   // 复用日常 profile 时,若该浏览器已在运行,新进程会并入已有实例,
   // 调试端口不生效。这里用"端口是否就绪"兜底检测(锁文件检测不可靠)。
@@ -278,6 +301,7 @@ async function cdpCaptureCookies(options: CdpCaptureOptions): Promise<CdpCapture
 
   try {
     log(`启动 Chrome(端口 ${port})...`);
+    logger.debug("spawning chrome", { port });
     child = spawn(
       browserPath,
       [
@@ -331,6 +355,7 @@ async function cdpCaptureCookies(options: CdpCaptureOptions): Promise<CdpCapture
 
     // 打开登录页。
     log(`打开登录页 ${loginUrl}`);
+    logger.debug("opening login page in chrome");
     await cdp.send("Target.createTarget", { url: loginUrl });
 
     // 轮询 cookies 直到出现会话特征。
@@ -359,14 +384,21 @@ async function cdpCaptureCookies(options: CdpCaptureOptions): Promise<CdpCapture
     }
 
     if (cookieHeader === null) {
+      logger.error("login timed out, no session cookie captured", {
+        timeoutMs,
+        domainCount: cookieDomains.length,
+      });
       throw new AccountError("AUTH_EXPIRED", "登录超时:未在 Chrome 中完成登录");
     }
     log("已捕获会话 cookie。");
+    logger.debug("session cookie captured");
     return { cookieHeader, port };
   } catch (error) {
     if (error instanceof AccountError) {
+      logger.error("cdp capture failed", { code: error.code, error });
       throw error;
     }
+    logger.error("cdp capture failed with unknown error", { error });
     throw new AccountError(
       "UNKNOWN",
       error instanceof Error ? `CDP login failed: ${error.message}` : "CDP login failed",

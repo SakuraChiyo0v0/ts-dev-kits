@@ -9,9 +9,12 @@
 import { Agent, fetch } from "undici";
 import WebSocket, { type RawData } from "ws";
 
+import { createLogger } from "@sakurachiyo0v0/logger";
 import { LolError } from "./errors.js";
 import type { LcuEvent, LcuEventType } from "./types.js";
 import type { LcuTransport, RawResponse, RequestOptions } from "./transport.js";
+
+const logger = createLogger({ namespace: "lol" }).child("http-transport");
 
 export interface HttpTransportOptions {
   port: number;
@@ -110,6 +113,11 @@ export class HttpLcuTransport implements LcuTransport {
       try {
         const raw = await this.withSemaphore(() => this.requestOnce(options));
         this.assertSuccess(raw, options);
+        logger.debug("lcu request completed", {
+          method: options.method,
+          path: options.path,
+          status: raw.status,
+        });
         return raw;
       } catch (error) {
         lastError = error;
@@ -119,8 +127,20 @@ export class HttpLcuTransport implements LcuTransport {
           options.method === "GET" &&
           attempt < maxAttempts;
         if (!retriable) {
+          logger.warn("lcu request failed", {
+            method: options.method,
+            path: options.path,
+            error,
+          });
           throw error;
         }
+        logger.debug("lcu request failed, retrying", {
+          method: options.method,
+          path: options.path,
+          attempt,
+          maxAttempts,
+          backoffMs: BASE_BACKOFF_MS * 2 ** (attempt - 1),
+        });
         await sleep(BASE_BACKOFF_MS * 2 ** (attempt - 1));
       }
     }
@@ -362,10 +382,18 @@ export class HttpLcuTransport implements LcuTransport {
     }
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
       this.shouldReconnect = false;
+      logger.warn("lcu websocket reconnect attempts exhausted", {
+        maxReconnectAttempts: this.maxReconnectAttempts,
+      });
       return;
     }
     this.reconnectAttempts += 1;
     const delay = Math.min(500 * 2 ** (this.reconnectAttempts - 1), 8_000);
+    logger.warn("lcu websocket disconnected, reconnecting", {
+      attempt: this.reconnectAttempts,
+      maxReconnectAttempts: this.maxReconnectAttempts,
+      delayMs: delay,
+    });
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
       void this.ensureSocket().catch(() => {
@@ -389,6 +417,7 @@ export class HttpLcuTransport implements LcuTransport {
       this.ws = null;
     }
     await this.dispatcher.close();
+    logger.debug("lcu transport closed");
   }
 }
 

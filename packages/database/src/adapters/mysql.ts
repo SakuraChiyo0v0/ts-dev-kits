@@ -1,9 +1,21 @@
 import mysql from "mysql2/promise";
+import { createLogger } from "@sakurachiyo0v0/logger";
 import { DataError, DataErrorCode, wrapDbError } from "../errors.js";
 import { convertPlaceholders } from "../placeholder.js";
 import type { DatabaseAdapter, ExecuteResult, Params, Row, MysqlConfig } from "../types.js";
 
 type MysqlResult = mysql.ResultSetHeader | mysql.RowDataPacket[];
+
+const logger = createLogger({ namespace: "database" }).child("mysql");
+
+/** 提取连接串 host 用于日志(不含凭据/路径) */
+function logHost(url: string): string {
+  try {
+    return new URL(url).host;
+  } catch {
+    return "(invalid url)";
+  }
+}
 
 /**
  * MySQL 适配器:基于 mysql2 连接池(server-side prepared statement,防注入)。
@@ -23,6 +35,10 @@ export class MysqlAdapter implements DatabaseAdapter {
     this.pool = mysql.createPool({
       uri: config.url,
       connectionLimit: config.maxConnections ?? 10,
+    });
+    logger.debug("mysql pool created", {
+      host: logHost(config.url),
+      maxConnections: config.maxConnections ?? 10,
     });
   }
 

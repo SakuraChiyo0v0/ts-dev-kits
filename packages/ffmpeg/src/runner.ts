@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import type { Readable } from "node:stream";
+import { createLogger } from "@sakurachiyo0v0/logger";
 import { FfmpegError } from "./errors.js";
 import type {
   FfmpegOptions,
@@ -8,6 +9,8 @@ import type {
   RunOptions,
   RunResult,
 } from "./types.js";
+
+const logger = createLogger({ namespace: "ffmpeg" }).child("runner");
 
 function resolveBinary(path: string | undefined, fallback: string, label: string): string {
   const value = path?.trim();
@@ -135,6 +138,11 @@ export function runProcess(
 ): Promise<RunResult> {
   return new Promise<RunResult>((resolve, reject) => {
     const startedAt = Date.now();
+    logger.debug("spawning process", {
+      binary,
+      argCount: options.args.length,
+      timeoutMs: options.timeoutMs,
+    });
     const child = spawn(binary, options.args, {
       stdio: ["pipe", "pipe", "pipe"],
       windowsHide: true,
@@ -177,9 +185,11 @@ export function runProcess(
 
     child.on("error", (error: NodeJS.ErrnoException) => {
       if (error.code === "ENOENT") {
+        logger.error("binary not found", { binary, error });
         fail(new FfmpegError("NOT_FOUND", `Binary not found: ${binary}`, { cause: error }));
         return;
       }
+      logger.error("failed to start process", { binary, error });
       fail(new FfmpegError("PROCESS_ERROR", `Failed to start ${binary}: ${error.message}`, {
         cause: error,
       }));
@@ -190,6 +200,15 @@ export function runProcess(
       if (timedOut) {
         return;
       }
+      if (code !== 0) {
+        logger.warn("process exited with non-zero code", {
+          binary,
+          exitCode: code,
+          durationMs,
+        });
+      } else {
+        logger.debug("process completed", { binary, exitCode: code, durationMs });
+      }
       finish({ stdout, stderr, exitCode: code, durationMs });
       void signal;
     });
@@ -198,6 +217,7 @@ export function runProcess(
       timer = setTimeout(() => {
         timedOut = true;
         child.kill("SIGKILL");
+        logger.warn("process timed out, killed", { binary, timeoutMs: options.timeoutMs });
         fail(
           new FfmpegError("TIMEOUT", `${binary} timed out after ${options.timeoutMs} ms`, {
             stderr,
@@ -207,6 +227,7 @@ export function runProcess(
     }
 
     void writeInput(child.stdin, options.input).catch((error: unknown) => {
+      logger.error("failed to write process input", { binary, error });
       fail(new FfmpegError("PROCESS_ERROR", `Failed to write input: ${String(error)}`));
     });
 

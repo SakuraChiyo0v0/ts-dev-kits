@@ -5,9 +5,12 @@
  * 不感知业务,只提供 request。
  */
 import { ProxyAgent, type Dispatcher } from "undici";
+import { createLogger } from "@sakurachiyo0v0/logger";
 import { SteamError, toSteamError } from "./errors.js";
 import { STEAM_HOSTS, type SteamHost } from "./endpoints.js";
 import type { CacheOptions } from "./types.js";
+
+const logger = createLogger({ namespace: "steam" }).child("http");
 
 export type HttpMethod = "GET" | "POST" | "PUT" | "DELETE";
 
@@ -276,12 +279,23 @@ export class SteamHttpTransport {
       }
 
       this.#logger?.(`${method} ${options.host} ${options.path} -> ${response.status}`);
+      logger.debug("steam request completed", {
+        method,
+        host: options.host,
+        path: options.path,
+        status: response.status,
+      });
 
       // 浏览器式会话刷新:3xx + Set-Cookie → 吸收进 cookie 后重试同 URL。
       if (options.sessionRefresh === true && response.status >= 300 && response.status < 400) {
         const absorbed = this.#absorbSetCookies(response.headers);
         if (absorbed > 0 && attempt < 5) {
           attempt += 1;
+          logger.debug("session refreshed via redirect, retrying", {
+            host: options.host,
+            path: options.path,
+            attempt,
+          });
           continue;
         }
       }
@@ -290,6 +304,13 @@ export class SteamHttpTransport {
         const retryAfter = this.#retryAfterSeconds(response.headers);
         const delayMs = Math.min((retryAfter ?? 1) * 1000, 10_000);
         attempt += 1;
+        logger.warn("rate limited, backing off", {
+          host: options.host,
+          path: options.path,
+          attempt,
+          maxRetries: this.#maxRetries,
+          retryAfterSeconds: retryAfter,
+        });
         await sleep(delayMs);
         continue;
       }
@@ -298,22 +319,35 @@ export class SteamHttpTransport {
         options.rawText === true ? await response.text() : await this.#parseBody(response);
 
       if (response.status === 401) {
+        logger.warn("auth expired", { host: options.host, path: options.path });
         throw new SteamError("AUTH_EXPIRED", "Steam 密钥无效或会话已失效,请重新登录", { statusCode: 401 });
       }
       if (response.status === 403) {
+        logger.warn("forbidden", { host: options.host, path: options.path });
         throw new SteamError("FORBIDDEN", "Steam 拒绝访问(权限不足或资料未公开)", { statusCode: 403 });
       }
       if (response.status === 404) {
+        logger.warn("not found", { host: options.host, path: options.path });
         throw new SteamError("NOT_FOUND", `Steam 资源不存在: ${options.host}${options.path}`, { statusCode: 404 });
       }
       if (response.status === 429) {
         const retryAfterSeconds = this.#retryAfterSeconds(response.headers);
+        logger.error("rate limited, retries exhausted", {
+          host: options.host,
+          path: options.path,
+          retryAfterSeconds,
+        });
         throw new SteamError("RATE_LIMIT", "Steam 请求过于频繁,已被限流", {
           statusCode: 429,
           ...(retryAfterSeconds !== undefined ? { retryAfterSeconds } : {}),
         });
       }
       if (!response.ok) {
+        logger.error("steam api error", {
+          host: options.host,
+          path: options.path,
+          status: response.status,
+        });
         throw new SteamError("UNKNOWN", `Steam 接口错误(HTTP ${response.status})`, {
           statusCode: response.status,
         });

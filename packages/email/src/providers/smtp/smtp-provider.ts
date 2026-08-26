@@ -1,4 +1,5 @@
 import nodemailer, { type SendMailOptions } from "nodemailer";
+import { createLogger } from "@sakurachiyo0v0/logger";
 import { EmailError, toEmailError } from "../../errors.js";
 import type {
   EmailAddressList,
@@ -8,6 +9,8 @@ import type {
   EmailSendResult,
 } from "../../types.js";
 import type { SmtpProviderOptions } from "./smtp-types.js";
+
+const logger = createLogger({ namespace: "email" }).child("smtp");
 
 function recipientText(value: unknown): string {
   if (typeof value === "string") {
@@ -104,26 +107,41 @@ export function smtpProvider(options: SmtpProviderOptions): EmailProvider {
     async verify(): Promise<void> {
       try {
         await transport.verify();
+        logger.debug("smtp connection verified", { host: options.host, port: options.port });
       } catch (error) {
+        logger.error("smtp connection verification failed", {
+          host: options.host,
+          port: options.port,
+          error,
+        });
         throw toEmailError(error, secrets);
       }
     },
     async send(message: EmailMessage): Promise<EmailSendResult> {
       try {
         const info = await transport.sendMail(mailOptions(message));
-        return {
+        const result: EmailSendResult = {
           provider: "smtp",
           messageId: info.messageId,
           accepted: info.accepted.map(recipientText),
           rejected: info.rejected.map(recipientText),
           response: info.response,
         };
+        logger.debug("smtp send accepted", {
+          host: options.host,
+          port: options.port,
+          acceptedCount: result.accepted.length,
+          rejectedCount: result.rejected.length,
+        });
+        return result;
       } catch (error) {
+        logger.error("smtp send failed", { host: options.host, port: options.port, error });
         throw toEmailError(error, secrets);
       }
     },
     async close(): Promise<void> {
       transport.close();
+      logger.debug("smtp transport closed", { host: options.host });
     },
   };
 }

@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/cli-utils",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Shared CLI helpers for @sakurachiyo0v0 SDK command-line tools",
   "license": "UNLICENSED",
   "publishConfig": {
@@ -31,7 +31,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@sakurachiyo0v0/logger": "workspace:*"
+  },
   "devDependencies": {
     "@types/node": "^26.1.2",
     "rollup": "^4.62.4",

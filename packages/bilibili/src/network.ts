@@ -1,6 +1,18 @@
 import { createHash } from "node:crypto";
+import { createLogger } from "@sakurachiyo0v0/logger";
 import { parseCookieString } from "./auth/cookie.js";
 import { BilibiliError, checkApiResponse, toBilibiliError } from "./errors.js";
+
+const logger = createLogger({ namespace: "bilibili" }).child("network");
+
+/** 提取 url 的路径部分用于日志(丢弃 query,防 csrf/签名参数泄露) */
+function logPath(url: string): string {
+  try {
+    return new URL(url).pathname;
+  } catch {
+    return url;
+  }
+}
 
 /** B 站 WBI 签名 mixinKeyEncTab(与 Bili23-Downloader 一致)。 */
 const MIXIN_KEY_ENC_TAB = [
@@ -336,13 +348,21 @@ export class ApiSession {
     const attempt = async (): Promise<Record<string, unknown>> =>
       checkApiResponse(await this.#fetchJson(fullUrl, init), fullUrl);
     try {
-      return await attempt();
+      const record = await attempt();
+      logger.debug("api request ok", {
+        method: init?.method ?? "GET",
+        path: logPath(fullUrl),
+      });
+      return record;
     } catch (error) {
       if (
         error instanceof BilibiliError &&
         error.apiCode === -101 &&
         this.onAuthFailure !== undefined
       ) {
+        logger.warn("auth expired, refreshing cookie and retrying", {
+          path: logPath(fullUrl),
+        });
         const refreshed = await this.onAuthFailure();
         if (refreshed) {
           return attempt();
