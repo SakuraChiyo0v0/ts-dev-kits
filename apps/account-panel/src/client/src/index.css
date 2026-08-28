@@ -1,0 +1,98 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-background: #f5f5f7;
+  --color-foreground: #1d1d1f;
+  --color-card: #ffffff;
+  --color-card-foreground: #1d1d1f;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #1d1d1f;
+  --color-primary: #fa233b;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #f5f5f7;
+  --color-secondary-foreground: #1d1d1f;
+  --color-muted: #f5f5f7;
+  --color-muted-foreground: #86868b;
+  --color-accent: #f5f5f7;
+  --color-accent-foreground: #1d1d1f;
+  --color-destructive: #fa233b;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #e5e5ea;
+  --color-input: #e5e5ea;
+  --color-ring: #fa233b;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius: 0.875rem;
+  --animate-slide-in-right: slide-in-right 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-fade-in: fade-in 0.3s ease;
+  --animate-slide-up: slide-up 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  html,
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family:
+      -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue",
+      "PingFang SC", "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .dark {
+    --color-background: #0a0a0b;
+    --color-foreground: #f5f5f7;
+    --color-card: #1c1c1e;
+    --color-card-foreground: #f5f5f7;
+    --color-popover: #1c1c1e;
+    --color-popover-foreground: #f5f5f7;
+    --color-secondary: #1c1c1e;
+    --color-secondary-foreground: #f5f5f7;
+    --color-muted: #1c1c1e;
+    --color-muted-foreground: #8e8e93;
+    --color-accent: #2c2c2e;
+    --color-accent-foreground: #f5f5f7;
+    --color-destructive: #ff453a;
+    --color-destructive-foreground: #ffffff;
+    --color-border: #2c2c2e;
+    --color-input: #2c2c2e;
+  }
+}

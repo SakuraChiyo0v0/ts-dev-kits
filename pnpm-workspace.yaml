@@ -1,5 +1,6 @@
 packages:
   - packages/*
+  - apps/*
 allowBuilds:
   esbuild: true
   protobufjs: true
@@ -8,3 +9,4 @@ allowBuilds:
 minimumReleaseAgeExclude:
   - tsx@4.23.5
   - mysql2@3.24.1
+  - '@vitejs/plugin-react@6.1.1'
