@@ -1,6 +1,6 @@
 import { BilibiliError } from "../errors.js";
 import type { ApiSession } from "../network.js";
-import type { MediaItem, Parser } from "../types.js";
+import type { ListParseOptions, MediaItem, Parser } from "../types.js";
 
 /** 把视频列表条目转为 MediaItem。 */
 interface VideoListEntry {
@@ -52,40 +52,79 @@ export class SpaceParser implements Parser {
     this.#session = session;
   }
 
-  async parse(url: string): Promise<MediaItem[]> {
+  async parse(url: string, options: ListParseOptions = {}): Promise<MediaItem[]> {
     const match = url.match(/space\.bilibili\.com\/(\d+)/u);
     if (!match) {
       throw new BilibiliError("INVALID_URL", "Invalid space URL");
     }
     const mid = match[1] ?? "";
     interface ArcData {
-      vlist?: Array<{
-        bvid: string;
-        aid: number;
-        title: string;
-        pic: string;
-        length?: string;
-      }>;
+      list?: {
+        vlist?: Array<{
+          bvid: string;
+          aid?: number;
+          title: string;
+          pic?: string;
+          length?: string;
+          play?: number;
+          comment?: number;
+          /** 分区 id(接口字段名为 typeid)。 */
+          typeid?: number;
+          /** 发布时间(unix 秒,接口字段名为 created)。 */
+          created?: number;
+          description?: string;
+          /** 是否充电专属视频。 */
+          is_charging_arc?: boolean;
+        }>;
+      };
     }
+    // /x/space/wbi/arc/search 返回 data.list.vlist(需 WBI 签名,由 ApiSession.get 处理)。
     const data = await this.#session.get<ArcData>(
       `${this.#session.baseUrl}/x/space/wbi/arc/search`,
-      { mid, pn: 1, ps: 40, tid: 0, order: "pubdate", platform: "web" },
+      {
+        mid,
+        pn: options.pn ?? 1,
+        ps: options.ps ?? 40,
+        tid: options.tid ?? 0,
+        order: options.order ?? "pubdate",
+        platform: "web",
+      },
     );
-    return (data.vlist ?? []).map((entry) => {
+    return (data.list?.vlist ?? []).map((entry) => {
       const item: MediaItem = {
         type: "video",
         id: entry.bvid,
-        aid: entry.aid,
         bvid: entry.bvid,
         title: entry.title,
         raw: entry,
       };
+      if (entry.aid !== undefined) {
+        item.aid = entry.aid;
+      }
       if (entry.pic !== undefined) {
         item.cover = entry.pic;
       }
       const duration = parseDuration(entry.length);
       if (duration !== undefined) {
         item.duration = duration;
+      }
+      if (entry.play !== undefined) {
+        item.play = entry.play;
+      }
+      if (entry.comment !== undefined) {
+        item.comment = entry.comment;
+      }
+      if (entry.typeid !== undefined) {
+        item.tid = entry.typeid;
+      }
+      if (entry.created !== undefined) {
+        item.pubdate = entry.created;
+      }
+      if (entry.description !== undefined) {
+        item.description = entry.description;
+      }
+      if (entry.is_charging_arc !== undefined) {
+        item.chargingArc = entry.is_charging_arc;
       }
       return item;
     });
@@ -101,7 +140,7 @@ export class FavlistParser implements Parser {
     this.#session = session;
   }
 
-  async parse(url: string): Promise<MediaItem[]> {
+  async parse(url: string, _options?: ListParseOptions): Promise<MediaItem[]> {
     const match = url.match(/fid=(\d+)|ml(\d+)/u);
     if (!match) {
       throw new BilibiliError("INVALID_URL", "Invalid favlist URL");
@@ -145,7 +184,7 @@ export class CollectionParser implements Parser {
     this.#session = session;
   }
 
-  async parse(url: string): Promise<MediaItem[]> {
+  async parse(url: string, _options?: ListParseOptions): Promise<MediaItem[]> {
     this.#lastUrl = url;
     const seasonMatch = url.match(/\/lists\/(\d+)\?type=season/u);
     const seriesMatch = url.match(/\/lists\/(\d+)\?type=series/u);
@@ -214,7 +253,7 @@ export class PopularParser implements Parser {
     this.#session = session;
   }
 
-  async parse(url: string): Promise<MediaItem[]> {
+  async parse(url: string, _options?: ListParseOptions): Promise<MediaItem[]> {
     const match = url.match(/num=(\d+)/u);
     if (!match) {
       throw new BilibiliError("INVALID_URL", "Invalid popular URL");
@@ -247,7 +286,7 @@ export class WatchLaterParser implements Parser {
     this.#session = session;
   }
 
-  async parse(url: string): Promise<MediaItem[]> {
+  async parse(url: string, _options?: ListParseOptions): Promise<MediaItem[]> {
     if (!url.includes("watchlater")) {
       throw new BilibiliError("INVALID_URL", "Invalid watch later URL");
     }
@@ -278,7 +317,7 @@ export class HistoryParser implements Parser {
     this.#session = session;
   }
 
-  async parse(url: string): Promise<MediaItem[]> {
+  async parse(url: string, _options?: ListParseOptions): Promise<MediaItem[]> {
     if (!url.includes("history")) {
       throw new BilibiliError("INVALID_URL", "Invalid history URL");
     }

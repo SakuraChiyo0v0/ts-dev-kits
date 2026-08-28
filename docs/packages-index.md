@@ -14,7 +14,7 @@
 | `@sakurachiyo0v0/cli-utils` | 0.1.3 | CLI 工具底座(参数解析/输出/错误处理/进度条,所有 SDK CLI 复用) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/cli-utils` |
 | `@sakurachiyo0v0/email` | 0.2.2 | 与供应商解耦的 Node.js 邮件 SDK | 可用（SMTP 适配器） | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/email` |
 | `@sakurachiyo0v0/ffmpeg` | 0.2.3 | FFmpeg/ffprobe 进程封装 + 媒体处理高层函数 | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/ffmpeg` |
-| `@sakurachiyo0v0/bilibili` | 0.5.5 | B 站 SDK:视频下载(解析/取流/下载/ffmpeg 合并)+ 平台控制(收藏夹/关注/分组/互动/动态/稍后再看/历史) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/bilibili` |
+| `@sakurachiyo0v0/bilibili` | 0.6.0 | B 站 SDK:视频下载(解析/取流/下载/ffmpeg 合并)+ 平台控制(收藏夹/关注/分组/互动/动态/稍后再看/历史) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/bilibili` |
 | `@sakurachiyo0v0/chat-platforms` | 0.1.2 | 统一聊天平台接入 SDK(消息模型/适配器注册表,当前飞书) | 可用(飞书, websocket/webhook) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/chat-platforms` |
 | `@sakurachiyo0v0/lol` | 0.1.3 | 英雄联盟 LCU 本地能力 SDK(召唤师/战绩/段位/对局流程/游戏数据/事件) | 可用(查询+对局感知, 国服 SGP) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/lol` |
 | `@sakurachiyo0v0/account` | 0.5.4 | 跨平台账号认证底座(登录态存储/扫码+密码+浏览器登录骨架/错误模型) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/account` |
@@ -23,12 +23,13 @@
 | `@sakurachiyo0v0/vrchat` | 0.4.3 | VRChat 官方 REST API SDK(认证/用户/世界/头像/实例/好友/通知/收藏/群组/文件/权限/系统/经济/审核) | 可用(全功能覆盖) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/vrchat` |
 | `@sakurachiyo0v0/steam` | 0.8.3 | Steam SDK(查询向):Web API/Storefront/Community 三套接口,登录态支持,写操作仅激活码兑换一项 | 可用(全阶段交付) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/steam` |
 | `@sakurachiyo0v0/xiaoheihe` | 0.4.3 | 小黑盒 SDK:扫码登录 + hkey/nonce 签名 + 只读查询(帖子/评论/feed/@消息/用户) | 可用(P0 只读) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/xiaoheihe` |
-| `@sakurachiyo0v0/dsh-sdk-tools` | 0.4.5 | DSH host 插件:把 bilibili/netease-music/ffmpeg/email/lol/vrchat 包装成 agent 工具,经 Agent 预设按需暴露 | 可用 | `pnpm add @sakurachiyo0v0/dsh-sdk-tools`(GitHub Packages) |
+| `@sakurachiyo0v0/dsh-sdk-tools` | 0.5.0 | DSH host 插件:把 bilibili/netease-music/ffmpeg/email/lol/vrchat/kazumi 包装成 agent 工具,经 Agent 预设按需暴露 | 可用 | `pnpm add @sakurachiyo0v0/dsh-sdk-tools`(GitHub Packages) |
 | `@sakurachiyo0v0/database` | 0.2.2 | 统一数据访问抽象层:一套 API 访问本地 SQLite 与远程 PostgreSQL/MySQL,配置切换后端 | 可用(SQLite 全量,远程可选) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/database` |
 | `@sakurachiyo0v0/webdav` | 0.3.2 | WebDAV 配置存取 SDK:基础文件操作 + ConfigStore(原子写/自动备份) + 加密存储 + CLI | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/webdav` |
 | `@sakurachiyo0v0/config` | 0.3.1 | 配置中心 SDK:WebDAV+密钥全局一次配置,namespace 按域存取(可选加密),登录态/配置多端同步 | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/config` |
 | `@sakurachiyo0v0/chuanshengtong` | 0.3.2 | 传声筒:输入文字 + 内置图像模板程序化合成图片(CLI + SDK,不依赖 AI,支持富文本) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/chuanshengtong` |
 | `@sakurachiyo0v0/logger` | 0.2.1 | 轻量级日志模块:级别控制/命名空间/多机主机标识/子 logger 派生/可替换 transport | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/logger` |
+| `@sakurachiyo0v0/kazumi` | 0.1.0 | Kazumi 规则兼容番剧采集下载 SDK:声明式规则引擎(XPath/API 双模式)+ m3u8 下载合并 mp4 | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/kazumi` |
 
 ## 包详情
 
@@ -703,6 +704,7 @@ DSH(DeepSeek Harness)host 插件,把本仓库功能包包装成 agent 工具,通
 - lol:`lol_summoner` / `lol_match_history` / `lol_ranked`
 - vrchat:`vrchat_whoami` / `vrchat_user` / `vrchat_worlds_search`(默认关,需本地 VRChat 登录态 auth.json)
 - logs:`logs_query` — 查询 SDK 日志(等级/设备/命名空间/关键词/时间,默认查远程跨机聚合)
+- kazumi:`kazumi_search` / `kazumi_roads` / `kazumi_download` — 番剧规则采集与下载(搜索/线路/下载 mp4;规则由用户导入规则目录)
 
 **安全与合规：** SMTP 密码等敏感配置只存在于 host 端预设 config;工具返回与错误消息脱敏;netease 的试听拦截/权限拒绝硬规则在 SDK 层强制,工具层不绕过。
 
@@ -976,3 +978,73 @@ pnpm --filter @sakurachiyo0v0/logger build       # 构建 ESM + CJS + d.ts
 ```
 
 **更多细节：** [`packages/logger/README.md`](../packages/logger/README.md)
+
+### `@sakurachiyo0v0/kazumi`
+
+Kazumi 规则格式兼容的番剧采集下载 SDK:**声明式规则引擎**(XPath 抓 HTML + API 模板抓 JSON 双模式)+ **m3u8 下载合并成 mp4**(复用 `@sakurachiyo0v0/ffmpeg`)。规则格式与 [Kazumi](https://github.com/Predidit/Kazumi)/[KazumiRules](https://github.com/Predidit/KazumiRules) 生态兼容——换数据源不用写代码,改 JSON 规则即可。SDK **不内置任何站点规则**(引擎中立),规则由用户导入到自己的规则目录。设计文档 [`docs/superpowers/specs/2026-08-28-kazumi-sdk-design.md`](superpowers/specs/2026-08-28-kazumi-sdk-design.md)。
+
+**适用环境:** Node.js 20+;下载合并 mp4 需系统安装 `ffmpeg`。
+
+**核心接口:**
+
+- `createAnimeClient({ rulesDir?, fetchImpl?, download? })` — 创建客户端;规则目录默认 `<配置根>/amechan/kazumi/rules/`
+- `client.rules` — `list()` / `load(name)` / `validateJson(json)`
+- `client.search(keyword, { rules? })` — 搜索(打全部规则或指定规则),结果带 `[规则名]` 前缀
+- `client.getRoads(item)` — 查线路(`Road { name, data[], identifier[] }`)
+- `client.getEpisodes(item, road)` — 线路 → 集数(`Episode { name, url }`)
+- `client.download(episode, { outputDir, rule, adFilter?, onProgress? })` — 下载单集 mp4
+- `client.traceSearch(ruleName, keyword)` / `client.traceChapters(ruleName, source)` — 规则调试(原始响应 + 匹配片段 + 诊断)
+- `RuleEngine` / `RestrictedJsonPath` / `parseM3u8` / `filterAds` 等底层能力可直接使用
+- `KazumiError` — 统一错误码:`RULE_NOT_FOUND` / `RULE_INVALID` / `NO_RESULT` / `NETWORK` / `CAPTCHA` / `STREAM_PARSE_FAILED` / `DOWNLOAD_FAILED` / `MERGE_FAILED` / `UNKNOWN`,消息脱敏
+
+**双模式规则引擎:**
+
+- **XPath 模式**:`searchList`/`searchName`/`searchResult`/`chapterRoads`/`chapterResult` 选择器抓 HTML 页面(cheerio 容错解析 + 标准 XPath 1.0 求值;相对路径 `//x` 在节点上等价 `.//x`,与 Kazumi 语义一致)。
+- **API 模式**:请求模板(method/url/headers/query/bodyType/body + `{keyword}`/`{source}` 变量)+ JSONPath 映射。
+- **受限 JSONPath 沙箱**:只支持 `$`/`.key`/`['key']`/`[n]`/`[*]` 安全子集;函数调用/过滤/递归/通配属性一律拒绝(开放规则生态的硬门槛)。
+
+**下载流程:** m3u8 解析(master 自动选最高码率)→ discontinuity 分组广告过滤(剔除短广告分组)→ 并发分片下载(可配并发/重试/超时)→ 本地 m3u8 构建 → ffmpeg 合并 mp4(自动处理 AES-128 加密分片)。
+
+**CLI `sc-kazumi`:** `search` / `roads` / `episodes` / `download` / `rules list|add|remove|validate|test`;规则调试首选 `rules test <name> <keyword>`(直接看匹配片段/诊断/原始响应预览)。skill 手册 [`skills/kazumi-cli/SKILL.md`](../skills/kazumi-cli/SKILL.md)。
+
+**安装方式:**
+
+同一 pnpm workspace 内:
+
+```powershell
+pnpm add @sakurachiyo0v0/kazumi@workspace:*
+```
+
+从 GitHub monorepo 安装(需授权 `@sakurachiyo0v0/kazumi` 与 `@sakurachiyo0v0/ffmpeg` 构建脚本):
+
+```powershell
+pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/kazumi"
+```
+
+**API 示例:**
+
+```ts
+import { createAnimeClient } from "@sakurachiyo0v0/kazumi";
+
+const client = createAnimeClient();
+const items = await client.search("药屋少女的呢喃");
+const roads = await client.getRoads(items[0]!);
+const episodes = await client.getEpisodes(items[0]!, roads[0]!);
+const { filePath } = await client.download(episodes[0]!, {
+  outputDir: "./downloads",
+  rule: "AGE",
+});
+```
+
+**在仓库内的验证方式:**
+
+```powershell
+pnpm --filter @sakurachiyo0v0/kazumi typecheck   # 类型检查
+pnpm --filter @sakurachiyo0v0/kazumi test        # 单测(mock 站全链路 + 受限 JSONPath 沙箱 + 真实 ffmpeg 合并)
+pnpm --filter @sakurachiyo0v0/kazumi build       # 构建 ESM + CJS + d.ts + CLI
+pnpm verify:kazumi-package                        # pack 后从临时消费项目验证 ESM/CJS 导入 + CLI
+```
+
+**合规边界:** SDK 是中立规则引擎,不内置任何站点规则;不做任何站点绕过/伪装;`CAPTCHA` 只感知不规避。
+
+**更多细节:** [`packages/kazumi/README.md`](../packages/kazumi/README.md)

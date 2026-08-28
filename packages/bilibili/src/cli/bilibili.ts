@@ -23,6 +23,7 @@ const COMMANDS = [
   { name: "logout", desc: "Clear stored login" },
   { name: "status", desc: "Show login status" },
   { name: "parse", desc: "Parse a bilibili URL into media items" },
+  { name: "space", desc: "List videos of an UP space (--pn --ps --order --tid --min-duration)" },
   { name: "streams", desc: "Get play streams for a media item" },
   { name: "download", desc: "Download a media item (with merge)" },
   { name: "fav", desc: "Favorites management (list/info/create/edit/delete/add/remove)" },
@@ -77,6 +78,11 @@ const OPTIONS = [
   { flag: "--no-merge", desc: "Skip ffmpeg merge" },
   { flag: "--concurrency <n>", desc: "Download concurrency (default 4)" },
   { flag: "--index <n>", desc: "Media item index (default 0)" },
+  { flag: "--pn <n>", desc: "Page number (default 1)" },
+  { flag: "--ps <n>", desc: "Page size (default 40, max 50)" },
+  { flag: "--order <key>", desc: "Sort: pubdate | click | favorite" },
+  { flag: "--tid <n>", desc: "Filter by partition tid (0=all)" },
+  { flag: "--min-duration <min>", desc: "Only keep videos longer than <min> minutes" },
 ];
 
 function makeClient(args: ReturnType<typeof parseArgs>) {
@@ -89,6 +95,16 @@ function makeClient(args: ReturnType<typeof parseArgs>) {
       ...(getNumber(args, "concurrency") !== undefined ? { concurrency: getNumber(args, "concurrency")! } : {}),
     },
   });
+}
+
+/** 从 CLI 参数提取列表解析选项(分页/排序/分区)。 */
+function listOptions(args: ReturnType<typeof parseArgs>) {
+  return {
+    ...(getNumber(args, "pn") !== undefined ? { pn: getNumber(args, "pn")! } : {}),
+    ...(getNumber(args, "ps") !== undefined ? { ps: getNumber(args, "ps")! } : {}),
+    ...(getString(args, "order") !== undefined ? { order: getString(args, "order")! } : {}),
+    ...(getNumber(args, "tid") !== undefined ? { tid: getNumber(args, "tid")! } : {}),
+  };
 }
 
 async function main(): Promise<void> {
@@ -173,8 +189,22 @@ async function main(): Promise<void> {
     case "parse": {
       const url = requireString(args, "url", "bilibili URL");
       const client = makeClient(args);
-      const items = await client.parse(url);
+      const items = await client.parse(url, listOptions(args));
       outputJson(items);
+      return;
+    }
+
+    case "space": {
+      const target = args.positionals[0] ?? requireString(args, "mid", "user mid");
+      const url = /^\d+$/u.test(target) ? `https://space.bilibili.com/${target}` : target;
+      const client = makeClient(args);
+      const items = await client.parse(url, listOptions(args));
+      const minDuration = getNumber(args, "min-duration");
+      const filtered =
+        minDuration !== undefined
+          ? items.filter((item) => item.duration !== undefined && item.duration >= minDuration * 60)
+          : items;
+      outputJson(filtered);
       return;
     }
 

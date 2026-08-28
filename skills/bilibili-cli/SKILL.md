@@ -35,6 +35,12 @@ sc-bilibili logout       # 清除本地登录态
 sc-bilibili parse --url "https://www.bilibili.com/video/BV1xx411c7mD"
 # 输出 JSON 数组,每项含 type/bvid/cid/title/时长/分P
 
+sc-bilibili space <mid> --ps 20 --order click
+# 浏览 UP 主视频列表(JSON 数组,含播放量/发布时间/分区/是否充电专属)
+# --pn 页码 --ps 每页(默认 40) --order pubdate(默认)|click|favorite --tid 分区过滤
+sc-bilibili space <mid> --min-duration 120
+# 只保留 120 分钟以上的长片(筛大型纪录片常用)
+
 sc-bilibili streams --url "BV链接" --quality 80
 # 输出清晰度、视频流列表(编码)、音频流列表
 

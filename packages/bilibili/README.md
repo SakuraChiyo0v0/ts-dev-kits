@@ -67,6 +67,16 @@ sc-bilibili logout    # 清除登录态
 
 无头环境可用 `--no-browser`(仅打印扫码链接)与 `--timeout <sec>`(默认 180 秒)。登录后 `parse` / `streams` / `download` 自动使用存储的 cookie(高画质无需再传 `--cookie`);cookie 过期时自动用 refresh_token 续期。
 
+CLI 浏览 UP 主视频列表(支持分页/排序/时长筛选):
+
+```powershell
+sc-bilibili space 39627524 --pn 2 --ps 20 --order click
+# 按播放量排序取第 2 页;--order 支持 pubdate(默认)|click|favorite,--tid 按分区过滤
+
+sc-bilibili space 39627524 --min-duration 120
+# 只保留 120 分钟以上的长片(适合筛大型纪录片)
+```
+
 SDK 侧,`createBilibiliClient` 未传 `cookie` 时自动从登录态存储加载(显式 `cookie` 优先),可用 `authPath` 指定存储文件。
 
 **登录态多端同步(可选):** 传 `remote`(配置中心加密命名空间)后登录态双写本地+远程,换机可还原:
@@ -103,7 +113,7 @@ createBilibiliClient({
 
 ## API
 
-### `parse(url)` → `MediaItem[]`
+### `parse(url, options?)` → `MediaItem[]`
 
 解析任意 B 站链接,返回媒体项列表。支持类型:
 
@@ -120,6 +130,20 @@ createBilibiliClient({
 | 稍后再看 | `list/watchlater`(需登录) |
 | 历史记录 | `account/history`(需登录) |
 
+列表类解析(空间等)支持 `options`:
+
+```ts
+interface ListParseOptions {
+  pn?: number;        // 页码,从 1 开始,默认 1
+  ps?: number;        // 每页数量,默认 40,最大 50
+  order?: string;     // 排序:pubdate(默认) | click(播放量) | favorite(收藏数)
+  tid?: number;       // 分区过滤,0=全部
+}
+
+// 例:取 UP 主第 2 页、按播放量排序、只看 21(美食)分区
+await client.parse("https://space.bilibili.com/39627524", { pn: 2, order: "click", tid: 21 });
+```
+
 ```ts
 interface MediaItem {
   type: "video" | "bangumi" | ...;
@@ -130,6 +154,12 @@ interface MediaItem {
   title: string;
   cover?: string;
   duration?: number;
+  play?: number;          // 播放量(列表类解析)
+  comment?: number;       // 评论数
+  pubdate?: number;       // 发布时间(unix 秒)
+  tid?: number;           // 分区 id
+  description?: string;   // 简介
+  chargingArc?: boolean;  // 是否充电专属视频
   owner?: { mid: number; name: string };
   raw: unknown;
 }

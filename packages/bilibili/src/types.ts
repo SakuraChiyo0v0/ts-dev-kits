@@ -47,6 +47,18 @@ export interface MediaItem {
   cover?: string;
   /** 时长(秒)。 */
   duration?: number;
+  /** 播放量。 */
+  play?: number;
+  /** 评论数。 */
+  comment?: number;
+  /** 发布时间(unix 秒)。 */
+  pubdate?: number;
+  /** 分区 id。 */
+  tid?: number;
+  /** 简介。 */
+  description?: string;
+  /** 是否充电专属视频。 */
+  chargingArc?: boolean;
   /** UP主信息。 */
   owner?: { mid: number; name: string };
   /** 原始解析数据。 */
@@ -106,11 +118,23 @@ export enum VideoCodec {
   AV1 = 13,
 }
 
+/** 列表类解析选项(空间/收藏夹等分页列表)。 */
+export interface ListParseOptions {
+  /** 页码,从 1 开始,默认 1。 */
+  pn?: number;
+  /** 每页数量,默认 40,最大 50。 */
+  ps?: number;
+  /** 排序:pubdate(发布时间,默认) | click(播放量) | favorite(收藏数)。 */
+  order?: string;
+  /** 分区 tid 过滤,0=全部。 */
+  tid?: number;
+}
+
 /** 解析器接口:每种内容类型实现一次。 */
 export interface Parser {
   readonly type: ContentType;
   /** 解析 URL,返回媒体项列表。 */
-  parse(url: string): Promise<MediaItem[]>;
+  parse(url: string, options?: ListParseOptions): Promise<MediaItem[]>;
 }
 
 /** 播放流获取接口(按媒体项取流)。 */

@@ -76,6 +76,7 @@ export {
   type ContentType,
   type DownloadConfig,
   type DownloadProgress,
+  type ListParseOptions,
   type MediaItem,
   type MediaStream,
   type Parser,

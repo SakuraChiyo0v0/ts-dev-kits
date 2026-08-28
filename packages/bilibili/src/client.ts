@@ -36,6 +36,7 @@ import {
 import type {
   BilibiliClientOptions,
   DownloadProgress,
+  ListParseOptions,
   MediaItem,
   MediaStream,
   Parser,
@@ -216,7 +217,7 @@ export class BilibiliClient {
 
   /** 解析任意 B 站链接,返回媒体项列表。 */
   @timed()
-  async parse(url: string): Promise<MediaItem[]> {
+  async parse(url: string, options?: ListParseOptions): Promise<MediaItem[]> {
     const parsed = parseUrl(url);
     const parser = this.#parsers.get(parsed.type);
     if (parser === undefined) {
@@ -225,7 +226,7 @@ export class BilibiliClient {
         `Parser for type "${parsed.type}" not implemented yet (planned for v2)`,
       );
     }
-    return parser.parse(url);
+    return parser.parse(url, options);
   }
 
   /** 获取媒体项的播放流。 */
