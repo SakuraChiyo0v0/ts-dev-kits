@@ -160,8 +160,15 @@ async function main() {
     const deps = manifest.dependencies ?? {};
     for (const [depName, spec] of Object.entries(deps)) {
       if (!depName.startsWith(`${SCOPE}/`)) continue;
+      const depManifest = localManifest(PACKAGES.find(([n]) => n === depName)?.[1] ?? "missing");
       const depVersions = await publishedVersions(depName);
-      const exists = [...depVersions].some((v) => matchesRange(resolveDependencySpec(spec, localManifest(PACKAGES.find(([n]) => n === depName)?.[1] ?? "missing").version), v));
+      const expected = resolveDependencySpec(spec, depManifest.version ?? "?");
+      // workspace:* 依赖且被依赖包本次会发布新版本:模拟发布后存在。
+      const depPublishIndex = publishOrder.indexOf(depName);
+      const willPublishThisTime =
+        depPublishIndex !== -1 && !depVersions.has(depManifest.version);
+      if (willPublishThisTime) continue;
+      const exists = [...depVersions].some((v) => matchesRange(expected, v));
       if (!exists) {
         console.error(`✖ 已发布 ${name}@${latest} 依赖 ${depName}@${spec},registry 上不存在`);
         errors += 1;
