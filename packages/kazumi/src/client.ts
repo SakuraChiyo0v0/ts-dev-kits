@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { mkdirSync, unlinkSync, writeFileSync } from "node:fs";
 import { resolveConfigRoot } from "@sakurachiyo0v0/config";
 import { RuleLoader, ruleFromJson, validateRule } from "./rules/loader.js";
+import { RuleSync } from "./rules/sync.js";
 import { RuleEngine, type ChapterTrace, type SearchTrace } from "./engine/engine.js";
 import { DefaultRuleRequestExecutor } from "./request/executor.js";
 import { EpisodeDownloader } from "./stream/download.js";
@@ -27,16 +28,16 @@ export function defaultRulesDir(
 
 /** 规则管理器。 */
 export interface RuleManager {
-  /** 列出全部规则名(规则目录下 *.json 文件名)。 */
+  /** 列出全部规则名(本地规则目录 *.json,含已缓存的远端规则)。 */
   list(): string[];
-  /** 加载单条规则(不存在抛 RULE_NOT_FOUND)。 */
-  load(name: string): AnimeRule;
+  /** 加载单条规则(不存在抛 RULE_NOT_FOUND;sync 开启时优先远端并缓存)。 */
+  load(name: string): Promise<AnimeRule>;
   /** 校验规则 JSON 合法性,返回错误列表(空 = 合法)。 */
   validateJson(json: Record<string, unknown>): string[];
-  /** 导入规则 JSON 到规则目录(校验通过后写入),返回规则名。 */
-  add(json: Record<string, unknown>): string;
-  /** 删除规则文件(不存在抛 RULE_NOT_FOUND)。 */
-  remove(name: string): void;
+  /** 导入规则(校验通过后本地 + WebDAV 双写),返回规则名。 */
+  add(json: Record<string, unknown>): Promise<string>;
+  /** 删除规则(本地 + WebDAV 双删,不存在抛 RULE_NOT_FOUND)。 */
+  remove(name: string): Promise<void>;
 }
 
 /** kazumi SDK 客户端门面。 */
@@ -67,14 +68,15 @@ export interface AnimeClient {
 /** 创建 kazumi 客户端。 */
 export function createAnimeClient(options: AnimeClientOptions = {}): AnimeClient {
   const rulesDir = options.rulesDir ?? defaultRulesDir();
-  const loader = new RuleLoader(rulesDir);
+  const sync = new RuleSync(options.sync === true);
+  const loader = new RuleLoader(rulesDir, sync);
   const engine = new RuleEngine(
     options.fetchImpl ? new DefaultRuleRequestExecutor(options.fetchImpl) : undefined,
   );
 
   const rules: RuleManager = {
     list: () => loader.list(),
-    load: (name: string) => loader.load(name),
+    load: async (name: string) => loader.load(name),
     validateJson: (json: Record<string, unknown>) => {
       try {
         const name = String(json["name"] ?? "");
@@ -84,7 +86,7 @@ export function createAnimeClient(options: AnimeClientOptions = {}): AnimeClient
         return [(error as Error).message];
       }
     },
-    add: (json: Record<string, unknown>) => {
+    add: async (json: Record<string, unknown>) => {
       const name = String(json["name"] ?? "");
       if (name === "") {
         throw new KazumiError("RULE_INVALID", "规则缺少 name");
@@ -95,9 +97,11 @@ export function createAnimeClient(options: AnimeClientOptions = {}): AnimeClient
       }
       mkdirSync(rulesDir, { recursive: true });
       writeFileSync(join(rulesDir, `${name}.json`), JSON.stringify(json, null, 2), "utf-8");
+      // 远端双写(WebDAV 同步;失败不阻塞,本地已保存)。
+      await sync.put(name, json);
       return name;
     },
-    remove: (name: string) => {
+    remove: async (name: string) => {
       try {
         unlinkSync(join(rulesDir, `${name}.json`));
       } catch (error) {
@@ -107,12 +111,22 @@ export function createAnimeClient(options: AnimeClientOptions = {}): AnimeClient
           error instanceof Error ? error : undefined,
         );
       }
+      // 远端双删(失败不阻塞)。
+      await sync.remove(name);
     },
   };
 
-  function resolveRules(opts?: { rules?: string[] }): AnimeRule[] {
+  async function resolveRules(opts?: { rules?: string[] }): Promise<AnimeRule[]> {
     if (opts?.rules && opts.rules.length > 0) {
-      return opts.rules.map((name) => loader.load(name));
+      const rulesList: AnimeRule[] = [];
+      for (const name of opts.rules) {
+        rulesList.push(await loader.load(name));
+      }
+      return rulesList;
+    }
+    // 同步开启时先拉远端规则缓存到本地,再取本地清单。
+    if (sync.enabled) {
+      await loader.listRemote();
     }
     const names = loader.list();
     if (names.length === 0) {
@@ -121,14 +135,18 @@ export function createAnimeClient(options: AnimeClientOptions = {}): AnimeClient
         `规则目录为空: ${rulesDir}。请先配置规则(sc-kazumi rules add)`,
       );
     }
-    return names.map((name) => loader.load(name));
+    const rulesList: AnimeRule[] = [];
+    for (const name of names) {
+      rulesList.push(await loader.load(name));
+    }
+    return rulesList;
   }
 
   return {
     rules,
 
     async search(keyword: string, opts?: { rules?: string[] }): Promise<SearchItem[]> {
-      const ruleList = resolveRules(opts);
+      const ruleList = await resolveRules(opts);
       const results: SearchItem[] = [];
       let captchaBlocked = false;
       for (const rule of ruleList) {
@@ -161,13 +179,13 @@ export function createAnimeClient(options: AnimeClientOptions = {}): AnimeClient
     },
 
     async getRoads(item: SearchItem): Promise<Road[]> {
-      const rule = inferRule(item, loader);
+      const rule = await inferRule(item, loader);
       const trace = await engine.queryChapters(rule, item.src);
       return trace.roads;
     },
 
     async getEpisodes(item: SearchItem, road: Road): Promise<Episode[]> {
-      const rule = inferRule(item, loader);
+      const rule = await inferRule(item, loader);
       void rule;
       return road.data.map((url, index) => ({
         name: road.identifier[index] ?? `第${index + 1}集`,
@@ -184,7 +202,7 @@ export function createAnimeClient(options: AnimeClientOptions = {}): AnimeClient
         onProgress?: (progress: DownloadProgress) => void;
       },
     ): Promise<{ filePath: string }> {
-      const rule = loader.load(opts.rule);
+      const rule = await loader.load(opts.rule);
       const downloader = new EpisodeDownloader(options.fetchImpl, {
         ...options.download,
         ...(opts.adFilter !== undefined ? { adFilter: opts.adFilter } : {}),
@@ -196,29 +214,29 @@ export function createAnimeClient(options: AnimeClientOptions = {}): AnimeClient
     },
 
     async traceSearch(ruleName: string, keyword: string): Promise<SearchTrace> {
-      const rule = loader.load(ruleName);
+      const rule = await loader.load(ruleName);
       return engine.search(rule, keyword);
     },
 
     async traceChapters(ruleName: string, source: string): Promise<ChapterTrace> {
-      const rule = loader.load(ruleName);
+      const rule = await loader.load(ruleName);
       return engine.queryChapters(rule, source);
     },
   };
 }
 
 /** 从搜索结果推断所属规则(名称 [规则名] 前缀优先,否则按 baseUrl 匹配)。 */
-function inferRule(item: SearchItem, loader: RuleLoader): AnimeRule {
+async function inferRule(item: SearchItem, loader: RuleLoader): Promise<AnimeRule> {
   const match = item.name.match(/^\[([^\]]+)\]/);
   if (match?.[1]) {
     try {
-      return loader.load(match[1]);
+      return await loader.load(match[1]);
     } catch {
       // 前缀规则不存在时走 URL 匹配
     }
   }
   for (const name of loader.list()) {
-    const rule = loader.load(name);
+    const rule = await loader.load(name);
     if (item.src.startsWith(rule.baseUrl)) {
       return rule;
     }

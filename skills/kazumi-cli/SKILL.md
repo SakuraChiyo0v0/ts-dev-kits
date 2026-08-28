@@ -18,6 +18,14 @@ which sc-kazumi   # 确认已安装
 - 每个规则一个 `<规则名>.json` 文件,文件名即规则名。
 - **规则来源**:从 [KazumiRules](https://github.com/Predidit/KazumiRules) 仓库下载对应 `<name>.json` 后用 `sc-kazumi rules add` 导入;或手写。SDK 不内置规则。
 
+### WebDAV 多端同步(可选)
+
+`AMECHAN_KAZUMI_SYNC=1` 开启规则 WebDAV 同步(经 `@sakurachiyo0v0/config` namespace("kazumi"),加密存云端 `/amechan/secrets/kazumi/`;前置:先 `sc-config setup` 配置 WebDAV):
+
+- `rules add` / `rules remove` 本地 + WebDAV 双写,换机器自动拉取;
+- 搜索/`rules load` 前先同步远端规则到本地缓存;
+- 无全局配置或网络失败时自动回退本地,不报错。
+
 ### 规则 JSON 格式(兼容 Kazumi)
 
 XPath 模式(抓 HTML 页面):

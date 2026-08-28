@@ -182,7 +182,7 @@ export function applyKazumiTools(ctx: Context, config: KazumiConfig): () => void
     async execute(args, exec) {
       try {
         const client = createAnimeClient();
-        const ruleName = args.rule ?? inferRuleFromUrl(args.url);
+        const ruleName = args.rule ?? (await inferRuleFromUrl(args.url));
         const result = await client.download(
           { name: args.name ?? "episode", url: args.url },
           {
@@ -207,7 +207,7 @@ export function applyKazumiTools(ctx: Context, config: KazumiConfig): () => void
 }
 
 /** 从播放 URL 推断规则名(取 URL host 最接近的规则);找不到抛错。 */
-function inferRuleFromUrl(url: string): string {
+async function inferRuleFromUrl(url: string): Promise<string> {
   const client = createAnimeClient();
   const rules = client.rules.list();
   let host: string | null = null;
@@ -217,15 +217,16 @@ function inferRuleFromUrl(url: string): string {
     // 非 URL 输入,交给下载层报错
   }
   if (host) {
-    const match = rules.find((name) => {
+    for (const name of rules) {
       try {
-        const rule = client.rules.load(name);
-        return new URL(rule.baseUrl).host === host;
+        const rule = await client.rules.load(name);
+        if (new URL(rule.baseUrl).host === host) {
+          return name;
+        }
       } catch {
-        return false;
+        continue;
       }
-    });
-    if (match) return match;
+    }
   }
   throw new Error(`RULE_NOT_FOUND: 无法从 URL 推断规则(${url}),请显式传 --rule 或 rule 参数`);
 }

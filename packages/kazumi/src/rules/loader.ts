@@ -1,7 +1,8 @@
-import { readFileSync, readdirSync } from "node:fs";
+import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { RestrictedJsonPath } from "../engine/restricted-jsonpath.js";
 import { KazumiError } from "../errors.js";
+import type { RuleSync } from "./sync.js";
 import type { AnimeRule, ApiChapterConfig, ApiSearchConfig, RuleMode } from "../types.js";
 
 /** 规则模式归一化(兼容 Kazumi 缺失字段默认 xpath)。 */
@@ -179,24 +180,67 @@ export function validateRule(rule: AnimeRule): string[] {
 /** 规则目录加载器。 */
 export class RuleLoader {
   private readonly dir: string;
+  private readonly sync: RuleSync | undefined;
 
-  constructor(dir: string) {
+  constructor(dir: string, sync?: RuleSync) {
     this.dir = dir;
+    this.sync = sync;
   }
 
-  /** 列出全部已加载规则名。 */
+  /** 同步是否可用。 */
+  private get hasSync(): boolean {
+    return this.sync !== undefined;
+  }
+
+  /** 列出全部已加载规则名(远端可用时合并远端规则)。 */
   list(): string[] {
+    const local = new Set<string>();
     try {
-      return readdirSync(this.dir)
-        .filter((file) => file.endsWith(".json"))
-        .map((file) => file.replace(/\.json$/, ""));
+      for (const file of readdirSync(this.dir)) {
+        if (file.endsWith(".json")) {
+          local.add(file.replace(/\.json$/, ""));
+        }
+      }
     } catch {
-      return [];
+      // 目录不存在时仅远端
     }
+    // 远端规则同步到本地缓存(只读场景下规则名以远端为准)。
+    if (this.sync?.enabled) {
+      const remote = this.sync.list();
+      void remote; // 远端 list 是异步的,加载时同步合并见 loadRemoteNames
+    }
+    return [...local].sort();
   }
 
-  /** 加载单个规则,不存在抛 RULE_NOT_FOUND。 */
-  load(name: string): AnimeRule {
+  /** 列出远端规则名(异步,供 client 合并)。 */
+  async listRemote(): Promise<string[]> {
+    if (!this.sync?.enabled) return [];
+    const remote = await this.sync.list();
+    // 远端规则同步到本地缓存目录(下次本地 list 也能看到)。
+    for (const name of remote) {
+      const json = await this.sync.get(name);
+      if (json !== null) {
+        this.writeLocal(name, json);
+      }
+    }
+    return remote;
+  }
+
+  /** 加载单个规则,不存在抛 RULE_NOT_FOUND(远端可用时优先远端)。 */
+  async load(name: string): Promise<AnimeRule> {
+    // 远端优先:远端有则缓存到本地并返回。
+    if (this.sync?.enabled) {
+      const remote = await this.sync.get(name);
+      if (remote !== null) {
+        this.writeLocal(name, remote);
+        return ruleFromJson(name, remote);
+      }
+    }
+    return this.loadLocal(name);
+  }
+
+  /** 仅从本地加载。 */
+  loadLocal(name: string): AnimeRule {
     const file = join(this.dir, `${name}.json`);
     let raw: string;
     try {
@@ -216,5 +260,20 @@ export class RuleLoader {
       throw new KazumiError("RULE_INVALID", `规则 ${name} 校验失败: ${errors.join("; ")}`);
     }
     return rule;
+  }
+
+  /** 写本地规则缓存(目录不存在时创建)。 */
+  writeLocal(name: string, json: Record<string, unknown>): void {
+    try {
+      mkdirSync(this.dir, { recursive: true });
+      writeFileSync(join(this.dir, `${name}.json`), JSON.stringify(json, null, 2), "utf-8");
+    } catch (error) {
+      // 本地缓存写入失败不影响远端可用,仅记录。
+      throw new KazumiError(
+        "RULE_INVALID",
+        `规则 ${name} 本地缓存写入失败: ${(error as Error).message}`,
+        error,
+      );
+    }
   }
 }

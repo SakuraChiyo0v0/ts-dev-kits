@@ -151,5 +151,7 @@ export interface AnimeClientOptions {
   rulesDir?: string;
   /** 可注入请求实现(测试用)。 */
   fetchImpl?: typeof fetch;
+  /** 是否开启 WebDAV 规则同步(经 config 包 namespace('kazumi'),默认 false)。 */
+  sync?: boolean;
   download?: DownloadOptions;
 }

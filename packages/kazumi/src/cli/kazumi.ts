@@ -3,6 +3,7 @@
  * sc-kazumi CLI:search / roads / episodes / download / rules。
  * 环境变量注入(测试/自定义规则目录):
  *   AMECHAN_KAZUMI_RULES_DIR — 覆盖规则目录
+ *   AMECHAN_KAZUMI_SYNC=1    — 开启规则 WebDAV 多端同步(需已 sc-config setup)
  */
 import {
   getBool,
@@ -41,7 +42,9 @@ function rulesDir(): string {
 }
 
 function makeClient(): AnimeClient {
-  return createAnimeClient({ rulesDir: rulesDir() });
+  // AMECHAN_KAZUMI_SYNC=1 开启规则 WebDAV 多端同步(需已 sc-config setup)。
+  const sync = process.env.AMECHAN_KAZUMI_SYNC === "1";
+  return createAnimeClient({ rulesDir: rulesDir(), ...(sync ? { sync } : {}) });
 }
 
 async function main(): Promise<void> {
@@ -171,7 +174,7 @@ async function runRules(client: AnimeClient, args: ReturnType<typeof parseArgs>)
       }
       const raw = readFileSync(file, "utf-8");
       const json = JSON.parse(raw) as Record<string, unknown>;
-      const name = client.rules.add(json);
+      const name = await client.rules.add(json);
       const { join } = await import("node:path");
       outputJson({ added: name, path: join(rulesDir(), `${name}.json`) });
       break;
@@ -181,7 +184,7 @@ async function runRules(client: AnimeClient, args: ReturnType<typeof parseArgs>)
       if (!name) {
         throw new KazumiError("RULE_INVALID", "rules remove 需要规则名");
       }
-      client.rules.remove(name);
+      await client.rules.remove(name);
       outputJson({ removed: name });
       break;
     }

@@ -121,7 +121,7 @@ describe("XPath 模式全链路", () => {
     const dir = mkdtempSync(join(tmpdir(), "kazumi-test-"));
     writeRule("mock-xpath", xpathRule(server.baseUrl), dir);
     const client = createAnimeClient({ rulesDir: dir });
-    const rule = client.rules.load("mock-xpath");
+    const rule = await client.rules.load("mock-xpath");
 
     const downloader = await import("../src/stream/download.js");
     const seenArgs: string[][] = [];
@@ -193,7 +193,7 @@ describe("规则追踪与错误分支", () => {
   it("加载不存在规则 → RULE_NOT_FOUND", async () => {
     const dir = mkdtempSync(join(tmpdir(), "kazumi-empty-"));
     const client = createAnimeClient({ rulesDir: dir });
-    expect(() => client.rules.load("nope")).toThrow(KazumiError);
+    await expect(client.rules.load("nope")).rejects.toThrow(KazumiError);
     rmSync(dir, { recursive: true, force: true });
   });
 
@@ -202,7 +202,7 @@ describe("规则追踪与错误分支", () => {
     const { writeFileSync } = require("node:fs") as typeof import("node:fs");
     writeFileSync(join(dir, "broken.json"), "{ not json", "utf-8");
     const client = createAnimeClient({ rulesDir: dir });
-    expect(() => client.rules.load("broken")).toThrowError(
+    await expect(client.rules.load("broken")).rejects.toThrowError(
       expect.objectContaining({ code: "RULE_INVALID" }),
     );
     rmSync(dir, { recursive: true, force: true });
@@ -238,15 +238,15 @@ describe("RuleManager add/remove", () => {
     const dir = mkdtempSync(join(tmpdir(), "kazumi-test-"));
     const client = createAnimeClient({ rulesDir: dir });
     const rule = xpathRule(server.baseUrl);
-    const name = client.rules.add(rule);
+    const name = await client.rules.add(rule);
     expect(name).toBe("mock-xpath");
     expect(client.rules.list()).toContain("mock-xpath");
     // 加载后搜索可用
     const items = await client.search("测试", { rules: ["mock-xpath"] });
     expect(items.length).toBeGreaterThan(0);
-    client.rules.remove("mock-xpath");
+    await client.rules.remove("mock-xpath");
     expect(client.rules.list()).not.toContain("mock-xpath");
-    expect(() => client.rules.load("mock-xpath")).toThrowError(
+    await expect(client.rules.load("mock-xpath")).rejects.toThrowError(
       expect.objectContaining({ code: "RULE_NOT_FOUND" }),
     );
     rmSync(dir, { recursive: true, force: true });
@@ -255,9 +255,9 @@ describe("RuleManager add/remove", () => {
   it("add 非法规则拒绝写入", async () => {
     const dir = mkdtempSync(join(tmpdir(), "kazumi-test-"));
     const client = createAnimeClient({ rulesDir: dir });
-    expect(() =>
+    await expect(
       client.rules.add({ name: "bad", baseURL: "" } as Record<string, unknown>),
-    ).toThrowError(expect.objectContaining({ code: "RULE_INVALID" }));
+    ).rejects.toThrowError(expect.objectContaining({ code: "RULE_INVALID" }));
     expect(client.rules.list()).toEqual([]);
     rmSync(dir, { recursive: true, force: true });
   });
@@ -265,7 +265,7 @@ describe("RuleManager add/remove", () => {
   it("remove 不存在规则 → RULE_NOT_FOUND", async () => {
     const dir = mkdtempSync(join(tmpdir(), "kazumi-test-"));
     const client = createAnimeClient({ rulesDir: dir });
-    expect(() => client.rules.remove("nope")).toThrowError(
+    await expect(client.rules.remove("nope")).rejects.toThrowError(
       expect.objectContaining({ code: "RULE_NOT_FOUND" }),
     );
     rmSync(dir, { recursive: true, force: true });

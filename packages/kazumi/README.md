@@ -49,9 +49,18 @@ console.log("保存到:", filePath);
 ## 规则目录
 
 - 默认 `<配置根>/amechan/kazumi/rules/`,每个规则一个 `<规则名>.json`(文件名 = 规则名)。
-- 配置根解析与仓库其他包一致:Windows `%APPDATA%`、macOS `~/Library/Application Support`、Linux `$XDG_CONFIG_HOME` 或 `~/.config`;`AMECHAN_CONFIG_HOME` 可覆盖。
+- 配置根解析统一来自 `@sakurachiyo0v0/config`(唯一权威):Windows `%APPDATA%`(回退 `AppData/Roaming`)、macOS `~/Library/Application Support`、Linux `$XDG_CONFIG_HOME` 或 `~/.config`;`AMECHAN_CONFIG_HOME` 可覆盖。
 - 环境变量 `AMECHAN_KAZUMI_RULES_DIR` 可覆盖规则目录。
 - **规则来源**:从 [KazumiRules](https://github.com/Predidit/KazumiRules) 下载 `<name>.json` 后 `sc-kazumi rules add` 导入,或手写。SDK 不内置规则。
+
+### WebDAV 多端同步(可选)
+
+`createAnimeClient({ sync: true })` 开启规则 WebDAV 同步(经 `@sakurachiyo0v0/config` 的 `namespace("kazumi")`,加密存储于云端 `/amechan/secrets/kazumi/`):
+
+- **双写**:`rules.add` / `rules.remove` 本地 + WebDAV 同时写入,换机器自动拉取;
+- **远端优先**:`rules.load` / 搜索前先同步远端规则到本地缓存;
+- **优雅回退**:无全局配置(`sc-config setup` 未执行)/网络失败时,同步自动关闭,规则仅本地,不报错;
+- 前置:先执行 `sc-config setup` 配置 WebDAV 全局配置(见 `@sakurachiyo0v0/config` README)。
 
 ### 规则 JSON 格式(兼容 Kazumi)
 
