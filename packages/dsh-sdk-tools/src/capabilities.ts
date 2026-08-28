@@ -8,6 +8,7 @@ import { applyEmailTools } from "./tools/email.js";
 import { applyLolTools } from "./tools/lol.js";
 import { applyVrchatTools } from "./tools/vrchat.js";
 import { applyLogsTools } from "./tools/logs.js";
+import { applyKazumiTools } from "./tools/kazumi.js";
 
 const logger = createLogger({ namespace: "dsh-sdk-tools" }).child("capabilities");
 
@@ -48,6 +49,10 @@ export function registerCapabilities(ctx: Context, config: ResolvedConfig): () =
   if (config.logs.enabled) {
     disposers.push(applyLogsTools(ctx, config.logs));
     enabled.push("logs");
+  }
+  if (config.kazumi.enabled) {
+    disposers.push(applyKazumiTools(ctx, config.kazumi));
+    enabled.push("kazumi");
   }
   logger.info("sdk tools registered", { enabled });
   return () => { for (const dispose of disposers) dispose(); };

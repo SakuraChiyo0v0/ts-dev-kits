@@ -1,6 +1,6 @@
 /**
  * dsh-sdk-tools 设置页入口(client 半):在 DSH 设置里注册「SDK工具」section,
- * 提供 6 个功能包的 enabled 开关,读写 host 的 `dsh-sdk-tools` settings
+ * 提供各功能包的 enabled 开关,读写 host 的 `dsh-sdk-tools` settings
  * namespace——切换即写 settings 文档,host 侧 watch 实时重注册工具。
  *
  * 只通过 cordis service(slots / settingsScope)协作,不 import 任何

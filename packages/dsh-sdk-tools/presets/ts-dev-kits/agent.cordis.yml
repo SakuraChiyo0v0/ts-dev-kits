@@ -1,7 +1,8 @@
 # ts-dev-kits 功能包预设
-# 挂载 dsh-sdk-tools 插件:选中本预设的会话拥有 bilibili / 网易云 / ffmpeg / lol / vrchat 工具。
+# 挂载 dsh-sdk-tools 插件:选中本预设的会话拥有 bilibili / 网易云 / ffmpeg / lol / vrchat / kazumi 工具。
 # email 默认关(需先配置 smtp 再手动开启,见下方注释)。
 # vrchat 默认关(需本机已保存 VRChat 登录态 auth.json 才有查询意义)。
+# kazumi 需要用户先配置番剧规则(规则目录默认 <配置根>/amechan/kazumi/rules/,用户自行导入)。
 #
 # 这里的 config 是本插件的 entry 配置(base 层),提供各包参数与 enabled 默认值;
 # DSH 设置里的「SDK工具」页会读写 ~/.dsh/settings.yaml 的 dsh-sdk-tools 节
@@ -38,3 +39,6 @@
       # local 开启后可查本机 SQLite 日志(需本机已用 DatabaseLogTransport 写入)。
       # remote: true
       # local: false
+    kazumi:
+      enabled: true
+      # outputDir: "~/Downloads/kazumi"

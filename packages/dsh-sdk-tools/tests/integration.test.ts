@@ -45,6 +45,7 @@ function entry(): ResolvedConfig {
     lol: { enabled: true },
     vrchat: { enabled: false },
     logs: { enabled: true, remote: true, local: false },
+    kazumi: { enabled: true, outputDir: "~/Downloads/kazumi" },
   };
 }
 

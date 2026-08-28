@@ -107,6 +107,18 @@ export interface LogsConfig {
   local: boolean;
 }
 
+/** 插件配置输入(kazumi 番剧采集下载包)。 */
+export interface KazumiConfigInput {
+  enabled?: boolean;
+  outputDir?: string;
+}
+
+/** kazumi 包配置输出。 */
+export interface KazumiConfig {
+  enabled: boolean;
+  outputDir: string;
+}
+
 /** 插件配置输入(schemastery 校验前)。 */
 export interface Config {
   bilibili?: BilibiliConfigInput;
@@ -116,6 +128,7 @@ export interface Config {
   lol?: LolConfigInput;
   vrchat?: VrchatConfigInput;
   logs?: LogsConfigInput;
+  kazumi?: KazumiConfigInput;
 }
 
 /** 插件配置输出(schemastery 填充默认值后,apply 收到即此形状)。 */
@@ -127,6 +140,7 @@ export interface ResolvedConfig {
   lol: LolConfig;
   vrchat: VrchatConfig;
   logs: LogsConfig;
+  kazumi: KazumiConfig;
 }
 
 export const Config: z<Config> = z.object({
@@ -163,5 +177,9 @@ export const Config: z<Config> = z.object({
     enabled: z.boolean().default(true),
     remote: z.boolean().default(true),
     local: z.boolean().default(false),
+  }),
+  kazumi: z.object({
+    enabled: z.boolean().default(true),
+    outputDir: z.string().default("~/Downloads/kazumi"),
   }),
 });

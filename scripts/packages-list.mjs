@@ -13,6 +13,7 @@ export const PACKAGES = [
   ["@sakurachiyo0v0/account", "packages/account"],
   ["@sakurachiyo0v0/email", "packages/email"],
   ["@sakurachiyo0v0/ffmpeg", "packages/ffmpeg"],
+  ["@sakurachiyo0v0/kazumi", "packages/kazumi"],
   ["@sakurachiyo0v0/lol", "packages/lol"],
   ["@sakurachiyo0v0/netease-music", "packages/netease-music"],
   ["@sakurachiyo0v0/booth", "packages/booth"],

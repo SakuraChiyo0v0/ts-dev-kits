@@ -71,12 +71,13 @@ Copy-Item -Recurse <本仓库>/packages/dsh-sdk-tools/presets/ts-dev-kits "$env:
 | lol | `lol_summoner` / `lol_match_history` / `lol_ranked` | 开 |
 | vrchat | `vrchat_whoami` / `vrchat_user` / `vrchat_worlds_search` | **关**(需本地 VRChat 登录态) |
 | logs | `logs_query` — 查询 SDK 日志(等级/设备/命名空间/关键词/时间,跨机聚合) | 开 |
+| kazumi | `kazumi_search` / `kazumi_roads` / `kazumi_download` — 番剧规则采集与下载(搜索/线路/下载 mp4) | 开 |
 
 > 网易云账号/收藏/歌单类工具只操作**当前登录账号自己的收藏与歌单**(红心、增删歌、订阅/退订、创建/删除),不涉及他人内容;下载链路的权限预检与试听拦截硬规则仍由 SDK 强制。
 
 ## 配置
 
-**设置页开关(推荐):** DSH 设置 →「SDK工具」页切换 7 个功能包开关,实时生效。写入 `~/.dsh/settings.yaml` 的 `dsh-sdk-tools` 节:
+**设置页开关(推荐):** DSH 设置 →「SDK工具」页切换 8 个功能包开关,实时生效。写入 `~/.dsh/settings.yaml` 的 `dsh-sdk-tools` 节:
 
 ```yaml
 dsh-sdk-tools:
@@ -87,6 +88,7 @@ dsh-sdk-tools:
   lol: true
   vrchat: false
   logs: true
+  kazumi: true
 ```
 
 > settings 文档只承载 enabled 开关;各包参数仍由预设 `agent.cordis.yml` 的 `config` 提供(见下),避免敏感字段(SMTP 密码)进入设置文档。settings 未写入的包回退 entry 值。

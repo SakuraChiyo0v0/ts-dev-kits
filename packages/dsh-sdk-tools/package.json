@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/dsh-sdk-tools",
-  "version": "0.4.5",
+  "version": "0.5.0",
   "description": "DSH host plugin: expose ts-dev-kits SDK packages as agent tools via agent presets, with a Settings-page toggle for each package",
   "license": "UNLICENSED",
   "publishConfig": {
@@ -55,6 +55,7 @@
     "@sakurachiyo0v0/database": "workspace:*",
     "@sakurachiyo0v0/email": "workspace:*",
     "@sakurachiyo0v0/ffmpeg": "workspace:*",
+    "@sakurachiyo0v0/kazumi": "workspace:*",
     "@sakurachiyo0v0/lol": "workspace:*",
     "@sakurachiyo0v0/logger": "workspace:*",
     "@sakurachiyo0v0/netease-music": "workspace:*",

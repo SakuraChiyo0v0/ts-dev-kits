@@ -28,6 +28,7 @@ export interface SettingsShapeInput {
   lol?: boolean;
   vrchat?: boolean;
   logs?: boolean;
+  kazumi?: boolean;
 }
 
 /** settings 文档里的扁平开关形状(schema 填充默认后)。 */
@@ -39,6 +40,7 @@ export interface SettingsShape {
   lol: boolean;
   vrchat: boolean;
   logs: boolean;
+  kazumi: boolean;
 }
 
 /** settings namespace 的 schema:与预设 entry 的默认 enabled 保持一致。 */
@@ -50,6 +52,7 @@ export const SettingsSchema: z<SettingsShapeInput> = z.object({
   lol: z.boolean().default(true),
   vrchat: z.boolean().default(false),
   logs: z.boolean().default(true),
+  kazumi: z.boolean().default(true),
 });
 
 /** 嵌套 entry config → 扁平 settings 形状(installSettingsSection 的 base 层)。 */
@@ -62,6 +65,7 @@ export function toSettingsShape(config: ResolvedConfig): SettingsShape {
     lol: config.lol.enabled,
     vrchat: config.vrchat.enabled,
     logs: config.logs.enabled,
+    kazumi: config.kazumi.enabled,
   };
 }
 
@@ -76,6 +80,7 @@ export function applySettingsShape(config: ResolvedConfig, shape: SettingsShapeI
     lol: { ...config.lol, enabled: shape.lol ?? config.lol.enabled },
     vrchat: { ...config.vrchat, enabled: shape.vrchat ?? config.vrchat.enabled },
     logs: { ...config.logs, enabled: shape.logs ?? config.logs.enabled },
+    kazumi: { ...config.kazumi, enabled: shape.kazumi ?? config.kazumi.enabled },
   };
 }
 

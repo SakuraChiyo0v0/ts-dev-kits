@@ -14,6 +14,7 @@ function entryConfig(overrides: Partial<ResolvedConfig> = {}): ResolvedConfig {
     lol: { enabled: true },
     vrchat: { enabled: false },
     logs: { enabled: true, remote: true, local: false },
+    kazumi: { enabled: true, outputDir: "~/Downloads/kazumi" },
     ...overrides,
   };
 }
@@ -45,6 +46,7 @@ describe("SettingsSchema", () => {
       lol: true,
       vrchat: false,
       logs: true,
+      kazumi: true,
     });
   });
 });
@@ -53,7 +55,7 @@ describe("toSettingsShape / applySettingsShape", () => {
   it("round-trips enabled flags without touching other fields", () => {
     const entry = entryConfig();
     expect(toSettingsShape(entry)).toEqual({
-      bilibili: true, netease: true, ffmpeg: true, email: false, lol: true, vrchat: false, logs: true,
+      bilibili: true, netease: true, ffmpeg: true, email: false, lol: true, vrchat: false, logs: true, kazumi: true,
     });
     expect(applySettingsShape(entry, toSettingsShape(entry))).toEqual(entry);
   });
@@ -99,6 +101,7 @@ describe("registerCapabilities", () => {
       ffmpeg: { enabled: false },
       lol: { enabled: false },
       logs: { enabled: false, remote: true, local: false },
+      kazumi: { enabled: false, outputDir: "" },
     }));
     expect(active()).toBe(0);
   });

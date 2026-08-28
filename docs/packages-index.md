@@ -1003,7 +1003,7 @@ Kazumi 规则格式兼容的番剧采集下载 SDK:**声明式规则引擎**(XPa
 - **API 模式**:请求模板(method/url/headers/query/bodyType/body + `{keyword}`/`{source}` 变量)+ JSONPath 映射。
 - **受限 JSONPath 沙箱**:只支持 `$`/`.key`/`['key']`/`[n]`/`[*]` 安全子集;函数调用/过滤/递归/通配属性一律拒绝(开放规则生态的硬门槛)。
 
-**下载流程:** m3u8 解析(master 自动选最高码率)→ discontinuity 分组广告过滤(剔除短广告分组)→ 并发分片下载(可配并发/重试/超时)→ 本地 m3u8 构建 → ffmpeg 合并 mp4(自动处理 AES-128 加密分片)。
+**下载流程:** 播放页取流解析(静态递归:直出 m3u8 → video/source 标签 → iframe 跟踪,不执行 JS)→ m3u8 解析(master 自动选最高码率)→ discontinuity 分组广告过滤(剔除短广告分组)→ 并发分片下载(可配并发/重试/超时)→ 本地 m3u8 构建 → ffmpeg 合并 mp4(自动处理 AES-128 加密分片)。纯 JS 动态取流站点报 `STREAM_PARSE_FAILED`(真实站点试跑验证:AGE/ezdmw 搜索与线路解析通过;下载取流对 iframe 型可跟踪,JS 动态型需手动直链)。
 
 **CLI `sc-kazumi`:** `search` / `roads` / `episodes` / `download` / `rules list|add|remove|validate|test`;规则调试首选 `rules test <name> <keyword>`(直接看匹配片段/诊断/原始响应预览)。skill 手册 [`skills/kazumi-cli/SKILL.md`](../skills/kazumi-cli/SKILL.md)。
 

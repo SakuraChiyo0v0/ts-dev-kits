@@ -69,6 +69,11 @@ const SKILL_MAP = [
     bin: "sc-xiaoheihe",
   },
   {
+    skill: "kazumi-cli",
+    cli: "packages/kazumi/src/cli/kazumi.ts",
+    bin: "sc-kazumi",
+  },
+  {
     skill: "chuanshengtong-cli",
     cli: "packages/chuanshengtong/src/cli/chuanshengtong.ts",
     bin: "sc-chuanshengtong",

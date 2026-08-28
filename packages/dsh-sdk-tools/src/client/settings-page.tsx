@@ -1,5 +1,5 @@
 /**
- * 「SDK工具」设置页组件:6 个功能包的 enabled 开关。
+ * 「SDK工具」设置页组件:各功能包的 enabled 开关。
  * 通过 settingsScope 的扁平 namespace(`dsh-sdk-tools`)读写,
  * 与 host 侧 src/settings.ts 的 SettingsSchema 一一对应。
  */
@@ -17,6 +17,7 @@ export interface SettingsShape {
   email: boolean;
   lol: boolean;
   vrchat: boolean;
+  kazumi: boolean;
 }
 
 /** 每行功能开关的展示信息。 */
@@ -39,6 +40,12 @@ const FEATURES: readonly FeatureRow[] = [
   },
   { key: "lol", label: "英雄联盟", description: "召唤师、战绩、段位查询", hint: "需本机运行游戏客户端" },
   { key: "vrchat", label: "VRChat", description: "用户与公开世界搜索", hint: "需本地 VRChat 登录态" },
+  {
+    key: "kazumi",
+    label: "kazumi",
+    description: "番剧规则采集与下载(搜索/线路/下载 mp4)",
+    hint: "需先配置番剧规则(规则目录,用户自行导入)",
+  },
 ];
 
 /** apply 时由 index.tsx 绑定的 settings scope(绑定生命周期归插件 fiber)。 */
