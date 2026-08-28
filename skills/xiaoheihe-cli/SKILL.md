@@ -1,3 +1,8 @@
+---
+name: xiaoheihe-cli
+description: 用 sc-xiaoheihe 命令行查询小黑盒帖子/评论/用户(只读)
+---
+
 # sc-xiaoheihe CLI
 
 让 AI 直接用 `sc-xiaoheihe` 命令行操作小黑盒(xiaoheihe.cn)SDK:**P0 只读**——扫码登录、帖子/评论/首页帖子流/@消息/用户资料查询。**不提供任何写操作**(回复评论、发帖属红线扩展 P1,未实现)。

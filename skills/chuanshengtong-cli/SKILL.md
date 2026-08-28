@@ -1,3 +1,8 @@
+---
+name: chuanshengtong-cli
+description: 用 sc-chuanshengtong 命令行输入文字+图像模板程序化合成图片
+---
+
 # sc-chuanshengtong CLI
 
 让 AI 直接用 `sc-chuanshengtong` 命令行把文字套用内置图像模板生成图片(传声筒)。**基于 `@sakurachiyo0v0/chuanshengtong` SDK**。

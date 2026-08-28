@@ -1,3 +1,8 @@
+---
+name: webdav-cli
+description: 用 sc-webdav 命令行读写 WebDAV 文件与配置文件存储
+---
+
 # sc-webdav CLI
 
 让 AI 直接用 `sc-webdav` 命令行操作 WebDAV 服务(坚果云/Nextcloud 等):文件读写、目录管理、配置文件存取。**基于 `@sakurachiyo0v0/webdav` SDK**。

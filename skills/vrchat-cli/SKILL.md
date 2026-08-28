@@ -1,3 +1,8 @@
+---
+name: vrchat-cli
+description: 用 sc-vrchat 命令行查询 VRChat 用户/世界/头像等
+---
+
 # sc-vrchat CLI
 
 让 AI 直接用 `sc-vrchat` 命令行操作 VRChat 官方 API:密码登录(支持 2FA)、会话状态、登出、以及 14 个 API 域的查询与写操作(用户/世界/头像/实例/好友/通知/收藏/群组/文件/权限/系统/经济/审核)。无需写代码。

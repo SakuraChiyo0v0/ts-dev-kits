@@ -42,3 +42,19 @@
     kazumi:
       enabled: true
       # outputDir: "~/Downloads/kazumi"
+
+# ── skills ──────────────────────────────────────────────────────────────────
+# 让选中本预设的会话拥有 ts-dev-kits 仓库 skills/ 下的 CLI 手册
+# (bilibili-cli / kazumi-cli / steam-cli 等 13 个)。
+# skill-filesystem:本地 skill 根发现;tool-skill:模型侧目录与加载。
+# customSkillDirs 指向 ts-dev-kits 仓库的 skills/ 目录(需填写本机绝对路径,
+# 不展开 ~)。默认 includeDefaultRoots=true,也会带上 ~/.dsh/skills 的用户技能。
+- id: skill-filesystem
+  name: '@deepseek-ai/dsh-skill-filesystem'
+  config:
+    customSkillDirs:
+      # TODO: 改成你本机 ts-dev-kits 仓库路径
+      - "/path/to/ts-dev-kits/skills"
+
+- id: tool-skill
+  name: '@deepseek-ai/dsh-tool-skill'

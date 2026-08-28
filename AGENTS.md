@@ -77,6 +77,7 @@ pnpm verify:published @sakurachiyo0v0/<name>  # 发布后从 GitHub Packages 消
 ## CLI 与 skill 联动
 
 - 每个带 CLI 的包(`packages/<name>/src/cli/*.ts`)对应一个 `skills/<name>-cli/SKILL.md`。
+- **SKILL.md 必须有 YAML frontmatter**(`name` + `description`,name 用 kebab-case)——DSH 的 `skill-filesystem` 靠它识别;缺 frontmatter 的 skill 会被 DSH 忽略(仅仓库内 CLI 校验不拦)。新增/修改 SKILL.md 时同步维护 frontmatter。
 - **改了 CLI 命令(新增/改名/删除/参数/语义)必须同步 skill**,否则:
   - pre-commit 的 `scripts/check-skill-staleness.mjs` 会因命令集不一致**阻止提交**;
   - 参数/语义变化(命令名不变)会触发 mtime **警告**,需人工检查。

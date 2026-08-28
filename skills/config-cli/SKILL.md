@@ -1,3 +1,8 @@
+---
+name: config-cli
+description: 用 sc-config 命令行配置 WebDAV 全局配置(URL/密钥),供各 SDK 存取配置
+---
+
 # sc-config CLI
 
 配置中心 CLI:全局配置(WebDAV 地址/账号/密钥)一次设置,各平台/模块通过 `namespace` 存取配置,敏感配置可选加密。

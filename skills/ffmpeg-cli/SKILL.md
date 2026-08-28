@@ -1,3 +1,8 @@
+---
+name: ffmpeg-cli
+description: 用 sc-ffmpeg 命令行探测/转码/截取/合并媒体文件
+---
+
 # sc-ffmpeg 媒体处理 CLI
 
 让 AI 直接用 `sc-ffmpeg` 命令行处理音视频与图片。无需写代码,安装 CLI 后即可运行。

@@ -1,3 +1,8 @@
+---
+name: database-cli
+description: 用 sc-log 命令行查询 SDK 日志(等级/设备/命名空间/关键词/时间)
+---
+
 # sc-log CLI
 
 让 AI 直接用 `sc-log` 命令行查询日志(配合 `@sakurachiyo0v0/logger` + `DatabaseLogTransport` 使用)。支持**按等级/设备/时间/命名空间/关键词**过滤,查本地 SQLite 或服务器 PostgreSQL(跨机聚合)。**基于 `@sakurachiyo0v0/database` SDK**。

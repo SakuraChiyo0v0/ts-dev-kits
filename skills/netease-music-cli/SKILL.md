@@ -1,3 +1,8 @@
+---
+name: netease-music-cli
+description: 用 sc-netease 命令行解析/下载网易云音乐、管理歌单与登录
+---
+
 # sc-netease CLI
 
 让 AI 直接用 `sc-netease` 命令行操作网易云音乐:解析/下载歌曲、收藏夹管理(歌单/红心/订阅)。无需写代码。

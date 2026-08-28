@@ -64,6 +64,20 @@ Copy-Item -Recurse <本仓库>/packages/dsh-sdk-tools/presets/ts-dev-kits "$env:
 
 若 `DSH_HOME` 未设置,默认用户预设目录在 DSH 数据目录下的 `.agent-presets/`(与 `dsh-skill-filesystem` 的 skills 同级)。
 
+### 2.1 配置 CLI skill 手册(可选但推荐)
+
+预设已挂载 `skill-filesystem` + `tool-skill`,让选中该预设的会话拥有 ts-dev-kits 仓库 `skills/` 下的 CLI 手册(`bilibili-cli` / `kazumi-cli` / `steam-cli` 等)。**唯一要做的**:把 `agent.cordis.yml` 里 `skill-filesystem` 行的 `customSkillDirs` 指向本机 ts-dev-kits 仓库的 `skills/` 绝对路径(不展开 `~`):
+
+```yaml
+- id: skill-filesystem
+  name: '@deepseek-ai/dsh-skill-filesystem'
+  config:
+    customSkillDirs:
+      - "/绝对路径/ts-dev-kits/skills"
+```
+
+> `skill-filesystem` / `tool-skill` 由 DSH host 基础组合内置(无需安装);`customSkillDirs` 只对选中本预设的会话生效,不影响其他预设。若不想配路径,也可把仓库 `skills/` 内容复制进 `~/.dsh/skills/`(全局可见)。
+
 ### 3. 重启 DSH,新建会话选择预设
 
 新建会话时选择 `ts-dev-kits` 预设,即可使用下列工具;不选则工具完全不出现。

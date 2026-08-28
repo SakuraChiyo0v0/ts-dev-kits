@@ -1,3 +1,8 @@
+---
+name: bilibili-cli
+description: 用 sc-bilibili 命令行下载 B 站视频并操作平台控制(收藏夹/关注/分组/登录)
+---
+
 # sc-bilibili CLI
 
 让 AI 直接用 `sc-bilibili` 命令行操作 B 站:下载视频 + 平台控制(收藏夹/关注/分组/登录)。无需写代码。

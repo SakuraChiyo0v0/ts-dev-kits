@@ -1,3 +1,8 @@
+---
+name: kazumi-cli
+description: 用 sc-kazumi 命令行搜索番剧、查线路/集数、下载 mp4、管理规则(含 WebDAV 同步)
+---
+
 # sc-kazumi CLI
 
 让 AI 直接用 `sc-kazumi` 命令行操作番剧采集下载 SDK(`@sakurachiyo0v0/kazumi`):**声明式规则引擎(XPath/API 双模式)+ m3u8 下载合并成 mp4**。规则兼容 Kazumi/KazumiRules 生态的 JSON 格式;SDK 本身**不内置任何站点规则**,规则由用户导入到自己的规则目录。

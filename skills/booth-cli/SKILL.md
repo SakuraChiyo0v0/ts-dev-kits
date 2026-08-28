@@ -1,3 +1,8 @@
+---
+name: booth-cli
+description: 用 sc-booth 命令行领取/购买 BOOTH 商品并下载文件(登录态管理)
+---
+
 # sc-booth CLI
 
 让 AI 直接用 `sc-booth` 命令行操作 BOOTH(booth.pm):登录、商品解析、免费领取、付费加购、文件下载。无需写代码。

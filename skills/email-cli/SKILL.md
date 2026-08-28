@@ -1,3 +1,8 @@
+---
+name: email-cli
+description: 用 sc-email 命令行发送邮件、验证 SMTP 连接
+---
+
 # sc-email 邮件发送 CLI
 
 让 AI 直接用 `sc-email` 命令行发送邮件、验证 SMTP 连接。无需写代码。
