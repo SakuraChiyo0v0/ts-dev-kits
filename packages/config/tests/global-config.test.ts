@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { WebdavErrorCode } from "@sakurachiyo0v0/webdav";
-import { clearGlobalConfig, loadGlobalConfig, resolveConfigPath, saveGlobalConfig } from "../src/index.js";
+import { clearGlobalConfig, loadGlobalConfig, resolveConfigPath, resolveConfigRoot, saveGlobalConfig } from "../src/index.js";
 
 describe("全局配置(本地文件)", () => {
   const dir = mkdtempSync(join(tmpdir(), "ame-config-test-"));
@@ -71,5 +71,31 @@ describe("全局配置(本地文件)", () => {
     saveGlobalConfig({ url: "https://dav.example.com/dav/", username: "u", password: "pw" }, path);
     const raw = readFileSync(path, "utf8");
     expect(raw).toContain("dav.example.com");
+  });
+});
+
+describe("resolveConfigRoot(配置根唯一权威)", () => {
+  it("AMECHAN_CONFIG_HOME 优先", () => {
+    expect(resolveConfigRoot("linux", { AMECHAN_CONFIG_HOME: "/custom" })).toBe("/custom");
+  });
+
+  it("linux 用 XDG_CONFIG_HOME,缺省 ~/.config", () => {
+    expect(resolveConfigRoot("linux", { XDG_CONFIG_HOME: "/xdg" })).toBe("/xdg");
+    const result = resolveConfigRoot("linux", { HOME: "/home/u" });
+    expect(result).toContain(".config");
+  });
+
+  it("darwin 用 Application Support", () => {
+    const result = resolveConfigRoot("darwin", { HOME: "/Users/u" });
+    expect(result).toContain("Application Support");
+  });
+
+  it("win32 用 APPDATA,缺省回退 AppData/Roaming(修复 account 版缺失回退)", () => {
+    expect(resolveConfigRoot("win32", { APPDATA: "C:\\Users\\u\\AppData\\Roaming" })).toBe(
+      "C:\\Users\\u\\AppData\\Roaming",
+    );
+    const result = resolveConfigRoot("win32", { USERPROFILE: "C:\\Users\\u" });
+    expect(result).toContain("AppData");
+    expect(result).toContain("Roaming");
   });
 });

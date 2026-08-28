@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/database",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Unified data access layer: local SQLite + remote PostgreSQL/MySQL with a single async API",
   "license": "UNLICENSED",
   "publishConfig": {
@@ -36,6 +36,7 @@
   },
   "dependencies": {
     "@sakurachiyo0v0/cli-utils": "workspace:*",
+    "@sakurachiyo0v0/config": "workspace:*",
     "@sakurachiyo0v0/logger": "workspace:*",
     "better-sqlite3": "^13.0.3",
     "mysql2": "^3.24.1",

@@ -1,6 +1,6 @@
-import { homedir } from "node:os";
 import { join } from "node:path";
 import { mkdirSync, unlinkSync, writeFileSync } from "node:fs";
+import { resolveConfigRoot } from "@sakurachiyo0v0/config";
 import { RuleLoader, ruleFromJson, validateRule } from "./rules/loader.js";
 import { RuleEngine, type ChapterTrace, type SearchTrace } from "./engine/engine.js";
 import { DefaultRuleRequestExecutor } from "./request/executor.js";
@@ -15,31 +15,7 @@ import type {
   SearchItem,
 } from "./types.js";
 
-/** 平台标准用户配置根目录(与 account 包 resolveConfigRoot 逻辑一致)。 */
-export function resolveConfigRoot(
-  platform: NodeJS.Platform = process.platform,
-  env: NodeJS.ProcessEnv = process.env,
-): string {
-  const explicit = env.AMECHAN_CONFIG_HOME;
-  if (explicit !== undefined && explicit !== "") {
-    return explicit;
-  }
-  if (platform === "win32") {
-    const appData = env.APPDATA;
-    if (appData !== undefined && appData !== "") {
-      return appData;
-    }
-    return join(homedir(), "AppData", "Roaming");
-  }
-  if (platform === "darwin") {
-    return join(homedir(), "Library", "Application Support");
-  }
-  const xdg = env.XDG_CONFIG_HOME;
-  if (xdg !== undefined && xdg !== "") {
-    return xdg;
-  }
-  return join(homedir(), ".config");
-}
+export { resolveConfigRoot };
 
 /** 默认规则目录:<配置根>/amechan/kazumi/rules/。 */
 export function defaultRulesDir(

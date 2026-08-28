@@ -10,9 +10,10 @@
  * database 会形成循环依赖;日志持久化本质是数据访问,归 database 包职责一致。
  */
 import { mkdirSync } from "node:fs";
-import { homedir, hostname as osHostname } from "node:os";
+import { hostname as osHostname } from "node:os";
 import { join } from "node:path";
 import type { LogEntry, LogTransport } from "@sakurachiyo0v0/logger";
+import { resolveConfigRoot } from "@sakurachiyo0v0/config";
 import { createDataStore } from "./store.js";
 import type { DataStore, ParamValue } from "./types.js";
 
@@ -24,22 +25,9 @@ const LEVEL_NAME: Record<number, string> = {
   [40]: "ERROR",
 };
 
-/** 配置根目录(与 account/config 包一致)。 */
-function configRoot(): string {
-  const override = process.env.AMECHAN_CONFIG_HOME;
-  if (override !== undefined && override.length > 0) return override;
-  if (process.platform === "win32") {
-    return process.env.APPDATA ?? join(homedir(), "AppData", "Roaming");
-  }
-  if (process.platform === "darwin") {
-    return join(homedir(), "Library", "Application Support");
-  }
-  return process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config");
-}
-
-/** 日志库默认目录。 */
+/** 日志库默认目录(配置根权威实现见 @sakurachiyo0v0/config)。 */
 export function defaultLogDir(): string {
-  return join(configRoot(), "amechan", "logs");
+  return join(resolveConfigRoot(), "amechan", "logs");
 }
 
 /** 本地日志库默认路径:<配置根>/amechan/logs/<hostname>.db */

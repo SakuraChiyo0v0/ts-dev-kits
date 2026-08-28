@@ -441,7 +441,7 @@
 
 <footer>
   由仓库实际目录扫描生成 · 静态自包含页面,可直接双击打开 · 已排除 <code>.git</code> / <code>node_modules</code> / <code>dist</code><br>
-  数据快照生成于 <code id="genAt">2026-08-28 05:59:51</code> · 仓库结构变化后,在根目录运行 <code>pnpm gen:structure</code> 即可刷新本页
+  数据快照生成于 <code id="genAt">2026-08-28 06:17:51</code> · 仓库结构变化后,在根目录运行 <code>pnpm gen:structure</code> 即可刷新本页
 </footer>
 
 <script>
@@ -516,7 +516,7 @@ const PACKAGES = [
   {
     "id": "config",
     "name": "config",
-    "version": "0.3.1",
+    "version": "0.4.0",
     "color": "#60a5fa",
     "deps": [
       "cli-utils",
@@ -528,7 +528,7 @@ const PACKAGES = [
   {
     "id": "account",
     "name": "account",
-    "version": "0.5.4",
+    "version": "0.5.5",
     "color": "#fb923c",
     "deps": [
       "config",
@@ -561,10 +561,11 @@ const PACKAGES = [
   {
     "id": "kazumi",
     "name": "kazumi",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "color": "#a78bfa",
     "deps": [
       "cli-utils",
+      "config",
       "ffmpeg",
       "logger"
     ],
@@ -673,10 +674,11 @@ const PACKAGES = [
   {
     "id": "database",
     "name": "database",
-    "version": "0.2.2",
+    "version": "0.2.3",
     "color": "#f87171",
     "deps": [
       "cli-utils",
+      "config",
       "logger"
     ],
     "desc": "统一数据访问抽象层:一套 async API 同时访问本地 SQLite 与远程 PostgreSQL / MySQL,切换后端只改一行配置。"

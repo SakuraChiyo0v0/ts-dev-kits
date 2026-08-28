@@ -21,19 +21,28 @@ export function resolveConfigPath(customPath?: string): string {
   if (customPath !== undefined && customPath.length > 0) return customPath;
   const envPath = process.env.AME_CONFIG_PATH;
   if (envPath !== undefined && envPath.length > 0) return envPath;
-  return join(configRoot(), "amechan", "config.json");
+  return join(resolveConfigRoot(), "amechan", "config.json");
 }
 
-function configRoot(): string {
-  const override = process.env.AMECHAN_CONFIG_HOME;
+/**
+ * 平台标准用户配置根目录(仓库唯一权威实现)。
+ * 其他包(account / database / kazumi 等)统一引用本函数,不要各自复制。
+ * 优先级:AMECHAN_CONFIG_HOME > win32 APPDATA(回退 AppData/Roaming) >
+ * darwin ~/Library/Application Support > XDG_CONFIG_HOME > ~/.config。
+ */
+export function resolveConfigRoot(
+  platform: NodeJS.Platform = process.platform,
+  env: NodeJS.ProcessEnv = process.env,
+): string {
+  const override = env.AMECHAN_CONFIG_HOME;
   if (override !== undefined && override.length > 0) return override;
-  if (process.platform === "win32") {
-    return process.env.APPDATA ?? join(homedir(), "AppData", "Roaming");
+  if (platform === "win32") {
+    return env.APPDATA ?? join(homedir(), "AppData", "Roaming");
   }
-  if (process.platform === "darwin") {
+  if (platform === "darwin") {
     return join(homedir(), "Library", "Application Support");
   }
-  return process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config");
+  return env.XDG_CONFIG_HOME ?? join(homedir(), ".config");
 }
 
 /** 写入全局配置(目录自动创建,文件 600 权限) */

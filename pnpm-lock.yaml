@@ -246,6 +246,9 @@ importers:
       '@sakurachiyo0v0/cli-utils':
         specifier: workspace:*
         version: link:../cli-utils
+      '@sakurachiyo0v0/config':
+        specifier: workspace:*
+        version: link:../config
       '@sakurachiyo0v0/logger':
         specifier: workspace:*
         version: link:../logger
@@ -259,9 +262,6 @@ importers:
         specifier: ^8.23.0
         version: 8.23.0
     devDependencies:
-      '@sakurachiyo0v0/config':
-        specifier: workspace:*
-        version: link:../config
       '@types/better-sqlite3':
         specifier: ^9.6.0
         version: 9.6.0
@@ -427,6 +427,9 @@ importers:
       '@sakurachiyo0v0/cli-utils':
         specifier: workspace:*
         version: link:../cli-utils
+      '@sakurachiyo0v0/config':
+        specifier: workspace:*
+        version: link:../config
       '@sakurachiyo0v0/ffmpeg':
         specifier: workspace:*
         version: link:../ffmpeg

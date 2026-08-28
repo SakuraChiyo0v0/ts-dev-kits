@@ -17,19 +17,19 @@
 | `@sakurachiyo0v0/bilibili` | 0.6.0 | B 站 SDK:视频下载(解析/取流/下载/ffmpeg 合并)+ 平台控制(收藏夹/关注/分组/互动/动态/稍后再看/历史) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/bilibili` |
 | `@sakurachiyo0v0/chat-platforms` | 0.1.2 | 统一聊天平台接入 SDK(消息模型/适配器注册表,当前飞书) | 可用(飞书, websocket/webhook) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/chat-platforms` |
 | `@sakurachiyo0v0/lol` | 0.1.3 | 英雄联盟 LCU 本地能力 SDK(召唤师/战绩/段位/对局流程/游戏数据/事件) | 可用(查询+对局感知, 国服 SGP) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/lol` |
-| `@sakurachiyo0v0/account` | 0.5.4 | 跨平台账号认证底座(登录态存储/扫码+密码+浏览器登录骨架/错误模型) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/account` |
+| `@sakurachiyo0v0/account` | 0.5.5 | 跨平台账号认证底座(登录态存储/扫码+密码+浏览器登录骨架/错误模型) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/account` |
 | `@sakurachiyo0v0/netease-music` | 0.4.3 | 网易云音乐下载 SDK(weapi 加密/二维码登录/权限感知品质/试听拦截) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/netease-music` |
 | `@sakurachiyo0v0/booth` | 0.4.3 | BOOTH(booth.pm)领取/购买 SDK:登录态管理/商品解析/免费领取/付费下单/文件下载 | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/booth` |
 | `@sakurachiyo0v0/vrchat` | 0.4.3 | VRChat 官方 REST API SDK(认证/用户/世界/头像/实例/好友/通知/收藏/群组/文件/权限/系统/经济/审核) | 可用(全功能覆盖) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/vrchat` |
 | `@sakurachiyo0v0/steam` | 0.8.3 | Steam SDK(查询向):Web API/Storefront/Community 三套接口,登录态支持,写操作仅激活码兑换一项 | 可用(全阶段交付) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/steam` |
 | `@sakurachiyo0v0/xiaoheihe` | 0.4.3 | 小黑盒 SDK:扫码登录 + hkey/nonce 签名 + 只读查询(帖子/评论/feed/@消息/用户) | 可用(P0 只读) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/xiaoheihe` |
 | `@sakurachiyo0v0/dsh-sdk-tools` | 0.5.1 | DSH host 插件:把 bilibili/netease-music/ffmpeg/email/lol/vrchat/kazumi 包装成 agent 工具,经 Agent 预设按需暴露 | 可用 | `pnpm add @sakurachiyo0v0/dsh-sdk-tools`(GitHub Packages) |
-| `@sakurachiyo0v0/database` | 0.2.2 | 统一数据访问抽象层:一套 API 访问本地 SQLite 与远程 PostgreSQL/MySQL,配置切换后端 | 可用(SQLite 全量,远程可选) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/database` |
+| `@sakurachiyo0v0/database` | 0.2.3 | 统一数据访问抽象层:一套 API 访问本地 SQLite 与远程 PostgreSQL/MySQL,配置切换后端 | 可用(SQLite 全量,远程可选) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/database` |
 | `@sakurachiyo0v0/webdav` | 0.3.2 | WebDAV 配置存取 SDK:基础文件操作 + ConfigStore(原子写/自动备份) + 加密存储 + CLI | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/webdav` |
-| `@sakurachiyo0v0/config` | 0.3.1 | 配置中心 SDK:WebDAV+密钥全局一次配置,namespace 按域存取(可选加密),登录态/配置多端同步 | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/config` |
+| `@sakurachiyo0v0/config` | 0.4.0 | 配置中心 SDK:WebDAV+密钥全局一次配置,namespace 按域存取(可选加密),登录态/配置多端同步 | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/config` |
 | `@sakurachiyo0v0/chuanshengtong` | 0.3.2 | 传声筒:输入文字 + 内置图像模板程序化合成图片(CLI + SDK,不依赖 AI,支持富文本) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/chuanshengtong` |
 | `@sakurachiyo0v0/logger` | 0.2.1 | 轻量级日志模块:级别控制/命名空间/多机主机标识/子 logger 派生/可替换 transport | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/logger` |
-| `@sakurachiyo0v0/kazumi` | 0.1.0 | Kazumi 规则兼容番剧采集下载 SDK:声明式规则引擎(XPath/API 双模式)+ m3u8 下载合并 mp4 | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/kazumi` |
+| `@sakurachiyo0v0/kazumi` | 0.1.1 | Kazumi 规则兼容番剧采集下载 SDK:声明式规则引擎(XPath/API 双模式)+ m3u8 下载合并 mp4 | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/kazumi` |
 
 ## 包详情
 
@@ -367,7 +367,7 @@ pnpm --filter @sakurachiyo0v0/lol build       # 构建 ESM + CJS + d.ts
 - `browserLogin({ adapter, store?, browserPath?, reuseBrowserProfile?, useCdp?, ... })` — 浏览器登录骨架（CDP 弹出独立 Chrome 窗口捕获会话 cookie → 平台校验 → 可选持久化；无浏览器时回退捕获页）；适用于无公开登录 API、只能靠网页浏览器会话的平台（如 BOOTH）
 - `BrowserLoginAdapter` — 浏览器平台适配器契约：`loginUrl` / `cookieDomains` / `sessionCookieNames` / `validate?()` / `serialize()` / `deserialize()`；"网页登录型"平台接入 = 实现这 6 项
 - `detectBrowser()` / `defaultBrowserProfileDir()` — 定位本机 Chrome/Edge 及其日常 profile（供 `browserLogin` 复用日常登录态）
-- `resolveConfigRoot()` / `defaultAuthPath(platform)` — 配置目录解析（Windows `%APPDATA%` / macOS `~/Library/Application Support` / Linux `$XDG_CONFIG_HOME`，支持 `AMECHAN_CONFIG_HOME` 覆盖）
+- `resolveConfigRoot()` / `defaultAuthPath(platform)` — 配置目录解析（`resolveConfigRoot` re-export 自 `@sakurachiyo0v0/config` 唯一权威实现;Windows `%APPDATA%`(回退 `AppData/Roaming`) / macOS `~/Library/Application Support` / Linux `$XDG_CONFIG_HOME`,支持 `AMECHAN_CONFIG_HOME` 覆盖）
 - `AccountError` — 错误码 `NETWORK` / `API_ERROR` / `AUTH_EXPIRED` / `LOGIN_REQUIRED` / `UNKNOWN` / `INVALID_CREDENTIALS` / `TWO_FACTOR_REQUIRED` / `TWO_FACTOR_FAILED`
 
 **安装方式：**
@@ -837,6 +837,7 @@ pnpm --filter @sakurachiyo0v0/webdav build       # 构建 ESM + CJS + d.ts + CLI
 - `createConfigCenter({ configPath?, global? })` — 读本地全局配置(或显式传入)创建配置中心
 - `cc.namespace(name, { encrypt? })` — 命名空间:encrypt 默认 false(明文 `/amechan/configs/<ns>/`),true 走加密(`/amechan/secrets/<ns>/`);返回 `get/set/list/remove`
 - `saveGlobalConfig` / `loadGlobalConfig` / `clearGlobalConfig` / `resolveConfigPath` — 本地全局配置读写(文件 600 权限)
+- `resolveConfigRoot` — **平台配置根目录唯一权威实现**(`AMECHAN_CONFIG_HOME` > win32 `APPDATA`(回退 `AppData/Roaming`) > darwin `Application Support` > `XDG_CONFIG_HOME` > `~/.config`);account / database / kazumi 等包统一引用,不再各自复制
 - 错误:远端透传 webdav `WebdavError`;本地配置缺失/非法抛 `VALIDATION`
 
 **注意事项：** 远端目录(`/amechan/configs/<ns>`、`/amechan/secrets/<ns>`)需预先存在(部分 WebDAV 服务如坚果云禁 WebDAV 建目录;自建服务可用 `wd.mkdir` 建);加密密钥本地保管,丢失无法解密。
