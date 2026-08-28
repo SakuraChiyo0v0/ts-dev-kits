@@ -18,7 +18,7 @@
 | `@sakurachiyo0v0/chat-platforms` | 0.1.2 | 统一聊天平台接入 SDK(消息模型/适配器注册表,当前飞书) | 可用(飞书, websocket/webhook) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/chat-platforms` |
 | `@sakurachiyo0v0/lol` | 0.1.3 | 英雄联盟 LCU 本地能力 SDK(召唤师/战绩/段位/对局流程/游戏数据/事件) | 可用(查询+对局感知, 国服 SGP) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/lol` |
 | `@sakurachiyo0v0/account` | 0.5.5 | 跨平台账号认证底座(登录态存储/扫码+密码+浏览器登录骨架/错误模型) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/account` |
-| `@sakurachiyo0v0/netease-music` | 0.4.3 | 网易云音乐下载 SDK(weapi 加密/二维码登录/权限感知品质/试听拦截) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/netease-music` |
+| `@sakurachiyo0v0/netease-music` | 0.5.0 | 网易云音乐下载 SDK(weapi 加密/二维码登录/权限感知品质/试听拦截/取流/歌词/搜索) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/netease-music` |
 | `@sakurachiyo0v0/booth` | 0.4.3 | BOOTH(booth.pm)领取/购买 SDK:登录态管理/商品解析/免费领取/付费下单/文件下载 | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/booth` |
 | `@sakurachiyo0v0/vrchat` | 0.4.3 | VRChat 官方 REST API SDK(认证/用户/世界/头像/实例/好友/通知/收藏/群组/文件/权限/系统/经济/审核) | 可用(全功能覆盖) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/vrchat` |
 | `@sakurachiyo0v0/steam` | 0.8.3 | Steam SDK(查询向):Web API/Storefront/Community 三套接口,登录态支持,写操作仅激活码兑换一项 | 可用(全阶段交付) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/steam` |
@@ -420,6 +420,9 @@ pnpm --filter @sakurachiyo0v0/account build       # 构建 ESM + CJS + d.ts
 - `createNeteaseClient({ cookie?, authPath?, download?, baseUrl?, fetchImpl? })` — 创建客户端；未传 cookie 时自动从 account AuthStore 加载
 - `client.parse(url)` — 解析歌曲/歌单/专辑链接 → `{ items, songs }`（歌单/专辑展开为歌曲清单）
 - `client.getSongInfo(id)` / `client.getVipInfo()` / `client.getAvailableLevels(id)` — 详情 / VIP 信息 / 权限品质清单
+- `client.getStreamUrl(id, level?)` — 获取单曲播放流 URL（默认 `exhigh`），供网页/播放器直接播放
+- `client.getLyric(id)` — 获取歌词（LRC 原文 + 翻译）
+- `client.search(keyword, { limit? })` — 搜索歌曲，返回 `SongInfo[]`（含歌手/专辑/时长）
 - `client.download(item, { outputDir?, level?, lyric?, lyricMode?, cover?, writeTags?, onProgress? })` — 下载（权限预检 + 试听拦截强制），返回 `{ filePath, level, lyricPath?, coverPath? }`
 - `client.downloadByInput(input)` — 按链接或歌曲 ID 便捷下载
 - `neteaseQrAdapter()` — 网易云二维码登录适配器（供 `qrcodeLogin` 使用）

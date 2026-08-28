@@ -9,6 +9,7 @@ import type {
   DownloadConfig,
   DownloadProgress,
   DownloadResult,
+  LyricInfo,
   MediaItem,
   MediaType,
   NeteaseClientOptions,
@@ -208,6 +209,56 @@ export class NeteaseMusicClient {
   async getAvailableLevels(id: string | number): Promise<QualityLevel[]> {
     const privilege = await this.#songs.getPrivilege(String(id));
     return privilege.availableLevels;
+  }
+
+  /** 获取单曲播放流 URL(默认 320k exhigh)。 */
+  async getStreamUrl(id: string | number, level: QualityLevel = "exhigh"): Promise<string> {
+    const streams = await this.#songs.getStreams([String(id)], level);
+    const stream = streams[0];
+    if (stream === undefined) {
+      throw new NeteaseError("NOT_FOUND", `song ${id}: no playable stream`);
+    }
+    return stream.url;
+  }
+
+  /** 获取歌曲歌词(LRC 原文 + 翻译)。 */
+  async getLyric(id: string | number): Promise<LyricInfo> {
+    return this.#lyrics.getLyric(String(id));
+  }
+
+  /** 搜索歌曲(单曲)。 */
+  async search(keyword: string, options?: { limit?: number }): Promise<SongInfo[]> {
+    const body = await this.#session.post("/weapi/search/get", {
+      s: keyword,
+      type: 1,
+      limit: options?.limit ?? 30,
+      offset: 0,
+    });
+    const result = (body.result ?? {}) as Record<string, unknown>;
+    const raw = Array.isArray(result.songs)
+      ? (result.songs as Array<Record<string, unknown>>)
+      : [];
+    return raw.map((s) => this.#toSearchSong(s)).filter((s) => s.id !== "" && s.title !== "");
+  }
+
+  /** 把搜索接口的原始歌曲对象映射为 SongInfo。 */
+  #toSearchSong(s: Record<string, unknown>): SongInfo {
+    const id = String(s.id ?? "");
+    const title = String(s.name ?? "");
+    const artists = Array.isArray(s.artists)
+      ? (s.artists as Array<Record<string, unknown>>)
+          .map((a) => String(a.name ?? ""))
+          .filter((x) => x !== "")
+      : [];
+    const album = ((s.album ?? {}) as Record<string, unknown>).name;
+    const durationMs = Number(s.duration ?? 0);
+    return {
+      id,
+      title,
+      artists,
+      album: typeof album === "string" ? album : "",
+      durationMs,
+    };
   }
 
   /** 下载一首歌(权限预检 + 试听拦截强制)。 */

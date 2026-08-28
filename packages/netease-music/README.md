@@ -76,6 +76,9 @@ sc-netease unsubscribe <playlistId>     # 取消收藏歌单
 | `getSongInfo(id)` | 歌曲详情(标题/歌手/专辑/时长/封面) |
 | `getVipInfo()` | 账号 VIP 信息 |
 | `getAvailableLevels(id)` | 该账号对这首歌实际可请求的品质清单 |
+| `getStreamUrl(id, level?)` | 获取单曲播放流 URL(默认 `exhigh`),供网页/播放器直接播放 |
+| `getLyric(id)` | 获取歌词(LRC 原文 + 翻译) |
+| `search(keyword, { limit? })` | 搜索歌曲,返回 `SongInfo[]`(含歌手/专辑/时长) |
 | `download(item, options)` | 下载(权限预检 + 试听拦截强制),返回 `{ filePath, level, lyricPath?, coverPath? }` |
 | `downloadByInput(input)` | 按链接或歌曲 ID 便捷下载 |
 | `isLoggedIn` | 是否已登录(MUSIC_U cookie 存在) |

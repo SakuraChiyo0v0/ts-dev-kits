@@ -87,6 +87,21 @@ beforeAll(async () => {
     },
   }));
 
+  mock.setRoute("/weapi/search/get", () => ({
+    code: 200,
+    result: {
+      songs: [
+        {
+          id: 3001,
+          name: "搜索歌曲",
+          artists: [{ name: "搜索歌手" }],
+          album: { name: "搜索专辑" },
+          duration: 123456,
+        },
+      ],
+    },
+  }));
+
   mock.setMedia(MEDIA_URL_PATH, "audio/mpeg", WAV);
   mock.setMedia("/media/cover.jpg", "image/jpeg", Buffer.from("fake-jpeg", "utf8"));
 });
@@ -204,6 +219,30 @@ describe("download", () => {
     const parsed = await newClient().parse("https://music.163.com/playlist?id=2001");
     const result = await newClient().download(parsed.songs[0]!, { outputDir });
     expect(readFileSync(result.filePath).length).toBeGreaterThan(0);
+  });
+});
+
+describe("stream / lyric / search", () => {
+  it("returns a playable stream URL", async () => {
+    const url = await newClient().getStreamUrl(SONG_ID);
+    expect(url).toBe(`${baseUrl}${MEDIA_URL_PATH}`);
+  });
+
+  it("returns lyric (original)", async () => {
+    const lyric = await newClient().getLyric(SONG_ID);
+    expect(lyric.original).toContain("测试歌词");
+  });
+
+  it("searches songs and maps artists/album/duration", async () => {
+    const songs = await newClient().search("搜索");
+    expect(songs).toHaveLength(1);
+    expect(songs[0]).toMatchObject({
+      id: "3001",
+      title: "搜索歌曲",
+      artists: ["搜索歌手"],
+      album: "搜索专辑",
+      durationMs: 123456,
+    });
   });
 });
 
