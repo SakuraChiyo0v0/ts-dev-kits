@@ -30,6 +30,26 @@
   --animate-slide-in-right: slide-in-right 0.35s cubic-bezier(0.22, 1, 0.36, 1);
   --animate-fade-in: fade-in 0.3s ease;
   --animate-slide-up: slide-up 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-progress: progress 1s ease-in-out infinite;
+  --animate-spin-slow: spin-slow 20s linear infinite;
+}
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes progress {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
 }
 
 @keyframes slide-in-right {

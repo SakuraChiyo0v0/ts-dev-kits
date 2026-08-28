@@ -5,7 +5,7 @@
  * 注意：Hono 的 .get 是不可变方法，必须链式调用。
  */
 import { Hono } from "hono";
-import { createNeteaseClient } from "@sakurachiyo0v0/netease-music";
+import { createNeteaseClient, type QualityLevel } from "@sakurachiyo0v0/netease-music";
 import { createAuthNamespace, warmupAuth } from "../bootstrap.js";
 
 /** 构造已预热登录态的网易云客户端。 */
@@ -61,6 +61,7 @@ export const accountRoutes = new Hono()
       const item = parsed.items[0];
       if (item === undefined) return c.json({ error: "playlist not found" }, 404);
       return c.json({
+        id: item.id,
         title: item.title,
         ...(item.coverUrl !== undefined ? { coverUrl: item.coverUrl } : {}),
         tracks: (item.tracks ?? []).map((t) => ({
@@ -81,12 +82,18 @@ export const accountRoutes = new Hono()
     const id = c.req.query("id");
     if (id === undefined) return c.json({ error: "missing id" }, 400);
 
+    const validLevels: QualityLevel[] = ["standard", "higher", "exhigh", "lossless", "hires"];
+    const levelParam = c.req.query("level") ?? "exhigh";
+    const level = (validLevels as string[]).includes(levelParam)
+      ? (levelParam as QualityLevel)
+      : "exhigh";
+
     await warmupAuth("netease-music");
     const client = createClient();
     if (!client.isLoggedIn) return c.json({ error: "未登录" }, 401);
     try {
-      const url = await client.getStreamUrl(id, "exhigh");
-      return c.json({ url, level: "exhigh" });
+      const url = await client.getStreamUrl(id, level);
+      return c.json({ url, level });
     } catch {
       return c.json({ error: "取流失败" }, 500);
     }
@@ -129,5 +136,66 @@ export const accountRoutes = new Hono()
       });
     } catch {
       return c.json({ error: "搜索失败" }, 500);
+    }
+  })
+  /** GET /api/song?id=xxx —— 歌曲详情（含封面），用于搜索结果补封面。 */
+  .get("/song", async (c) => {
+    const id = c.req.query("id");
+    if (id === undefined) return c.json({ error: "missing id" }, 400);
+
+    await warmupAuth("netease-music");
+    const client = createClient();
+    try {
+      const info = await client.getSongInfo(id);
+      return c.json({
+        id: info.id,
+        title: info.title,
+        artists: info.artists,
+        album: info.album,
+        durationMs: info.durationMs,
+        ...(info.coverUrl !== undefined ? { coverUrl: info.coverUrl } : {}),
+      });
+    } catch {
+      return c.json({ error: "获取歌曲失败" }, 500);
+    }
+  })
+  /** POST /api/like?id=xxx —— 红心收藏一首歌。 */
+  .post("/like", async (c) => {
+    const id = c.req.query("id");
+    if (id === undefined) return c.json({ error: "missing id" }, 400);
+    await warmupAuth("netease-music");
+    const client = createClient();
+    try {
+      await client.likeSong(id);
+      return c.json({ ok: true });
+    } catch {
+      return c.json({ error: "红心失败" }, 500);
+    }
+  })
+  /** POST /api/unlike?id=xxx —— 取消红心收藏。 */
+  .post("/unlike", async (c) => {
+    const id = c.req.query("id");
+    if (id === undefined) return c.json({ error: "missing id" }, 400);
+    await warmupAuth("netease-music");
+    const client = createClient();
+    try {
+      await client.unlikeSong(id);
+      return c.json({ ok: true });
+    } catch {
+      return c.json({ error: "取消红心失败" }, 500);
+    }
+  })
+  /** POST /api/playlist/create —— 创建歌单，返回新歌单 id。 */
+  .post("/playlist/create", async (c) => {
+    const body = await c.req.json<{ name?: unknown }>().catch(() => ({ name: undefined }));
+    const name = typeof body.name === "string" ? body.name.trim() : "";
+    if (name === "") return c.json({ error: "歌单名不能为空" }, 400);
+    await warmupAuth("netease-music");
+    const client = createClient();
+    try {
+      const id = await client.createPlaylist({ name });
+      return c.json({ id });
+    } catch {
+      return c.json({ error: "创建失败" }, 500);
     }
   });

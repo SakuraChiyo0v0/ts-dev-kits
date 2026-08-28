@@ -6,14 +6,17 @@ import {
   List,
   ListMusic,
   Moon,
+  MoreHorizontal,
   Music2,
   Pause,
   Play,
+  Plus,
   QrCode,
   RefreshCw,
   Repeat,
   Repeat1,
   Search,
+  Share,
   SkipBack,
   SkipForward,
   Sun,
@@ -70,6 +73,7 @@ interface Track {
 }
 
 interface PlaylistDetail {
+  id: string;
   title: string;
   coverUrl?: string;
   tracks: Track[];
@@ -94,6 +98,15 @@ function formatDuration(ms?: number): string {
   if (ms === undefined || ms <= 0) return "--:--";
   const total = Math.floor(ms / 1000);
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+}
+
+/** 根据名称生成稳定的渐变背景（无封面时的 fallback）。 */
+function coverGradient(seed: string): string {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i += 1) hash = (hash * 31 + seed.charCodeAt(i)) | 0;
+  const h1 = Math.abs(hash) % 360;
+  const h2 = (h1 + 70) % 360;
+  return `linear-gradient(135deg, hsl(${h1} 75% 45%), hsl(${h2} 75% 35%))`;
 }
 
 /** 歌词开头的元信息关键词（作词/作曲/编曲等，非演唱内容）。 */
@@ -185,21 +198,48 @@ function useTheme() {
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
-    localStorage.setItem("theme", theme);
   }, [theme]);
 
-  return { theme, toggle: () => setTheme((t) => (t === "dark" ? "light" : "dark")) };
+  // 用户未手动选过主题时，跟随系统偏好实时切换。
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = (e: MediaQueryListEvent) => {
+      if (localStorage.getItem("theme") === null) {
+        setTheme(e.matches ? "dark" : "light");
+      }
+    };
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
+  const toggle = () => {
+    setTheme((t) => {
+      const next = t === "dark" ? "light" : "dark";
+      localStorage.setItem("theme", next);
+      return next;
+    });
+  };
+
+  return { theme, toggle };
 }
 
 export default function App() {
   const [account, setAccount] = useState<AccountPayload | null>(null);
   const [login, setLogin] = useState<LoginView | null>(null);
   const [detail, setDetail] = useState<PlaylistDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [avatarError, setAvatarError] = useState(false);
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
   const [queue, setQueue] = useState<Track[]>([]);
   const [queueIndex, setQueueIndex] = useState(-1);
-  const [repeatMode, setRepeatMode] = useState<RepeatMode>("all");
+  const [repeatMode, setRepeatMode] = useState<RepeatMode>(() => {
+    try {
+      const m = localStorage.getItem("repeat-mode");
+      return m === "off" || m === "all" || m === "one" ? m : "all";
+    } catch {
+      return "all";
+    }
+  });
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -207,23 +247,94 @@ export default function App() {
   const [lyricLines, setLyricLines] = useState<LyricLine[]>([]);
   const [showLyrics, setShowLyrics] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
-  const [volume, setVolume] = useState(1);
+  const [showHelp, setShowHelp] = useState(false);
+  const [songDetail, setSongDetail] = useState<Track | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const [fetching, setFetching] = useState(0);
+  const [likedCurrent, setLikedCurrent] = useState(false);
+  const [volume, setVolume] = useState<number>(() => {
+    try {
+      const v = Number(localStorage.getItem("volume"));
+      return Number.isFinite(v) && v >= 0 && v <= 1 ? v : 1;
+    } catch {
+      return 1;
+    }
+  });
   const [muted, setMuted] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef<number | null>(null);
+  const [level, setLevel] = useState<string>("exhigh");
+  const [rate, setRate] = useState(1);
+  const [sleepMinutes, setSleepMinutes] = useState<number | null>(null);
+  const [recentTracks, setRecentTracks] = useState<Track[]>(() => {
+    try {
+      const raw = localStorage.getItem("recent-tracks");
+      return raw ? (JSON.parse(raw) as Track[]) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [lastTrack, setLastTrack] = useState<Track | null>(() => {
+    try {
+      const raw = localStorage.getItem("last-track");
+      return raw ? (JSON.parse(raw) as Track) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [playCounts, setPlayCounts] = useState<Record<string, number>>(() => {
+    try {
+      const raw = localStorage.getItem("play-counts");
+      return raw ? (JSON.parse(raw) as Record<string, number>) : {};
+    } catch {
+      return {};
+    }
+  });
+  const pendingSeek = useRef<number | null>(null);
+  const lastPosSave = useRef(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const { theme, toggle } = useTheme();
 
   useEffect(() => {
     const audio = audioRef.current;
     if (audio !== null) audio.volume = muted ? 0 : volume;
+    try {
+      localStorage.setItem("volume", String(volume));
+    } catch {
+      // 忽略。
+    }
   }, [volume, muted]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (audio !== null) audio.playbackRate = rate;
+  }, [rate]);
+
+  useEffect(() => {
+    if (sleepMinutes === null) return;
+    const id = window.setTimeout(() => {
+      audioRef.current?.pause();
+      setSleepMinutes(null);
+    }, sleepMinutes * 60 * 1000);
+    return () => window.clearTimeout(id);
+  }, [sleepMinutes]);
+
+  const showToast = useCallback((message: string) => {
+    setToast(message);
+    if (toastTimer.current !== null) clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToast(null), 3000);
+  }, []);
 
   const refresh = useCallback(async () => {
     setAccount(null);
+    setFetching((n) => n + 1);
     try {
       const res = await rpc.api.account.$get();
       setAccount((await res.json()) as AccountPayload);
     } catch {
       setAccount({ loggedIn: false, error: "服务不可达，请检查后端是否启动" });
+    } finally {
+      setFetching((n) => n - 1);
     }
   }, []);
 
@@ -261,11 +372,16 @@ export default function App() {
 
   const openPlaylist = useCallback(async (id: string) => {
     setDetail(null);
+    setDetailLoading(true);
+    setFetching((n) => n + 1);
     try {
       const res = await rpc.api.playlist.$get({ query: { id } });
       setDetail((await res.json()) as PlaylistDetail);
     } catch {
-      setDetail({ title: "加载失败", tracks: [] });
+      setDetail({ id: "", title: "加载失败", tracks: [] });
+    } finally {
+      setDetailLoading(false);
+      setFetching((n) => n - 1);
     }
   }, []);
 
@@ -276,21 +392,66 @@ export default function App() {
     setQueue(tracks);
     setQueueIndex(index);
     setCurrentTrack(track);
+    setLikedCurrent(false);
+    setRecentTracks((prev) => {
+      const next = [track, ...prev.filter((t) => t.id !== track.id)].slice(0, 30);
+      try {
+        localStorage.setItem("recent-tracks", JSON.stringify(next));
+      } catch {
+        // localStorage 不可用时忽略。
+      }
+      return next;
+    });
+    setLastTrack(track);
+    try {
+      localStorage.setItem("last-track", JSON.stringify(track));
+    } catch {
+      // 忽略。
+    }
+    setPlayCounts((prev) => {
+      const next = { ...prev, [track.id]: (prev[track.id] ?? 0) + 1 };
+      try {
+        localStorage.setItem("play-counts", JSON.stringify(next));
+      } catch {
+        // 忽略。
+      }
+      return next;
+    });
+    document.title = `${track.title}${track.artists?.length ? ` · ${track.artists.join(" / ")}` : ""}`;
+    // 搜索结果无封面时，异步补一次歌曲详情封面。
+    if (track.coverUrl === undefined) {
+      void (async () => {
+        try {
+          const res = await rpc.api.song.$get({ query: { id: track.id } });
+          const info = (await res.json()) as { coverUrl?: string };
+          const coverUrl = info.coverUrl;
+          if (coverUrl !== undefined) {
+            setCurrentTrack((prev) =>
+              prev !== null && prev.id === track.id ? { ...prev, coverUrl } : prev,
+            );
+          }
+        } catch {
+          // 忽略补齐失败。
+        }
+      })();
+    }
     setProgress(0);
     setCurrentTime(0);
     setDuration(track.durationMs !== undefined ? track.durationMs / 1000 : 0);
     try {
       const res = await rpc.api.stream.$get({ query: { id: track.id } });
-      const data = (await res.json()) as { url?: string; error?: string };
+      const data = (await res.json()) as { url?: string; level?: string; error?: string };
       const audio = audioRef.current;
       if (audio !== null && data.url !== undefined) {
         audio.src = data.url;
+        if (data.level !== undefined) setLevel(data.level);
         await audio.play();
       }
     } catch {
       // 取流失败：保持播放栏显示，但不出声。
+      showToast("播放失败：该歌曲可能无播放权限或网络异常");
     }
-  }, []);
+  }, [showToast]);
 
   const playNext = useCallback(async () => {
     if (queue.length === 0) return;
@@ -324,7 +485,15 @@ export default function App() {
   }, [playing]);
 
   const toggleRepeat = useCallback(() => {
-    setRepeatMode((m) => (m === "off" ? "all" : m === "all" ? "one" : "off"));
+    setRepeatMode((m) => {
+      const next = m === "off" ? "all" : m === "all" ? "one" : "off";
+      try {
+        localStorage.setItem("repeat-mode", next);
+      } catch {
+        // 忽略。
+      }
+      return next;
+    });
   }, []);
 
   const seek = useCallback((ratio: number) => {
@@ -352,6 +521,100 @@ export default function App() {
 
   const toggleMute = useCallback(() => setMuted((m) => !m), []);
 
+  const cycleRate = useCallback(() => {
+    setRate((r) => {
+      const rates = [0.75, 1, 1.25, 1.5, 2];
+      const idx = rates.indexOf(r);
+      return rates[(idx + 1) % rates.length] ?? 1;
+    });
+  }, []);
+
+  const cycleSleep = useCallback(() => {
+    setSleepMinutes((m) => (m === null ? 15 : m === 15 ? 30 : m === 30 ? 60 : null));
+  }, []);
+
+  const clearRecent = useCallback(() => {
+    setRecentTracks([]);
+    try {
+      localStorage.removeItem("recent-tracks");
+    } catch {
+      // 忽略。
+    }
+  }, []);
+
+  const changeLevel = useCallback(async () => {
+    if (currentTrack === null) return;
+    const levels = ["exhigh", "higher", "standard"];
+    const idx = levels.indexOf(level);
+    const next = levels[(idx + 1) % levels.length] ?? "exhigh";
+    const pos = audioRef.current?.currentTime ?? 0;
+    try {
+      const res = await rpc.api.stream.$get({ query: { id: currentTrack.id, level: next } });
+      const data = (await res.json()) as { url?: string; level?: string };
+      if (audioRef.current !== null && data.url !== undefined) {
+        audioRef.current.src = data.url;
+        if (data.level !== undefined) setLevel(data.level);
+        audioRef.current.currentTime = pos;
+        void audioRef.current.play();
+      }
+    } catch {
+      showToast("切换音质失败");
+    }
+  }, [currentTrack, level, showToast]);
+
+  const shareTrack = useCallback(
+    async (track: Track) => {
+      try {
+        await navigator.clipboard.writeText(`https://music.163.com/song?id=${track.id}`);
+        showToast("已复制歌曲链接");
+      } catch {
+        showToast("复制失败");
+      }
+    },
+    [showToast],
+  );
+
+  const sharePlaylist = useCallback(
+    async (id: string) => {
+      try {
+        await navigator.clipboard.writeText(`https://music.163.com/playlist?id=${id}`);
+        showToast("已复制歌单链接");
+      } catch {
+        showToast("复制失败");
+      }
+    },
+    [showToast],
+  );
+
+  const toggleLike = useCallback(
+    async (track: Track, liked: boolean) => {
+      try {
+        if (liked) {
+          await rpc.api.unlike.$post({ query: { id: track.id } });
+          showToast("已取消红心");
+        } else {
+          await rpc.api.like.$post({ query: { id: track.id } });
+          showToast("已添加红心");
+        }
+      } catch {
+        showToast("操作失败");
+      }
+    },
+    [showToast],
+  );
+
+  const resumePlay = useCallback(async () => {
+    if (lastTrack === null) return;
+    let pos = 0;
+    try {
+      pos = Number(localStorage.getItem("last-position")) || 0;
+    } catch {
+      // 忽略。
+    }
+    pendingSeek.current = pos;
+    await playAt([lastTrack], 0);
+  }, [lastTrack, playAt]);
+
   const openLyrics = useCallback(async (track: Track) => {
     setShowLyrics(true);
     setLyricLines([]);
@@ -361,8 +624,9 @@ export default function App() {
       setLyricLines(mergeLyrics(data.original, data.translated));
     } catch {
       setLyricLines([]);
+      showToast("获取歌词失败");
     }
-  }, []);
+  }, [showToast]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -380,11 +644,22 @@ export default function App() {
         seekBy(-5);
       } else if (e.code === "ArrowRight") {
         seekBy(5);
+      } else if (e.code === "KeyM") {
+        toggleMute();
+      } else if (e.code === "ArrowUp") {
+        e.preventDefault();
+        void playPrev();
+      } else if (e.code === "ArrowDown") {
+        e.preventDefault();
+        void playNext();
+      } else if (e.key === "?") {
+        e.preventDefault();
+        setShowHelp(true);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [togglePlay, seekBy]);
+  }, [togglePlay, seekBy, toggleMute, playPrev, playNext]);
 
   return (
     <div className="flex h-screen flex-col bg-background">
@@ -408,24 +683,41 @@ export default function App() {
         </div>
       </header>
 
+      {fetching > 0 ? (
+        <div className="fixed inset-x-0 top-0 z-50 h-0.5 overflow-hidden bg-primary/20">
+          <div className="h-full w-1/3 animate-progress bg-primary" />
+        </div>
+      ) : null}
+
       <div className={cn("flex min-h-0 flex-1 flex-col", currentTrack !== null && "pb-24")}>
-        {detail !== null ? (
+        {detailLoading ? (
+          <PlaylistSkeleton />
+        ) : detail !== null ? (
           <PlaylistView
             detail={detail}
             {...(currentTrack !== null ? { currentTrackId: currentTrack.id } : {})}
             onBack={() => setDetail(null)}
             onPlay={(t, i) => void playAt(detail.tracks, i)}
             onPlayAll={() => void playAt(detail.tracks, 0)}
+            onToggleLike={toggleLike}
+            onSharePlaylist={(id) => void sharePlaylist(id)}
+            onShowDetail={setSongDetail}
           />
         ) : account === null ? (
           <HomeSkeleton />
         ) : account.loggedIn ? (
           <HomeView
             account={account}
+            recentTracks={recentTracks}
+            lastTrack={lastTrack}
+            playCounts={playCounts}
+            onResume={() => void resumePlay()}
             avatarError={avatarError}
             onAvatarError={() => setAvatarError(true)}
             onOpenPlaylist={(id) => void openPlaylist(id)}
             onPlaySong={(t) => void playAt([t], 0)}
+            onRefresh={() => void refresh()}
+            onShowHistory={() => setShowHistory(true)}
           />
         ) : (
           <LoginView login={login} onLogin={() => void startLogin()} onCancel={() => setLogin(null)} />
@@ -438,8 +730,22 @@ export default function App() {
           const a = e.currentTarget;
           if (a.duration > 0) setProgress((a.currentTime / a.duration) * 100);
           setCurrentTime(a.currentTime);
+          if (a.currentTime - lastPosSave.current > 3) {
+            lastPosSave.current = a.currentTime;
+            try {
+              localStorage.setItem("last-position", String(a.currentTime));
+            } catch {
+              // 忽略。
+            }
+          }
         }}
-        onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
+        onLoadedMetadata={(e) => {
+          setDuration(e.currentTarget.duration);
+          if (pendingSeek.current !== null) {
+            e.currentTarget.currentTime = pendingSeek.current;
+            pendingSeek.current = null;
+          }
+        }}
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
         onEnded={() => {
@@ -459,6 +765,9 @@ export default function App() {
         repeatMode={repeatMode}
         volume={volume}
         muted={muted}
+        level={level}
+        rate={rate}
+        sleepMinutes={sleepMinutes}
         onTogglePlay={togglePlay}
         onPrev={() => void playPrev()}
         onNext={() => void playNext()}
@@ -468,6 +777,16 @@ export default function App() {
         onVolumeChange={changeVolume}
         onOpenLyrics={(t) => void openLyrics(t)}
         onOpenQueue={() => setShowQueue(true)}
+        onShare={(t) => void shareTrack(t)}
+        onCycleRate={cycleRate}
+        onCycleSleep={cycleSleep}
+        liked={likedCurrent}
+        onToggleLikeCurrent={() => {
+          if (currentTrack === null) return;
+          void toggleLike(currentTrack, likedCurrent);
+          setLikedCurrent((v) => !v);
+        }}
+        onCycleLevel={() => void changeLevel()}
       />
 
       {showLyrics && currentTrack !== null ? (
@@ -475,6 +794,10 @@ export default function App() {
           track={currentTrack}
           lines={lyricLines}
           currentTime={currentTime}
+          onSeekTime={(time) => {
+            const audio = audioRef.current;
+            if (audio !== null) audio.currentTime = time;
+          }}
           onClose={() => setShowLyrics(false)}
         />
       ) : null}
@@ -487,6 +810,229 @@ export default function App() {
           onClose={() => setShowQueue(false)}
         />
       ) : null}
+
+      {toast !== null ? (
+        <div className="fixed left-1/2 top-16 z-40 -translate-x-1/2 animate-fade-in rounded-full bg-foreground px-4 py-2 text-sm text-background shadow-lg">
+          {toast}
+        </div>
+      ) : null}
+
+      {showHelp ? <HelpPanel onClose={() => setShowHelp(false)} /> : null}
+
+      {songDetail !== null ? (
+        <SongDetailModal
+          track={songDetail}
+          onPlay={() => {
+            void playAt([songDetail], 0);
+            setSongDetail(null);
+          }}
+          onLike={() => void toggleLike(songDetail, false)}
+          onShare={() => void shareTrack(songDetail)}
+          onLyrics={() => {
+            void openLyrics(songDetail);
+            setSongDetail(null);
+          }}
+          onClose={() => setSongDetail(null)}
+        />
+      ) : null}
+
+      {showHistory ? (
+        <HistoryPanel
+          tracks={recentTracks}
+          onPlay={(t) => {
+            void playAt([t], 0);
+            setShowHistory(false);
+          }}
+          onClear={clearRecent}
+          onClose={() => setShowHistory(false)}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function HistoryPanel(props: {
+  tracks: Track[];
+  onPlay: (t: Track) => void;
+  onClear: () => void;
+  onClose: () => void;
+}) {
+  const { tracks, onPlay, onClear, onClose } = props;
+  return (
+    <div className="fixed inset-0 z-40 flex items-end justify-center">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative w-full max-w-lg animate-slide-up rounded-t-2xl bg-card p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-bold">播放历史（{tracks.length}）</h2>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={onClear}
+              className="rounded-full px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              清除
+            </button>
+            <button
+              onClick={onClose}
+              className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <ChevronDown className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+        <ul className="max-h-[60vh] divide-y divide-border/60 overflow-y-auto">
+          {tracks.map((t) => (
+            <li key={t.id}>
+              <button onClick={() => onPlay(t)} className="flex w-full items-center gap-3 py-2.5 text-left">
+                <div className="h-9 w-9 shrink-0 overflow-hidden rounded bg-muted">
+                  {t.coverUrl ? (
+                    <img src={t.coverUrl} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <div
+                      className="flex h-full w-full items-center justify-center"
+                      style={{ background: coverGradient(t.title) }}
+                    >
+                      <ListMusic className="h-4 w-4 text-white/70" />
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{t.title}</p>
+                  <p className="truncate text-xs text-muted-foreground">{t.artists?.join(" / ")}</p>
+                </div>
+                <span className="text-xs tabular-nums text-muted-foreground">
+                  {formatDuration(t.durationMs)}
+                </span>
+              </button>
+            </li>
+          ))}
+          {tracks.length === 0 ? (
+            <li className="py-10 text-center text-sm text-muted-foreground">暂无播放历史</li>
+          ) : null}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+function SongDetailModal(props: {
+  track: Track;
+  onPlay: () => void;
+  onLike: () => void;
+  onShare: () => void;
+  onLyrics: () => void;
+  onClose: () => void;
+}) {
+  const { track, onPlay, onLike, onShare, onLyrics, onClose } = props;
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50" onClick={onClose}>
+      <div
+        className="w-full max-w-sm animate-fade-in rounded-2xl bg-card p-6 shadow-lg"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-5 flex flex-col items-center gap-3 text-center">
+          <div className="h-40 w-40 overflow-hidden rounded-xl shadow-md">
+            {track.coverUrl ? (
+              <img src={track.coverUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <div
+                className="flex h-full w-full items-center justify-center"
+                style={{ background: coverGradient(track.title) }}
+              >
+                <ListMusic className="h-12 w-12 text-white/70" />
+              </div>
+            )}
+          </div>
+          <div>
+            <h2 className="text-lg font-bold">{track.title}</h2>
+            <p className="text-sm text-muted-foreground">{track.artists?.join(" / ")}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {track.album ? `${track.album} · ` : ""}
+              {formatDuration(track.durationMs)}
+            </p>
+          </div>
+        </div>
+        <div className="flex justify-center gap-2">
+          <Button size="sm" className="rounded-full" onClick={onPlay}>
+            <Play />
+            播放
+          </Button>
+          <Button size="sm" variant="outline" className="rounded-full" onClick={onLike}>
+            <Heart />
+            红心
+          </Button>
+          <Button size="sm" variant="outline" className="rounded-full" onClick={onShare}>
+            <Share />
+            分享
+          </Button>
+          <Button size="sm" variant="outline" className="rounded-full" onClick={onLyrics}>
+            <TextQuote />
+            歌词
+          </Button>
+        </div>
+        <Button variant="ghost" size="sm" className="mt-4 w-full rounded-full" onClick={onClose}>
+          关闭
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function PlaylistSkeleton() {
+  return (
+    <div className="flex-1 animate-pulse overflow-auto">
+      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-8 sm:py-10">
+        <div className="mb-6 h-8 w-20 rounded-full bg-muted" />
+        <div className="mb-8 flex gap-6">
+          <div className="h-40 w-40 shrink-0 rounded-2xl bg-muted sm:h-44 sm:w-44" />
+          <div className="flex-1">
+            <div className="h-4 w-10 rounded bg-muted" />
+            <div className="mt-2 h-8 w-48 rounded bg-muted" />
+            <div className="mt-2 h-4 w-24 rounded bg-muted" />
+          </div>
+        </div>
+        <div className="space-y-2 rounded-2xl bg-card p-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-3">
+              <div className="h-11 w-11 rounded-lg bg-muted" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 w-2/3 rounded bg-muted" />
+                <div className="h-3 w-1/3 rounded bg-muted" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HelpPanel(props: { onClose: () => void }) {
+  const { onClose } = props;
+  const shortcuts: Array<[string, string]> = [
+    ["空格", "播放 / 暂停"],
+    ["← / →", "快退 / 快进 5 秒"],
+    ["M", "静音 / 取消静音"],
+    ["?", "显示 / 隐藏此帮助"],
+  ];
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50" onClick={onClose}>
+      <div
+        className="w-full max-w-sm animate-fade-in rounded-2xl bg-card p-6 shadow-lg"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="mb-4 text-lg font-bold">键盘快捷键</h2>
+        <ul className="divide-y divide-border/60">
+          {shortcuts.map(([key, desc]) => (
+            <li key={key} className="flex items-center justify-between py-2.5">
+              <kbd className="rounded bg-muted px-2 py-0.5 font-mono text-xs">{key}</kbd>
+              <span className="text-sm text-muted-foreground">{desc}</span>
+            </li>
+          ))}
+        </ul>
+        <Button variant="ghost" size="sm" className="mt-4 w-full rounded-full" onClick={onClose}>
+          关闭
+        </Button>
+      </div>
     </div>
   );
 }
@@ -617,25 +1163,54 @@ function LoginView(props: {
 
 function HomeView(props: {
   account: AccountPayload;
+  recentTracks: Track[];
+  lastTrack: Track | null;
+  playCounts: Record<string, number>;
+  onResume: () => void;
   avatarError: boolean;
   onAvatarError: () => void;
   onOpenPlaylist: (id: string) => void;
   onPlaySong: (track: Track) => void;
+  onRefresh: () => void;
+  onShowHistory: () => void;
 }) {
-  const { account, avatarError, onAvatarError, onOpenPlaylist, onPlaySong } = props;
+  const { account, recentTracks, lastTrack, playCounts, onResume, avatarError, onAvatarError, onOpenPlaylist, onPlaySong, onRefresh, onShowHistory } =
+    props;
   const [search, setSearch] = useState("");
   const [songQuery, setSongQuery] = useState("");
   const [songResults, setSongResults] = useState<Track[]>([]);
+  const [sortMode, setSortMode] = useState<"default" | "name" | "count">("default");
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [history, setHistory] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem("search-history");
+      return raw ? (JSON.parse(raw) as string[]) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [searchFocused, setSearchFocused] = useState(false);
   const nickname = account.account?.nickname ?? "网易云用户";
   const avatarUrl = account.account?.avatarUrl;
   const vip = account.vip;
   const playlists = account.playlists ?? [];
   const liked = playlists.find((p) => p.specialType === 5);
   const others = playlists.filter((p) => p.specialType !== 5);
-  const filtered =
+  const base =
     search.trim() === ""
       ? others
       : playlists.filter((p) => p.name.toLowerCase().includes(search.trim().toLowerCase()));
+  const filtered =
+    sortMode === "name"
+      ? [...base].sort((a, b) => a.name.localeCompare(b.name, "zh"))
+      : sortMode === "count"
+        ? [...base].sort((a, b) => b.trackCount - a.trackCount)
+        : base;
+  const mostPlayed = [...recentTracks]
+    .sort((a, b) => (playCounts[b.id] ?? 0) - (playCounts[a.id] ?? 0))
+    .filter((t) => (playCounts[t.id] ?? 0) > 0)
+    .slice(0, 5);
 
   useEffect(() => {
     if (songQuery.trim() === "") {
@@ -647,12 +1222,35 @@ function HomeView(props: {
         const res = await rpc.api.search.$get({ query: { q: songQuery } });
         const data = (await res.json()) as { songs?: Track[] };
         setSongResults(data.songs ?? []);
+        setHistory((prev) => {
+          const q = songQuery.trim();
+          const next = [q, ...prev.filter((h) => h !== q)].slice(0, 10);
+          try {
+            localStorage.setItem("search-history", JSON.stringify(next));
+          } catch {
+            // 忽略。
+          }
+          return next;
+        });
       } catch {
         setSongResults([]);
       }
     }, 300);
     return () => clearTimeout(timer);
   }, [songQuery]);
+
+  const doCreate = async () => {
+    const name = newName.trim();
+    if (name === "") return;
+    try {
+      await rpc.api.playlist.create.$post({ json: { name } });
+      setNewName("");
+      setCreating(false);
+      onRefresh();
+    } catch {
+      // 忽略创建失败。
+    }
+  };
 
   return (
     <div className="flex-1 animate-fade-in overflow-auto">
@@ -672,6 +1270,88 @@ function HomeView(props: {
             <p className="mt-2 text-muted-foreground">{account.account.signature}</p>
           ) : null}
         </div>
+
+        {lastTrack !== null ? (
+          <button
+            onClick={onResume}
+            className="group mb-6 flex w-full items-center gap-4 rounded-2xl bg-gradient-to-r from-primary/15 to-transparent p-4 text-left transition-shadow hover:shadow-md sm:gap-5 sm:p-5"
+          >
+            <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-muted shadow-sm">
+              {lastTrack.coverUrl ? (
+                <img src={lastTrack.coverUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center">
+                  <ListMusic className="h-8 w-8 text-muted-foreground" />
+                </div>
+              )}
+            </div>
+            <div className="min-w-0">
+              <p className="flex items-center gap-1.5 text-sm font-medium text-primary">
+                <Play className="h-4 w-4 fill-primary" />
+                继续播放
+              </p>
+              <p className="mt-1 truncate text-xl font-bold">{lastTrack.title}</p>
+              <p className="truncate text-sm text-muted-foreground">{lastTrack.artists?.join(" / ")}</p>
+            </div>
+          </button>
+        ) : null}
+
+        {recentTracks.length > 0 ? (
+          <div className="mb-8">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-2xl font-bold">最近播放</h2>
+              <button
+                onClick={onShowHistory}
+                className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+              >
+                查看全部
+              </button>
+            </div>
+            <div className="flex gap-4 overflow-x-auto pb-2">
+              {recentTracks.map((t) => (
+                <button key={t.id} onClick={() => onPlaySong(t)} className="w-36 shrink-0 text-left">
+                  <div className="aspect-square w-full overflow-hidden rounded-xl bg-muted shadow-sm">
+                    {t.coverUrl ? (
+                      <img src={t.coverUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center">
+                        <ListMusic className="h-8 w-8 text-muted-foreground" />
+                      </div>
+                    )}
+                  </div>
+                  <p className="mt-2 truncate text-sm font-medium">{t.title}</p>
+                  <p className="truncate text-xs text-muted-foreground">{t.artists?.join(" / ")}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {mostPlayed.length > 0 ? (
+          <div className="mb-8">
+            <h2 className="mb-4 text-2xl font-bold">最常播放</h2>
+            <div className="flex gap-4 overflow-x-auto pb-2">
+              {mostPlayed.map((t) => (
+                <button key={t.id} onClick={() => onPlaySong(t)} className="w-36 shrink-0 text-left">
+                  <div className="aspect-square w-full overflow-hidden rounded-xl bg-muted shadow-sm">
+                    {t.coverUrl ? (
+                      <img src={t.coverUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
+                    ) : (
+                      <div
+                        className="flex h-full w-full items-center justify-center"
+                        style={{ background: coverGradient(t.title) }}
+                      >
+                        <ListMusic className="h-8 w-8 text-white/70" />
+                      </div>
+                    )}
+                  </div>
+                  <p className="mt-2 truncate text-sm font-medium">{t.title}</p>
+                  <p className="truncate text-xs text-muted-foreground">{playCounts[t.id] ?? 0} 次播放</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         {liked && search.trim() === "" && songQuery.trim() === "" ? (
           <button
@@ -713,9 +1393,24 @@ function HomeView(props: {
             <Input
               value={songQuery}
               onChange={(e) => setSongQuery(e.target.value)}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => window.setTimeout(() => setSearchFocused(false), 200)}
               placeholder="搜索歌曲（网易云）"
               className="rounded-full pl-9"
             />
+            {searchFocused && history.length > 0 && songQuery.trim() === "" ? (
+              <div className="absolute z-10 mt-2 w-full rounded-xl border bg-card p-2 shadow-lg">
+                {history.map((h) => (
+                  <button
+                    key={h}
+                    onMouseDown={() => setSongQuery(h)}
+                    className="block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-muted"
+                  >
+                    {h}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -759,12 +1454,43 @@ function HomeView(props: {
           </div>
         ) : (
           <>
-            <div className="mb-5 flex items-center gap-2.5">
+            <div className="mb-5 flex flex-wrap items-center gap-2.5">
               <ListMusic className="h-5 w-5 text-primary" />
               <h2 className="text-2xl font-bold">
                 {search.trim() === "" ? "歌单" : `搜索结果（${filtered.length}）`}
               </h2>
+              <div className="ml-auto flex items-center gap-2">
+                <button
+                  onClick={() =>
+                    setSortMode((m) => (m === "default" ? "name" : m === "name" ? "count" : "default"))
+                  }
+                  className="rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  {sortMode === "name" ? "按名称" : sortMode === "count" ? "按歌曲数" : "默认排序"}
+                </button>
+                <Button size="sm" variant="outline" className="rounded-full" onClick={() => setCreating((v) => !v)}>
+                  <Plus />
+                  新建歌单
+                </Button>
+              </div>
             </div>
+
+            {creating ? (
+              <div className="mb-6 flex max-w-sm gap-2">
+                <Input
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="歌单名称"
+                  className="rounded-full"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void doCreate();
+                  }}
+                />
+                <Button size="sm" className="rounded-full" onClick={() => void doCreate()}>
+                  创建
+                </Button>
+              </div>
+            ) : null}
 
             <div className="grid grid-cols-2 gap-x-4 gap-y-5 sm:gap-x-5 sm:gap-y-7 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
               {filtered.map((p) => (
@@ -778,8 +1504,11 @@ function HomeView(props: {
                         className="h-full w-full object-cover"
                       />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-                        <ListMusic className="h-10 w-10" />
+                      <div
+                        className="flex h-full w-full items-center justify-center"
+                        style={{ background: coverGradient(p.name) }}
+                      >
+                        <ListMusic className="h-10 w-10 text-white/70" />
                       </div>
                     )}
                   </Tilt>
@@ -788,9 +1517,12 @@ function HomeView(props: {
                 </button>
               ))}
               {filtered.length === 0 ? (
-                <p className="col-span-full py-10 text-center text-sm text-muted-foreground">
-                  没有匹配的歌单
-                </p>
+                <div className="col-span-full flex flex-col items-center gap-3 py-16 text-center">
+                  <ListMusic className="h-12 w-12 text-muted-foreground/40" />
+                  <p className="text-sm text-muted-foreground">
+                    {search.trim() !== "" ? "没有匹配的歌单" : "还没有歌单，点击「新建歌单」创建"}
+                  </p>
+                </div>
               ) : null}
             </div>
           </>
@@ -806,8 +1538,24 @@ function PlaylistView(props: {
   onBack: () => void;
   onPlay: (track: Track, index: number) => void;
   onPlayAll: () => void;
+  onToggleLike: (track: Track, liked: boolean) => void;
+  onSharePlaylist: (id: string) => void;
+  onShowDetail: (track: Track) => void;
 }) {
-  const { detail, currentTrackId, onBack, onPlay, onPlayAll } = props;
+  const { detail, currentTrackId, onBack, onPlay, onPlayAll, onToggleLike, onSharePlaylist, onShowDetail } = props;
+  const [hearted, setHearted] = useState<Set<string>>(new Set());
+
+  const toggleHeart = (t: Track) => {
+    const liked = hearted.has(t.id);
+    void onToggleLike(t, liked);
+    setHearted((prev) => {
+      const next = new Set(prev);
+      if (liked) next.delete(t.id);
+      else next.add(t.id);
+      return next;
+    });
+  };
+
   return (
     <div className="flex-1 animate-slide-in-right overflow-auto">
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-8 sm:py-10">
@@ -828,7 +1576,16 @@ function PlaylistView(props: {
           </Tilt>
           <div className="min-w-0">
             <p className="text-sm font-medium text-primary">歌单</p>
-            <h1 className="mt-1 truncate text-2xl font-bold tracking-tight sm:text-3xl">{detail.title}</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="mt-1 truncate text-2xl font-bold tracking-tight sm:text-3xl">{detail.title}</h1>
+              <button
+                onClick={() => onSharePlaylist(detail.id)}
+                className="rounded-full p-1.5 text-muted-foreground transition-colors hover:text-foreground"
+                title="分享歌单"
+              >
+                <Share className="h-4 w-4" />
+              </button>
+            </div>
             <p className="mt-2 text-sm text-muted-foreground">{detail.tracks.length} 首歌曲</p>
             <Button size="sm" className="mt-4 rounded-full" onClick={onPlayAll}>
               <Play className="mr-1 h-4 w-4" />
@@ -842,11 +1599,11 @@ function PlaylistView(props: {
             {detail.tracks.map((t, i) => {
               const isCurrent = t.id === currentTrackId;
               return (
-                <li key={t.id}>
+                <li key={t.id} className="flex items-center">
                   <button
                     onClick={() => onPlay(t, i)}
                     className={cn(
-                      "flex w-full items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-muted/60 sm:gap-4 sm:px-4",
+                      "flex flex-1 items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-muted/60 sm:gap-4 sm:px-4",
                       isCurrent && "bg-primary/5",
                     )}
                   >
@@ -883,6 +1640,23 @@ function PlaylistView(props: {
                       </span>
                     )}
                   </button>
+                  <button
+                    onClick={() => toggleHeart(t)}
+                    className={cn(
+                      "shrink-0 rounded-full p-2 transition-colors",
+                      hearted.has(t.id) ? "text-primary" : "text-muted-foreground hover:text-foreground",
+                    )}
+                    title={hearted.has(t.id) ? "取消红心" : "红心收藏"}
+                  >
+                    <Heart className={cn("h-4 w-4", hearted.has(t.id) && "fill-primary")} />
+                  </button>
+                  <button
+                    onClick={() => onShowDetail(t)}
+                    className="shrink-0 rounded-full p-2 text-muted-foreground transition-colors hover:text-foreground"
+                    title="歌曲详情"
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                  </button>
                 </li>
               );
             })}
@@ -906,6 +1680,9 @@ function PlayerBar(props: {
   repeatMode: RepeatMode;
   volume: number;
   muted: boolean;
+  level: string;
+  rate: number;
+  sleepMinutes: number | null;
   onTogglePlay: () => void;
   onPrev: () => void;
   onNext: () => void;
@@ -915,6 +1692,12 @@ function PlayerBar(props: {
   onVolumeChange: (v: number) => void;
   onOpenLyrics: (track: Track) => void;
   onOpenQueue: () => void;
+  onShare: (track: Track) => void;
+  onCycleRate: () => void;
+  onCycleSleep: () => void;
+  liked: boolean;
+  onToggleLikeCurrent: () => void;
+  onCycleLevel: () => void;
 }) {
   const {
     track,
@@ -926,6 +1709,9 @@ function PlayerBar(props: {
     repeatMode,
     volume,
     muted,
+    level,
+    rate,
+    sleepMinutes,
     onTogglePlay,
     onPrev,
     onNext,
@@ -935,6 +1721,12 @@ function PlayerBar(props: {
     onVolumeChange,
     onOpenLyrics,
     onOpenQueue,
+    onShare,
+    onCycleRate,
+    onCycleSleep,
+    liked,
+    onToggleLikeCurrent,
+    onCycleLevel,
   } = props;
   if (track === null) return null;
 
@@ -942,15 +1734,22 @@ function PlayerBar(props: {
   const currentSec = totalSec * (progress / 100);
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-20 animate-slide-up border-t border-border/60 bg-background/70 backdrop-blur-xl">
+    <div
+      className="fixed inset-x-0 bottom-0 z-20 animate-slide-up border-t border-border/60 bg-background/70 backdrop-blur-xl"
+      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+    >
       <div className="mx-auto flex max-w-4xl items-center gap-3 px-4 py-2.5 sm:gap-4 sm:px-6 sm:py-3">
         <button
           onClick={() => onOpenLyrics(track)}
-          className="h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-muted shadow-sm sm:h-12 sm:w-12"
+          className="h-11 w-11 shrink-0 overflow-hidden rounded-full bg-muted shadow-sm sm:h-12 sm:w-12"
           title="查看歌词"
         >
           {track.coverUrl ? (
-            <img src={track.coverUrl} alt="" className="h-full w-full object-cover" />
+            <img
+              src={track.coverUrl}
+              alt=""
+              className={cn("h-full w-full object-cover", playing && "animate-spin-slow")}
+            />
           ) : (
             <div className="flex h-full w-full items-center justify-center">
               <ListMusic className="h-5 w-5 text-muted-foreground" />
@@ -960,7 +1759,7 @@ function PlayerBar(props: {
         <button onClick={() => onOpenLyrics(track)} className="w-28 min-w-0 text-left sm:w-40">
           <p className="truncate text-sm font-medium">{track.title}</p>
           <p className="truncate text-xs text-muted-foreground">
-            {[track.artists?.join(" / "), queueTotal > 0 ? `${queueIndex + 1}/${queueTotal}` : null]
+            {[track.artists?.join(" / "), queueTotal > 0 ? `${queueIndex + 1}/${queueTotal}` : null, level]
               .filter(Boolean)
               .join(" · ")}
           </p>
@@ -972,9 +1771,16 @@ function PlayerBar(props: {
           </span>
           <div
             className="group/bar relative h-1 flex-1 cursor-pointer overflow-hidden rounded-full bg-muted"
-            onClick={(e) => {
+            onPointerDown={(e) => {
+              e.currentTarget.setPointerCapture(e.pointerId);
               const rect = e.currentTarget.getBoundingClientRect();
               onSeek((e.clientX - rect.left) / rect.width);
+            }}
+            onPointerMove={(e) => {
+              if (e.buttons === 1) {
+                const rect = e.currentTarget.getBoundingClientRect();
+                onSeek((e.clientX - rect.left) / rect.width);
+              }
             }}
           >
             <div
@@ -1002,12 +1808,14 @@ function PlayerBar(props: {
             onClick={onPrev}
             className="rounded-full p-1.5 text-muted-foreground transition-colors hover:text-foreground"
             title="上一首"
+            aria-label="上一首"
           >
             <SkipBack className="h-5 w-5" />
           </button>
           <button
             onClick={onTogglePlay}
             className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow transition-transform hover:scale-105 hover:bg-primary/90"
+            aria-label={playing ? "暂停" : "播放"}
           >
             {playing ? <Pause className="h-4 w-4" /> : <Play className="ml-0.5 h-4 w-4" />}
           </button>
@@ -1015,6 +1823,7 @@ function PlayerBar(props: {
             onClick={onNext}
             className="rounded-full p-1.5 text-muted-foreground transition-colors hover:text-foreground"
             title="下一首"
+            aria-label="下一首"
           >
             <SkipForward className="h-5 w-5" />
           </button>
@@ -1032,7 +1841,48 @@ function PlayerBar(props: {
           >
             <List className="h-5 w-5" />
           </button>
+          <button
+            onClick={() => onShare(track)}
+            className="rounded-full p-1.5 text-muted-foreground transition-colors hover:text-foreground"
+            title="分享歌曲"
+          >
+            <Share className="h-5 w-5" />
+          </button>
+          <button
+            onClick={onToggleLikeCurrent}
+            className={cn(
+              "rounded-full p-1.5 transition-colors",
+              liked ? "text-primary" : "text-muted-foreground hover:text-foreground",
+            )}
+            title={liked ? "取消红心" : "红心收藏"}
+          >
+            <Heart className={cn("h-5 w-5", liked && "fill-primary")} />
+          </button>
           <div className="ml-1 hidden items-center gap-1.5 md:flex">
+            <button
+              onClick={onCycleLevel}
+              className="rounded-full px-2 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+              title="切换音质"
+            >
+              {level}
+            </button>
+            <button
+              onClick={onCycleRate}
+              className="rounded-full px-2 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+              title="播放倍速"
+            >
+              {rate === 1 ? "1x" : `${rate}x`}
+            </button>
+            <button
+              onClick={onCycleSleep}
+              className={cn(
+                "rounded-full px-2 py-1 text-xs transition-colors",
+                sleepMinutes !== null ? "text-primary" : "text-muted-foreground hover:text-foreground",
+              )}
+              title="睡眠定时"
+            >
+              {sleepMinutes !== null ? `${sleepMinutes}分` : "定时"}
+            </button>
             <button
               onClick={onToggleMute}
               className="rounded-full p-1.5 text-muted-foreground transition-colors hover:text-foreground"
@@ -1061,15 +1911,30 @@ function LyricsView(props: {
   track: Track;
   lines: LyricLine[];
   currentTime: number;
+  onSeekTime: (time: number) => void;
   onClose: () => void;
 }) {
-  const { track, lines, currentTime, onClose } = props;
+  const { track, lines, currentTime, onSeekTime, onClose } = props;
   const activeIdx = currentLineIndex(lines, currentTime);
+  const [mode, setMode] = useState<"both" | "original" | "translated">("both");
+  const [size, setSize] = useState<"md" | "lg" | "xl">("lg");
+  const [locked, setLocked] = useState(false);
+  const lockTimer = useRef<number | null>(null);
+
+  // 手动滚动时暂停自动滚动，3 秒无操作后恢复。
+  const pauseAutoScroll = useCallback(() => {
+    setLocked(true);
+    if (lockTimer.current !== null) window.clearTimeout(lockTimer.current);
+    lockTimer.current = window.setTimeout(() => setLocked(false), 3000);
+  }, []);
 
   useEffect(() => {
-    if (activeIdx < 0) return;
+    if (activeIdx < 0 || locked) return;
     document.getElementById(`lyric-${activeIdx}`)?.scrollIntoView({ block: "center", behavior: "auto" });
-  }, [activeIdx]);
+  }, [activeIdx, locked]);
+
+  const sizeClass = size === "xl" ? "text-4xl" : size === "lg" ? "text-3xl" : "text-2xl";
+  const modeLabel = mode === "both" ? "双语" : mode === "original" ? "原文" : "翻译";
 
   return (
     <div className="fixed inset-0 z-30 flex flex-col bg-black">
@@ -1083,41 +1948,75 @@ function LyricsView(props: {
       <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black/60" />
 
       <div className="relative flex h-full flex-col">
-        <div className="flex items-start justify-between px-6 py-5">
+        <div className="flex items-start justify-between gap-3 px-6 py-5">
           <div className="min-w-0">
             <p className="truncate text-lg font-bold text-white">{track.title}</p>
             <p className="truncate text-sm text-white/70">{track.artists?.join(" / ")}</p>
           </div>
-          <button
-            onClick={onClose}
-            className="rounded-full p-2 text-white/70 transition-colors hover:bg-white/10 hover:text-white"
-          >
-            <ChevronDown className="h-6 w-6" />
-          </button>
+          <div className="flex shrink-0 items-center gap-1">
+            <button
+              onClick={() =>
+                setMode((m) => (m === "both" ? "original" : m === "original" ? "translated" : "both"))
+              }
+              className="rounded-full px-2 py-1 text-xs text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+              title="切换歌词显示"
+            >
+              {modeLabel}
+            </button>
+            <button
+              onClick={() => setSize((s) => (s === "md" ? "lg" : s === "lg" ? "xl" : "xl"))}
+              className="rounded-full p-1.5 text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+              title="增大字号"
+            >
+              A+
+            </button>
+            <button
+              onClick={() => setSize((s) => (s === "xl" ? "lg" : s === "lg" ? "md" : "md"))}
+              className="rounded-full p-1.5 text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+              title="减小字号"
+            >
+              A-
+            </button>
+            <button
+              onClick={onClose}
+              className="rounded-full p-2 text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+            >
+              <ChevronDown className="h-6 w-6" />
+            </button>
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 pb-32 [mask-image:linear-gradient(to_bottom,transparent,black_20%,black_80%,transparent)]">
+        <div
+          className="flex-1 overflow-y-auto px-6 pb-32 [mask-image:linear-gradient(to_bottom,transparent,black_20%,black_80%,transparent)]"
+          onWheel={pauseAutoScroll}
+          onTouchMove={pauseAutoScroll}
+        >
           <div className="mx-auto flex max-w-2xl flex-col items-center gap-7 py-[45vh] text-center">
             {lines.length === 0 ? (
               <p className="text-white/50">暂无歌词</p>
             ) : (
-              lines.map((l, i) => (
-                <div
-                  key={i}
-                  id={`lyric-${i}`}
-                  className={cn(
-                    "transition-all duration-300",
-                    i === activeIdx
-                      ? "text-3xl font-bold text-white"
-                      : "text-xl font-medium text-white/40",
-                  )}
-                >
-                  <p>{l.text}</p>
-                  {l.translated !== undefined && i === activeIdx ? (
-                    <p className="mt-1.5 text-base text-white/60">{l.translated}</p>
-                  ) : null}
-                </div>
-              ))
+              lines.map((l, i) => {
+                const showText = mode === "translated" ? (l.translated ?? l.text) : l.text;
+                const showSub = mode === "both" && l.translated !== undefined;
+                return (
+                  <div
+                    key={i}
+                    id={`lyric-${i}`}
+                    onClick={() => onSeekTime(l.time)}
+                    className={cn(
+                      "cursor-pointer transition-all duration-300",
+                      i === activeIdx
+                        ? `${sizeClass} font-bold text-white`
+                        : "text-xl font-medium text-white/40 hover:text-white/70",
+                    )}
+                  >
+                    <p>{showText}</p>
+                    {showSub && i === activeIdx ? (
+                      <p className="mt-1.5 text-base text-white/60">{l.translated}</p>
+                    ) : null}
+                  </div>
+                );
+              })
             )}
           </div>
         </div>
