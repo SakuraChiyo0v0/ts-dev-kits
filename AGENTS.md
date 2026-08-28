@@ -84,6 +84,17 @@ pnpm verify:published @sakurachiyo0v0/<name>  # 发布后从 GitHub Packages 消
 - 对照表(如编码 id)以源码 `types.ts` 枚举为权威,skill 只引用不另造。
 - 确认为临时跳过可用 `git commit --no-verify`,但 skill 长期不同步会导致 AI 按旧手册操作出错。
 
+### dsh-sdk-tools 功能清单(四处同步,守卫拦截)
+
+`@sakurachiyo0v0/dsh-sdk-tools` 里每个功能包出现在**四处**,新增/移除包时必须同步:
+
+1. `src/capabilities.ts` — 工具注册分支(`config.<name>.enabled`)
+2. `src/client/settings-page.tsx` — 设置页 FEATURES(`key: "<name>"`) + `SettingsShape` 字段
+3. `presets/ts-dev-kits/agent.cordis.yml` — 顶层 config 键(`<name>:`)
+4. `src/settings.ts` — host settings 文档开关(`SettingsShapeInput` / `SettingsSchema`)
+
+`scripts/check-dsh-tools-consistency.mjs`(已接入 `pnpm check` 与 pre-commit)自动比对四处清单,不一致阻止提交。改 dsh-sdk-tools 功能时先跑 `node scripts/check-dsh-tools-consistency.mjs` 确认。
+
 ## 已知环境注意事项
 
 - 在 fuse 文件系统(用户挂载目录)上 `pnpm install` 可能极慢;需要安装/构建/测试时,可先复制到本地磁盘再操作,完成后只拷回必要产物。

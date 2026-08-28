@@ -17,6 +17,7 @@ export interface SettingsShape {
   email: boolean;
   lol: boolean;
   vrchat: boolean;
+  logs: boolean;
   kazumi: boolean;
 }
 
@@ -40,6 +41,7 @@ const FEATURES: readonly FeatureRow[] = [
   },
   { key: "lol", label: "英雄联盟", description: "召唤师、战绩、段位查询", hint: "需本机运行游戏客户端" },
   { key: "vrchat", label: "VRChat", description: "用户与公开世界搜索", hint: "需本地 VRChat 登录态" },
+  { key: "logs", label: "logs", description: "SDK 日志查询(等级/设备/命名空间/时间)" },
   {
     key: "kazumi",
     label: "kazumi",

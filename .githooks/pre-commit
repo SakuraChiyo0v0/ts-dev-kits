@@ -39,6 +39,12 @@ if [ -f scripts/check-skill-staleness.mjs ]; then
   node scripts/check-skill-staleness.mjs
 fi
 
+# dsh-sdk-tools 功能清单一致性守卫:capabilities/settings-page/preset/settings 四处
+# 功能包清单必须同步,不一致 -> 阻止提交。
+if [ -f scripts/check-dsh-tools-consistency.mjs ]; then
+  node scripts/check-dsh-tools-consistency.mjs
+fi
+
 # packages-index 版本表守卫:bump 包版本后忘同步版本表 -> 自动修正并随提交暂存;
 # 若存在缺失行(新包未进表)或残留行,阻止提交并提示。
 if [ -f scripts/check-package-index.mjs ]; then
