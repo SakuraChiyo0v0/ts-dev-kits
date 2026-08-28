@@ -81,7 +81,14 @@ async function publishedVersions(pkg) {
     const resp = await fetch(`${REGISTRY}${pkg.replace("/", "%2f")}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
+    if (resp.status === 404) {
+      // 从未发布(新包首次发布前的正常状态):视为空版本集,
+      // 由调用方按"本次会发布"逻辑处理。
+      publishedCache.set(pkg, versions);
+      return versions;
+    }
     if (!resp.ok) {
+      // 401/403/5xx = 凭据或环境问题,无法验证依赖链,必须显式失败。
       throw new Error(`registry 返回 ${resp.status}`);
     }
     const data = await resp.json();
