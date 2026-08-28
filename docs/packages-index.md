@@ -23,7 +23,7 @@
 | `@sakurachiyo0v0/vrchat` | 0.4.3 | VRChat 官方 REST API SDK(认证/用户/世界/头像/实例/好友/通知/收藏/群组/文件/权限/系统/经济/审核) | 可用(全功能覆盖) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/vrchat` |
 | `@sakurachiyo0v0/steam` | 0.8.3 | Steam SDK(查询向):Web API/Storefront/Community 三套接口,登录态支持,写操作仅激活码兑换一项 | 可用(全阶段交付) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/steam` |
 | `@sakurachiyo0v0/xiaoheihe` | 0.4.3 | 小黑盒 SDK:扫码登录 + hkey/nonce 签名 + 只读查询(帖子/评论/feed/@消息/用户) | 可用(P0 只读) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/xiaoheihe` |
-| `@sakurachiyo0v0/dsh-sdk-tools` | 0.5.0 | DSH host 插件:把 bilibili/netease-music/ffmpeg/email/lol/vrchat/kazumi 包装成 agent 工具,经 Agent 预设按需暴露 | 可用 | `pnpm add @sakurachiyo0v0/dsh-sdk-tools`(GitHub Packages) |
+| `@sakurachiyo0v0/dsh-sdk-tools` | 0.5.1 | DSH host 插件:把 bilibili/netease-music/ffmpeg/email/lol/vrchat/kazumi 包装成 agent 工具,经 Agent 预设按需暴露 | 可用 | `pnpm add @sakurachiyo0v0/dsh-sdk-tools`(GitHub Packages) |
 | `@sakurachiyo0v0/database` | 0.2.2 | 统一数据访问抽象层:一套 API 访问本地 SQLite 与远程 PostgreSQL/MySQL,配置切换后端 | 可用(SQLite 全量,远程可选) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/database` |
 | `@sakurachiyo0v0/webdav` | 0.3.2 | WebDAV 配置存取 SDK:基础文件操作 + ConfigStore(原子写/自动备份) + 加密存储 + CLI | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/webdav` |
 | `@sakurachiyo0v0/config` | 0.3.1 | 配置中心 SDK:WebDAV+密钥全局一次配置,namespace 按域存取(可选加密),登录态/配置多端同步 | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/config` |
@@ -694,6 +694,8 @@ DSH(DeepSeek Harness)host 插件,把本仓库功能包包装成 agent 工具,通
 **适用环境：** Node.js 20+ 且已安装 DSH(`@deepseek-ai/dsh`,对齐 `0.2.0-rc.2`);各功能包真实前置条件依旧生效(lol 需本机客户端、email 需配置 SMTP、bilibili/网易云/vrchat 需登录态)。
 
 **机制：** 插件不设 `dsh.bundle`,是普通 profile 依赖;工具由预设的 `agent.cordis.yml` 声明挂载,注册落在该预设的 scope 层,只有加入该预设的 agent 可见。每包有 `enabled` 开关,未启用即不注册 → 不进 system prompt。
+
+> ⚠️ **消费方式限制:** 本插件只能装进 DSH profile(`dsh plugin --profile <name> add`),**不能独立安装到普通 npm 项目**——其传递依赖 `@deepseek-ai/*` 只有 rc 预发布版,公共 npm 源无法解析(`ERR_PNPM_NO_MATCHING_VERSION`)。DSH 运行时自带完整的 rc 依赖树,是唯一正确的消费环境。
 
 **工具清单：**
 

@@ -7,12 +7,20 @@ DSH(DeepSeek Harness)host 插件:把本仓库功能包(bilibili / netease-music 
 - Node.js 20+,已安装 DSH(`@deepseek-ai/dsh`,当前对齐 `0.1.1-rc.2`);
 - 各功能包的真实前置条件依旧生效:bilibili/网易云/vrchat 需登录态(自动从 AuthStore 加载)、lol 需本机运行英雄联盟客户端、email 需配置 SMTP。
 
+## ⚠️ 消费方式限制(重要)
+
+本包是 **DSH host 插件**,只应作为 DSH profile 依赖安装使用(见下方「安装」),**不能从公共 npm registry 独立安装消费**(`npm i @sakurachiyo0v0/dsh-sdk-tools` 到普通项目会失败)。
+
+原因:本插件的传递依赖 `@deepseek-ai/*`(cordis / dsh-tools / schemastery / dsh-invariants 等)当前只有 rc 预发布版本,**公共 npm 源上不存在满足 `>=0.1.x <0.2.0` 的稳定版本**,独立安装会报 `ERR_PNPM_NO_MATCHING_VERSION`。这是 @deepseek-ai 生态的既有状态,非本包缺陷。
+
+正确的消费方式:通过 `dsh plugin --profile <name> add @sakurachiyo0v0/dsh-sdk-tools` 装进 DSH profile——DSH 自带完整的 @deepseek-ai rc 依赖树,能正常解析。发布到 GitHub Packages 只是为了在 DSH 内分发,不是给普通 npm 项目用的。
+
 ## 工作原理
 
 - 本插件**不设 `dsh.bundle`**,是普通依赖:工具行由**预设**的 `agent.cordis.yml` 声明;
 - 预设挂载时插件 `ctx.tools.register(defineTool(...))` 注册到该预设的 scope 层,只有加入该预设的 agent 可见(`agent-presets` 的 standing scope 机制);
 - 每包有 `enabled` 开关,未启用即不注册 → 不进 system prompt;
-- **设置页开关**:DSH 设置 →「SDK工具」页读写 `~/.dsh/settings.yaml` 的 `dsh-sdk-tools` 节(6 个扁平 `enabled`)。切换实时生效——host 侧 watch 到变化即重新注册/注销对应工具,无需改 YAML、无需重启会话。预设 `agent.cordis.yml` 的 `config` 作为 entry(base)层提供各包参数与默认 enabled,settings 文档(user)层只覆盖 enabled。
+- **设置页开关**:DSH 设置 →「SDK工具」页读写 `~/.dsh/settings.yaml` 的 `dsh-sdk-tools` 节(8 个扁平 `enabled`:bilibili / netease / ffmpeg / email / lol / vrchat / logs / kazumi)。切换实时生效——host 侧 watch 到变化即重新注册/注销对应工具,无需改 YAML、无需重启会话。预设 `agent.cordis.yml` 的 `config` 作为 entry(base)层提供各包参数与默认 enabled,settings 文档(user)层只覆盖 enabled。
 
 ## 安装
 
@@ -30,7 +38,7 @@ DSH(DeepSeek Harness)host 插件:把本仓库功能包(bilibili / netease-music 
 npx -p @deepseek-ai/dsh dsh plugin --profile <name> add @sakurachiyo0v0/dsh-sdk-tools
 ```
 
-> 插件的 `dependencies`(`@sakurachiyo0v0/bilibili` 等)也随 GitHub Packages 解析;peer 依赖 `@deepseek-ai/*` 仍走公共 npm,无需额外配置。
+> 插件的 `dependencies`(`@sakurachiyo0v0/*`)随 GitHub Packages 解析;`@deepseek-ai/*` 由 DSH 运行时提供(它自带完整的 rc 依赖树),因此本插件**只应装进 DSH profile**,不能独立安装到普通项目——见上文「⚠️ 消费方式限制」。
 
 **仓库内开发时**可用本地路径安装:
 
