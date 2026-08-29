@@ -6,6 +6,7 @@
  */
 import { Hono } from "hono";
 import { createNeteaseClient, type QualityLevel } from "@sakurachiyo0v0/netease-music";
+import { AuthStore } from "@sakurachiyo0v0/account";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { createAuthNamespace, warmupAuth } from "../bootstrap.js";
@@ -418,4 +419,15 @@ export const accountRoutes = new Hono()
     const ids = idsParam.split(",").filter((x) => x !== "");
     const downloaded = ids.filter((id) => downloadedIds.has(id));
     return c.json({ downloaded });
+  })
+  /** POST /api/logout —— 退出登录（清除本地 + 远程 WebDAV 登录态）。 */
+  .post("/logout", async (c) => {
+    try {
+      await warmupAuth("netease-music");
+      const store = new AuthStore({ platform: "netease-music", remote: createAuthNamespace() });
+      await store.clear();
+      return c.json({ ok: true });
+    } catch {
+      return c.json({ error: "退出失败" }, 500);
+    }
   });

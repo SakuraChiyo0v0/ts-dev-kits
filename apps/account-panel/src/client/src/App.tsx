@@ -744,6 +744,16 @@ export default function App() {
     }
   }, []);
 
+  const logout = useCallback(async () => {
+    try {
+      await rpc.api.logout.$post();
+      showToast("已退出登录");
+      await refresh();
+    } catch {
+      showToast("退出失败");
+    }
+  }, [refresh, showToast]);
+
   const reorderQueue = useCallback((from: number, to: number) => {
     setQueue((prev) => {
       if (from < 0 || from >= prev.length || to < 0 || to >= prev.length || from === to) return prev;
@@ -908,6 +918,7 @@ export default function App() {
             onRefresh={() => void refresh()}
             onShowHistory={() => setShowHistory(true)}
             onDownloadLocal={(t) => downloadToLocal(t)}
+            onLogout={() => void logout()}
           />
         ) : (
           <LoginView login={login} onLogin={() => void startLogin()} onCancel={() => setLogin(null)} />
@@ -1544,8 +1555,9 @@ function HomeView(props: {
   onRefresh: () => void;
   onShowHistory: () => void;
   onDownloadLocal: (track: Track) => void;
+  onLogout: () => void;
 }) {
-  const { account, recentTracks, lastTrack, playCounts, onResume, avatarError, onAvatarError, onOpenPlaylist, onPlayPlaylist, onPlaySong, onRefresh, onShowHistory, onDownloadLocal } =
+  const { account, recentTracks, lastTrack, playCounts, onResume, avatarError, onAvatarError, onOpenPlaylist, onPlayPlaylist, onPlaySong, onRefresh, onShowHistory, onDownloadLocal, onLogout } =
     props;
   const [search, setSearch] = useState("");
   const [songQuery, setSongQuery] = useState("");
@@ -1636,6 +1648,13 @@ function HomeView(props: {
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{nickname}</h1>
             {vip?.isVip ? <Badge variant="vip">VIP {vip.level}</Badge> : null}
+            <button
+              onClick={onLogout}
+              className="ml-2 rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              title="退出登录"
+            >
+              退出登录
+            </button>
           </div>
           {account.account?.signature ? (
             <p className="mt-2 text-muted-foreground">{account.account.signature}</p>
