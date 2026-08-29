@@ -18,7 +18,9 @@ let app = new Hono().route("/api", api);
 // 生产环境：托管前端静态资源 + SPA fallback（dev 时前端由 Vite 服务）。
 if (process.env.NODE_ENV === "production") {
   app = app
-    .use("/assets/*", serveStatic({ root: "./dist/client" }))
+    // 先按路径 serve dist/client 下的真实静态文件（assets/*、manifest.json 等）；
+    // 文件不存在时 serveStatic 会 next() 继续到下面的 SPA fallback。
+    .use("*", serveStatic({ root: "./dist/client" }))
     .get("*", serveStatic({ path: "./dist/client/index.html" }));
 }
 
