@@ -496,7 +496,7 @@ export default function App() {
     setQueue(tracks);
     setQueueIndex(index);
     setCurrentTrack(track);
-    setLikedCurrent(false);
+    setLikedCurrent(likedIds.has(track.id));
     setRecentTracks((prev) => {
       const next = [track, ...prev.filter((t) => t.id !== track.id)].slice(0, 30);
       try {
@@ -557,7 +557,7 @@ export default function App() {
       const detail = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
       showToast(`播放失败 ${detail}`);
     }
-  }, [showToast]);
+  }, [showToast, likedIds]);
 
   const playPlaylist = useCallback(
     async (id: string) => {
@@ -916,11 +916,22 @@ export default function App() {
           await rpc.api.like.$post({ query: { id: track.id } });
           showToast("已添加红心");
         }
+        // 成功后同步全局红心集合 + 播放栏当前曲目红心态。
+        setLikedIds((prev) => {
+          const next = new Set(prev);
+          if (liked) next.delete(track.id);
+          else next.add(track.id);
+          return next;
+        });
+        setLikedCurrent((prev) => {
+          const isCurrent = currentTrack?.id === track.id;
+          return isCurrent ? !liked : prev;
+        });
       } catch {
         showToast("操作失败");
       }
     },
-    [showToast],
+    [showToast, currentTrack],
   );
 
   const resumePlay = useCallback(async () => {
@@ -1195,14 +1206,7 @@ export default function App() {
           }}
           liked={likedIds.has(songDetail.id)}
           onToggleLike={() => {
-            const liked = likedIds.has(songDetail.id);
-            void toggleLike(songDetail, liked);
-            setLikedIds((prev) => {
-              const next = new Set(prev);
-              if (liked) next.delete(songDetail.id);
-              else next.add(songDetail.id);
-              return next;
-            });
+            void toggleLike(songDetail, likedIds.has(songDetail.id));
           }}
           onShare={() => void shareTrack(songDetail)}
           onLyrics={() => {
