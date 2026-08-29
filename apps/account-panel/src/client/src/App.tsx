@@ -296,6 +296,7 @@ export default function App() {
   const [showHelp, setShowHelp] = useState(false);
   const [songDetail, setSongDetail] = useState<Track | null>(null);
   const [downloadTarget, setDownloadTarget] = useState<Track | null>(null);
+  const [addPlaylistTarget, setAddPlaylistTarget] = useState<Track | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [showDownloadHistory, setShowDownloadHistory] = useState(false);
   const [downloadRecords, setDownloadRecords] = useState<
@@ -885,15 +886,37 @@ export default function App() {
   }, [showToast]);
 
   const addToPlaylist = useCallback(
-    async (trackId: string, playlistId: string) => {
+    async (trackIds: string[], playlistIds: string[]) => {
       try {
-        await rpc.api.playlist.add.$post({ json: { playlistId, trackIds: [trackId] } });
-        showToast("已加入歌单");
+        for (const playlistId of playlistIds) {
+          await rpc.api.playlist.add.$post({ json: { playlistId, trackIds } });
+        }
+        showToast(`已加入 ${playlistIds.length} 个歌单`);
       } catch {
         showToast("添加失败");
       }
     },
     [showToast],
+  );
+
+  const removeFromPlaylist = useCallback(
+    async (playlistId: string, trackIds: string[]) => {
+      try {
+        await rpc.api.playlist.remove.$post({ json: { playlistId, trackIds } });
+        showToast(`已移除 ${trackIds.length} 首`);
+      } catch {
+        showToast("移除失败");
+      }
+    },
+    [showToast],
+  );
+
+  const removeSongsFromCurrentPlaylist = useCallback(
+    async (playlistId: string, trackIds: string[]) => {
+      await removeFromPlaylist(playlistId, trackIds);
+      await openPlaylist(playlistId);
+    },
+    [removeFromPlaylist, openPlaylist],
   );
 
   const dismissLast = useCallback(() => {
@@ -1081,6 +1104,7 @@ export default function App() {
             onShowDetail={setSongDetail}
             onDownloadLocal={(t) => setDownloadTarget(t)}
             onDownloadAll={(path, level) => void downloadBatch(detail.tracks, path, level)}
+            onRemoveSongs={(trackIds) => void removeSongsFromCurrentPlaylist(detail.id, trackIds)}
             onDeletePlaylist={(id) => void deletePlaylist(id)}
             onRenamePlaylist={(id, name) => void renamePlaylist(id, name)}
             downloadedVersion={downloadedVersion}
@@ -1263,8 +1287,10 @@ export default function App() {
             setDownloadTarget(songDetail);
             setSongDetail(null);
           }}
-          playlists={account?.playlists ?? []}
-          onAddToPlaylist={(playlistId) => void addToPlaylist(songDetail.id, playlistId)}
+          onAddToPlaylist={() => {
+            setAddPlaylistTarget(songDetail);
+            setSongDetail(null);
+          }}
           onClose={() => setSongDetail(null)}
         />
       ) : null}
@@ -1275,6 +1301,15 @@ export default function App() {
           onDownloadLocal={(level) => downloadToLocal(downloadTarget, level)}
           onDownloadNas={(path, level) => void downloadToNas(downloadTarget, path, level)}
           onClose={() => setDownloadTarget(null)}
+        />
+      ) : null}
+
+      {addPlaylistTarget !== null ? (
+        <MultiSelectDialog
+          title="加入歌单"
+          options={(account?.playlists ?? []).map((p) => ({ id: p.id, name: p.name }))}
+          onConfirm={(playlistIds) => void addToPlaylist([addPlaylistTarget.id], playlistIds)}
+          onClose={() => setAddPlaylistTarget(null)}
         />
       ) : null}
 
@@ -1436,6 +1471,89 @@ function HistoryPanel(props: {
             <li className="py-10 text-center text-sm text-muted-foreground">暂无播放历史</li>
           ) : null}
         </ul>
+      </div>
+    </div>
+  );
+}
+
+function MultiSelectDialog(props: {
+  title: string;
+  options: Array<{ id: string; name: string }>;
+  onConfirm: (selectedIds: string[]) => void;
+  onClose: () => void;
+}) {
+  const { title, options, onConfirm, onClose } = props;
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const toggle = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      onClick={(e) => {
+        e.stopPropagation();
+        onClose();
+      }}
+    >
+      <div
+        className="w-full max-w-sm animate-fade-in rounded-2xl bg-card p-5 shadow-lg"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-base font-bold">{title}</h3>
+          <button
+            onClick={onClose}
+            className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="mb-3 max-h-64 overflow-y-auto rounded-lg border">
+          {options.map((o) => {
+            const checked = selected.has(o.id);
+            return (
+              <button
+                key={o.id}
+                onClick={() => toggle(o.id)}
+                className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm transition-colors hover:bg-muted"
+              >
+                <span
+                  className={cn(
+                    "flex h-4 w-4 shrink-0 items-center justify-center rounded border",
+                    checked ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/40",
+                  )}
+                >
+                  {checked ? <Check className="h-3 w-3" /> : null}
+                </span>
+                <span className="truncate">{o.name}</span>
+              </button>
+            );
+          })}
+          {options.length === 0 ? (
+            <p className="px-3 py-6 text-center text-xs text-muted-foreground">无可用选项</p>
+          ) : null}
+        </div>
+        <div className="flex gap-2">
+          <Button variant="ghost" size="sm" className="flex-1 rounded-full" onClick={onClose}>
+            取消
+          </Button>
+          <Button
+            size="sm"
+            className="flex-1 rounded-full"
+            disabled={selected.size === 0}
+            onClick={() => {
+              onConfirm([...selected]);
+              onClose();
+            }}
+          >
+            确认（{selected.size}）
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -1704,13 +1822,11 @@ function SongDetailModal(props: {
   onShare: () => void;
   onLyrics: () => void;
   onDownload: () => void;
-  playlists: PlaylistSummary[];
-  onAddToPlaylist: (playlistId: string) => void;
+  onAddToPlaylist: () => void;
   onClose: () => void;
 }) {
-  const { track, onPlay, liked, onToggleLike, onShare, onLyrics, onDownload, playlists, onAddToPlaylist, onClose } =
+  const { track, onPlay, liked, onToggleLike, onShare, onLyrics, onDownload, onAddToPlaylist, onClose } =
     props;
-  const [playlistOpen, setPlaylistOpen] = useState(false);
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50" onClick={onClose}>
       <div
@@ -1766,31 +1882,12 @@ function SongDetailModal(props: {
               size="sm"
               variant="outline"
               className="rounded-full"
-              onClick={() => setPlaylistOpen((v) => !v)}
+              onClick={onAddToPlaylist}
             >
               <ListPlus />
               加入歌单
             </Button>
           </div>
-          {playlistOpen ? (
-            <div className="max-h-40 w-full overflow-y-auto rounded-xl border p-1.5">
-              {playlists.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => {
-                    onAddToPlaylist(p.id);
-                    setPlaylistOpen(false);
-                  }}
-                  className="block w-full truncate rounded-lg px-3 py-2 text-left text-sm hover:bg-muted"
-                >
-                  {p.name}
-                </button>
-              ))}
-              {playlists.length === 0 ? (
-                <p className="px-3 py-2 text-xs text-muted-foreground">暂无歌单</p>
-              ) : null}
-            </div>
-          ) : null}
           <Button size="sm" variant="outline" className="rounded-full" onClick={onDownload}>
             <Download />
             下载
@@ -2552,9 +2649,10 @@ function PlaylistView(props: {
   onDownloadAll: (path: string, level: string) => void;
   onDeletePlaylist: (id: string) => void;
   onRenamePlaylist: (id: string, name: string) => void;
+  onRemoveSongs: (trackIds: string[]) => void;
   downloadedVersion: number;
 }) {
-  const { detail, currentTrackId, onBack, onPlay, onPlayAll, onToggleLike, onSharePlaylist, onShowDetail, onDownloadLocal, onDownloadAll, onDeletePlaylist, onRenamePlaylist, downloadedVersion } =
+  const { detail, currentTrackId, onBack, onPlay, onPlayAll, onToggleLike, onSharePlaylist, onShowDetail, onDownloadLocal, onDownloadAll, onDeletePlaylist, onRenamePlaylist, onRemoveSongs, downloadedVersion } =
     props;
   const [hearted, setHearted] = useState<Set<string>>(new Set());
   const [downloaded, setDownloaded] = useState<Set<string>>(new Set());
@@ -2562,6 +2660,7 @@ function PlaylistView(props: {
   const [batchPath, setBatchPath] = useState("");
   const [batchLevel, setBatchLevel] = useState("exhigh");
   const [batchFolderOpen, setBatchFolderOpen] = useState(false);
+  const [removeOpen, setRemoveOpen] = useState(false);
 
   // 加载时查询哪些歌已下载、哪些已红心。
   useEffect(() => {
@@ -2707,10 +2806,16 @@ function PlaylistView(props: {
                   </Button>
                 </div>
               ) : (
-                <Button size="sm" variant="outline" className="rounded-full" onClick={() => setBatchOpen(true)}>
-                  <HardDriveDownload className="mr-1 h-4 w-4" />
-                  下载全部
-                </Button>
+                <>
+                  <Button size="sm" variant="outline" className="rounded-full" onClick={() => setBatchOpen(true)}>
+                    <HardDriveDownload className="mr-1 h-4 w-4" />
+                    下载全部
+                  </Button>
+                  <Button size="sm" variant="outline" className="rounded-full" onClick={() => setRemoveOpen(true)}>
+                    <Trash2 className="mr-1 h-4 w-4" />
+                    移除歌曲
+                  </Button>
+                </>
               )}
             </div>
           </div>
@@ -2724,6 +2829,15 @@ function PlaylistView(props: {
               setBatchFolderOpen(false);
             }}
             onClose={() => setBatchFolderOpen(false)}
+          />
+        ) : null}
+
+        {removeOpen ? (
+          <MultiSelectDialog
+            title="移除歌曲"
+            options={detail.tracks.map((t) => ({ id: t.id, name: `${t.title} - ${t.artists?.join(" / ") ?? ""}` }))}
+            onConfirm={(trackIds) => onRemoveSongs(trackIds)}
+            onClose={() => setRemoveOpen(false)}
           />
         ) : null}
 

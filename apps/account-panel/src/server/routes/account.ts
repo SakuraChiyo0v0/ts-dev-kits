@@ -290,6 +290,23 @@ export const accountRoutes = new Hono()
       return c.json({ error: "添加失败" }, 500);
     }
   })
+  /** POST /api/playlist/remove —— 从歌单移除歌曲。 */
+  .post("/playlist/remove", async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as { playlistId?: unknown; trackIds?: unknown };
+    const playlistId = typeof body.playlistId === "string" ? body.playlistId : undefined;
+    const trackIds = Array.isArray(body.trackIds)
+      ? (body.trackIds as unknown[]).filter((x): x is string => typeof x === "string")
+      : [];
+    if (playlistId === undefined || trackIds.length === 0) return c.json({ error: "参数错误" }, 400);
+    await warmupAuth("netease-music");
+    const client = createClient();
+    try {
+      await client.removeTracksFromPlaylist(playlistId, trackIds);
+      return c.json({ ok: true });
+    } catch {
+      return c.json({ error: "移除失败" }, 500);
+    }
+  })
   /** POST /api/playlist/update —— 更新歌单（重命名/描述/标签）。 */
   .post("/playlist/update", async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as {
