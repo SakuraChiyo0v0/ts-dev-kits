@@ -520,9 +520,23 @@ export const accountRoutes = new Hono()
       return c.json({ error: "获取失败" }, 500);
     }
   })
-  /** GET /api/download-dirs —— 列出 NAS 下载目录下的子目录（供下载时选择）。 */
+  /** GET /api/download-dirs?path=xxx —— 列出下载目录下某子目录的直接子目录名。 */
   .get("/download-dirs", (c) => {
-    return c.json({ dirs: getDownloadManager().listDirs() });
+    const path = c.req.query("path") ?? "";
+    return c.json({ dirs: getDownloadManager().listDirs(path) });
+  })
+  /** POST /api/download-mkdir —— 在下载目录下创建文件夹。 */
+  .post("/download-mkdir", async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as { path?: unknown; name?: unknown };
+    const path = typeof body.path === "string" ? body.path : "";
+    const name = typeof body.name === "string" ? body.name.trim() : "";
+    if (name === "") return c.json({ error: "文件夹名不能为空" }, 400);
+    try {
+      const rel = getDownloadManager().createDir(path, name);
+      return c.json({ path: rel });
+    } catch {
+      return c.json({ error: "创建失败" }, 500);
+    }
   })
   /** POST /api/logout —— 退出登录（清除本地 + 远程 WebDAV 登录态）。 */
   .post("/logout", async (c) => {

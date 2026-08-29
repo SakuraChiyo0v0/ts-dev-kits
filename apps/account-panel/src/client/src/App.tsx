@@ -28,6 +28,8 @@ import {
   SkipForward,
   Sparkles,
   Flame,
+  Folder,
+  FolderPlus,
   Sun,
   TextQuote,
   Trash2,
@@ -1389,6 +1391,131 @@ function HistoryPanel(props: {
   );
 }
 
+function FolderPicker(props: {
+  value: string;
+  onSelect: (path: string) => void;
+  onClose: () => void;
+}) {
+  const { value, onSelect, onClose } = props;
+  const [current, setCurrent] = useState(value);
+  const [dirs, setDirs] = useState<string[]>([]);
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await rpc.api["download-dirs"].$get({ query: { path: current } });
+        const data = (await res.json()) as { dirs?: string[] };
+        if (!cancelled && data.dirs !== undefined) setDirs(data.dirs);
+      } catch {
+        // 忽略。
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [current]);
+
+  const enter = (name: string) => setCurrent(current === "" ? name : `${current}/${name}`);
+  const goUp = () =>
+    setCurrent(current.includes("/") ? current.slice(0, current.lastIndexOf("/")) : "");
+
+  const createFolder = async () => {
+    if (newName.trim() === "") return;
+    try {
+      await rpc.api["download-mkdir"].$post({ json: { path: current, name: newName.trim() } });
+      setNewName("");
+      setCreating(false);
+      const res = await rpc.api["download-dirs"].$get({ query: { path: current } });
+      const data = (await res.json()) as { dirs?: string[] };
+      if (data.dirs !== undefined) setDirs(data.dirs);
+    } catch {
+      // 忽略。
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
+      <div
+        className="w-full max-w-sm animate-fade-in rounded-2xl bg-card p-5 shadow-lg"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-base font-bold">选择文件夹</h3>
+          <button
+            onClick={onClose}
+            className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="mb-3 flex items-center gap-2 rounded-lg bg-muted px-2 py-1.5">
+          <button
+            onClick={goUp}
+            className="rounded-full p-1 text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30"
+            title="返回上级"
+            disabled={current === ""}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">/{current || "根目录"}</span>
+        </div>
+
+        <div className="mb-3 max-h-56 overflow-y-auto rounded-lg border">
+          {dirs.map((d) => (
+            <button
+              key={d}
+              onClick={() => enter(d)}
+              className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm transition-colors hover:bg-muted"
+            >
+              <Folder className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span className="truncate">{d}</span>
+            </button>
+          ))}
+          {dirs.length === 0 ? (
+            <p className="px-3 py-6 text-center text-xs text-muted-foreground">空文件夹</p>
+          ) : null}
+        </div>
+
+        {creating ? (
+          <div className="mb-3 flex gap-2">
+            <Input
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="文件夹名"
+              className="rounded-full text-xs"
+              autoFocus
+            />
+            <Button size="sm" className="shrink-0 rounded-full" onClick={createFolder}>
+              创建
+            </Button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setCreating(true)}
+            className="mb-3 flex items-center gap-1.5 text-sm font-medium text-primary"
+          >
+            <FolderPlus className="h-4 w-4" />
+            新建文件夹
+          </button>
+        )}
+
+        <div className="flex gap-2">
+          <Button variant="ghost" size="sm" className="flex-1 rounded-full" onClick={onClose}>
+            取消
+          </Button>
+          <Button size="sm" className="flex-1 rounded-full" onClick={() => onSelect(current)}>
+            选择此文件夹
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DownloadDialog(props: {
   track: Track;
   onDownloadLocal: (level: string) => void;
@@ -1399,7 +1526,7 @@ function DownloadDialog(props: {
   const [level, setLevel] = useState("exhigh");
   const [channel, setChannel] = useState<"local" | "nas">("local");
   const [nasPath, setNasPath] = useState("");
-  const [dirs, setDirs] = useState<string[]>([""]);
+  const [folderPickerOpen, setFolderPickerOpen] = useState(false);
   const levels: Array<{ value: string; label: string }> = [
     { value: "exhigh", label: "320k MP3" },
     { value: "lossless", label: "无损 FLAC" },
@@ -1407,19 +1534,6 @@ function DownloadDialog(props: {
     { value: "standard", label: "128k MP3" },
   ];
   const levelLabel = levels.find((l) => l.value === level)?.label ?? level;
-
-  useEffect(() => {
-    if (channel !== "nas") return;
-    void (async () => {
-      try {
-        const res = await rpc.api["download-dirs"].$get();
-        const data = (await res.json()) as { dirs?: string[] };
-        if (data.dirs !== undefined) setDirs(data.dirs);
-      } catch {
-        // 忽略。
-      }
-    })();
-  }, [channel]);
 
   const confirm = () => {
     if (channel === "local") onDownloadLocal(level);
@@ -1490,20 +1604,13 @@ function DownloadDialog(props: {
           {channel === "nas" ? (
             <div className="flex items-center gap-2">
               <span className="shrink-0 text-sm text-muted-foreground">目录</span>
-              <select
-                value={nasPath}
-                onChange={(e) => setNasPath(e.target.value)}
-                className="min-w-0 flex-1 rounded-full border bg-background px-3 py-1.5 text-xs"
+              <button
+                onClick={() => setFolderPickerOpen(true)}
+                className="flex min-w-0 flex-1 items-center gap-1.5 rounded-full border bg-background px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
               >
-                <option value="">根目录（downloads）</option>
-                {dirs
-                  .filter((d) => d !== "")
-                  .map((d) => (
-                    <option key={d} value={d}>
-                      {d}
-                    </option>
-                  ))}
-              </select>
+                <Folder className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">/{nasPath || "根目录"}</span>
+              </button>
             </div>
           ) : null}
         </div>
@@ -1518,6 +1625,17 @@ function DownloadDialog(props: {
           </Button>
         </div>
       </div>
+
+      {folderPickerOpen ? (
+        <FolderPicker
+          value={nasPath}
+          onSelect={(path) => {
+            setNasPath(path);
+            setFolderPickerOpen(false);
+          }}
+          onClose={() => setFolderPickerOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }
