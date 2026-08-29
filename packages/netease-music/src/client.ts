@@ -224,6 +224,14 @@ export class NeteaseMusicClient {
     await this.#user.deletePlaylist(playlistId);
   }
 
+  /** 更新歌单（重命名/描述/标签）。 */
+  async updatePlaylist(
+    playlistId: string | number,
+    options: { name?: string; desc?: string; tags?: string[] },
+  ): Promise<void> {
+    await this.#user.updatePlaylist(playlistId, options);
+  }
+
   /** 获取单曲可用品质清单(按账号身份过滤)。 */
   async getAvailableLevels(id: string | number): Promise<QualityLevel[]> {
     const privilege = await this.#songs.getPrivilege(String(id));

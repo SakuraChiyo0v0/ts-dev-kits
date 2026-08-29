@@ -28,6 +28,7 @@ const PLAYLIST_REMOVE_PATH = "/weapi/playlist/remove";
 /** 收藏/取消收藏歌单。注:老版 eapi 路径(/eapi/playlist/subscribe)实测 404,改用 weapi。 */
 const PLAYLIST_SUBSCRIBE_PATH = "/weapi/playlist/subscribe";
 const PLAYLIST_UNSUBSCRIBE_PATH = "/weapi/playlist/unsubscribe";
+const PLAYLIST_UPDATE_PATH = "/weapi/playlist/update";
 
 /** 当前登录账号信息。 */
 export interface AccountInfo {
@@ -227,6 +228,24 @@ export class UserApi {
     });
     if (Number(body.code ?? 0) !== 200) {
       throw new NeteaseError("API_ERROR", `playlist/remove failed (code ${String(body.code)})`, {
+        cause: body,
+      });
+    }
+  }
+
+  /** 更新歌单（重命名/描述/标签）。 */
+  async updatePlaylist(
+    playlistId: string | number,
+    options: { name?: string; desc?: string; tags?: string[] },
+  ): Promise<void> {
+    const body = await this.#session.post(PLAYLIST_UPDATE_PATH, {
+      id: Number(playlistId),
+      ...(options.name !== undefined ? { name: options.name } : {}),
+      ...(options.desc !== undefined ? { desc: options.desc } : {}),
+      ...(options.tags !== undefined ? { tags: options.tags.join(",") } : {}),
+    });
+    if (Number(body.code ?? 0) !== 200) {
+      throw new NeteaseError("API_ERROR", `playlist/update failed (code ${String(body.code)})`, {
         cause: body,
       });
     }
