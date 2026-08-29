@@ -389,6 +389,12 @@ export default function App() {
   const playAt = useCallback(async (tracks: Track[], index: number) => {
     const track = tracks[index];
     if (track === undefined) return;
+    // iOS Safari 自动播放解锁：在用户手势同步上下文里先静音触发一次 play()。
+    const audioEl = audioRef.current;
+    if (audioEl !== null) {
+      audioEl.muted = true;
+      void audioEl.play().catch(() => {});
+    }
     setQueue(tracks);
     setQueueIndex(index);
     setCurrentTrack(track);
@@ -445,6 +451,7 @@ export default function App() {
       if (audio !== null && data.url !== undefined) {
         audio.src = data.url;
         if (data.level !== undefined) setLevel(data.level);
+        audio.muted = false;
         await audio.play();
       }
     } catch {
@@ -1728,6 +1735,7 @@ function PlayerBar(props: {
     onToggleLikeCurrent,
     onCycleLevel,
   } = props;
+  const [menuOpen, setMenuOpen] = useState(false);
   if (track === null) return null;
 
   const totalSec = duration > 0 ? duration : (track.durationMs !== undefined ? track.durationMs / 1000 : 0);
@@ -1738,7 +1746,7 @@ function PlayerBar(props: {
       className="fixed inset-x-0 bottom-0 z-20 animate-slide-up border-t border-border/60 bg-background/70 backdrop-blur-xl"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <div className="mx-auto flex max-w-4xl items-center gap-3 px-4 py-2.5 sm:gap-4 sm:px-6 sm:py-3">
+      <div className="mx-auto flex max-w-4xl items-center gap-3 px-4 py-2 sm:gap-4 sm:px-6 sm:py-2.5">
         <button
           onClick={() => onOpenLyrics(track)}
           className="h-11 w-11 shrink-0 overflow-hidden rounded-full bg-muted shadow-sm sm:h-12 sm:w-12"
@@ -1766,11 +1774,11 @@ function PlayerBar(props: {
         </button>
 
         <div className="hidden min-w-0 flex-1 items-center gap-3 sm:flex">
-          <span className="text-xs tabular-nums text-muted-foreground">
+          <span className="text-xs tabular-nums text-foreground/70">
             {formatDuration(Math.round(currentSec) * 1000)}
           </span>
           <div
-            className="group/bar relative h-1 flex-1 cursor-pointer overflow-hidden rounded-full bg-muted"
+            className="group/bar relative h-1.5 flex-1 cursor-pointer overflow-hidden rounded-full bg-border"
             onPointerDown={(e) => {
               e.currentTarget.setPointerCapture(e.pointerId);
               const rect = e.currentTarget.getBoundingClientRect();
@@ -1793,12 +1801,12 @@ function PlayerBar(props: {
           </span>
         </div>
 
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="ml-auto flex shrink-0 items-center gap-0.5">
           <button
             onClick={onToggleRepeat}
             className={cn(
-              "rounded-full p-1.5 transition-colors hover:text-foreground",
-              repeatMode === "off" ? "text-muted-foreground" : "text-primary",
+              "rounded-full p-1.5 transition-colors",
+              repeatMode === "off" ? "text-muted-foreground hover:text-foreground" : "bg-primary/10 text-primary",
             )}
             title={repeatMode === "off" ? "顺序播放" : repeatMode === "all" ? "列表循环" : "单曲循环"}
           >
@@ -1827,80 +1835,112 @@ function PlayerBar(props: {
           >
             <SkipForward className="h-5 w-5" />
           </button>
+        </div>
+
+        <div className="hidden shrink-0 items-center gap-1 md:flex">
           <button
-            onClick={() => onOpenLyrics(track)}
+            onClick={onToggleMute}
             className="rounded-full p-1.5 text-muted-foreground transition-colors hover:text-foreground"
-            title="查看歌词"
+            title={muted ? "取消静音" : "静音"}
+            aria-label={muted ? "取消静音" : "静音"}
           >
-            <TextQuote className="h-5 w-5" />
+            {muted || volume === 0 ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
           </button>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={muted ? 0 : volume}
+            onChange={(e) => onVolumeChange(Number(e.target.value))}
+            className="w-20 accent-primary"
+            aria-label="音量"
+          />
+        </div>
+
+        <div className="relative shrink-0">
           <button
-            onClick={onOpenQueue}
-            className="rounded-full p-1.5 text-muted-foreground transition-colors hover:text-foreground"
-            title="播放队列"
-          >
-            <List className="h-5 w-5" />
-          </button>
-          <button
-            onClick={() => onShare(track)}
-            className="rounded-full p-1.5 text-muted-foreground transition-colors hover:text-foreground"
-            title="分享歌曲"
-          >
-            <Share className="h-5 w-5" />
-          </button>
-          <button
-            onClick={onToggleLikeCurrent}
+            onClick={() => setMenuOpen((v) => !v)}
             className={cn(
               "rounded-full p-1.5 transition-colors",
-              liked ? "text-primary" : "text-muted-foreground hover:text-foreground",
+              menuOpen ? "text-foreground" : "text-muted-foreground hover:text-foreground",
             )}
-            title={liked ? "取消红心" : "红心收藏"}
+            title="更多"
+            aria-label="更多"
           >
-            <Heart className={cn("h-5 w-5", liked && "fill-primary")} />
+            <MoreHorizontal className="h-5 w-5" />
           </button>
-          <div className="ml-1 hidden items-center gap-1.5 md:flex">
-            <button
-              onClick={onCycleLevel}
-              className="rounded-full px-2 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
-              title="切换音质"
-            >
-              {level}
-            </button>
-            <button
-              onClick={onCycleRate}
-              className="rounded-full px-2 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
-              title="播放倍速"
-            >
-              {rate === 1 ? "1x" : `${rate}x`}
-            </button>
-            <button
-              onClick={onCycleSleep}
-              className={cn(
-                "rounded-full px-2 py-1 text-xs transition-colors",
-                sleepMinutes !== null ? "text-primary" : "text-muted-foreground hover:text-foreground",
-              )}
-              title="睡眠定时"
-            >
-              {sleepMinutes !== null ? `${sleepMinutes}分` : "定时"}
-            </button>
-            <button
-              onClick={onToggleMute}
-              className="rounded-full p-1.5 text-muted-foreground transition-colors hover:text-foreground"
-              title={muted ? "取消静音" : "静音"}
-            >
-              {muted || volume === 0 ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
-            </button>
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.01}
-              value={muted ? 0 : volume}
-              onChange={(e) => onVolumeChange(Number(e.target.value))}
-              className="w-20 accent-primary"
-              aria-label="音量"
-            />
-          </div>
+          {menuOpen ? (
+            <>
+              <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
+              <div className="absolute bottom-full right-0 z-40 mb-2 w-48 rounded-xl border bg-popover p-1.5 shadow-lg">
+                <button
+                  onClick={() => {
+                    onOpenLyrics(track);
+                    setMenuOpen(false);
+                  }}
+                  className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted"
+                >
+                  <TextQuote className="h-4 w-4 text-muted-foreground" />
+                  歌词
+                </button>
+                <button
+                  onClick={() => {
+                    onOpenQueue();
+                    setMenuOpen(false);
+                  }}
+                  className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted"
+                >
+                  <List className="h-4 w-4 text-muted-foreground" />
+                  播放队列
+                </button>
+                <button
+                  onClick={() => {
+                    onShare(track);
+                    setMenuOpen(false);
+                  }}
+                  className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted"
+                >
+                  <Share className="h-4 w-4 text-muted-foreground" />
+                  分享歌曲
+                </button>
+                <button
+                  onClick={() => {
+                    onToggleLikeCurrent();
+                    setMenuOpen(false);
+                  }}
+                  className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted"
+                >
+                  <Heart className={cn("h-4 w-4", liked ? "fill-primary text-primary" : "text-muted-foreground")} />
+                  {liked ? "取消红心" : "红心收藏"}
+                </button>
+                <div className="my-1 h-px bg-border" />
+                <button
+                  onClick={onCycleLevel}
+                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted"
+                >
+                  <span>音质</span>
+                  <span className="text-xs font-medium text-primary">{level}</span>
+                </button>
+                <button
+                  onClick={onCycleRate}
+                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted"
+                >
+                  <span>倍速</span>
+                  <span className="text-xs text-muted-foreground">{rate === 1 ? "1x" : `${rate}x`}</span>
+                </button>
+                <button
+                  onClick={onCycleSleep}
+                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted"
+                >
+                  <span>睡眠定时</span>
+                  <span className={cn("text-xs", sleepMinutes !== null ? "text-primary" : "text-muted-foreground")}>
+                    {sleepMinutes !== null ? `${sleepMinutes} 分` : "关"}
+                  </span>
+                </button>
+              </div>
+            </>
+          ) : null}
         </div>
       </div>
     </div>
