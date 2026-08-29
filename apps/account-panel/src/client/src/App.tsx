@@ -2226,8 +2226,10 @@ function LoginView(props: {
 }) {
   const { login, onLogin, onCancel, onUserLogin, onUserRegister, bindMode } = props;
   const [mode, setMode] = useState<"account" | "qr">(bindMode === true ? "qr" : "account");
+  const [subView, setSubView] = useState<"login" | "register">("login");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   return (
     <div className="flex flex-1 items-center justify-center p-6">
       <Card className="w-full max-w-sm border-0 bg-card/70 shadow-lg backdrop-blur-xl">
@@ -2260,34 +2262,91 @@ function LoginView(props: {
           </div>
 
           {mode === "account" ? (
-            <div className="flex w-full flex-col gap-3">
-              <Input
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="用户名"
-                className="rounded-full"
-                autoComplete="username"
-              />
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="密码"
-                className="rounded-full"
-                autoComplete="current-password"
-              />
-              <Button
-                size="lg"
-                className="rounded-full"
-                disabled={username.trim().length < 2 || password.length < 6}
-                onClick={() => onUserLogin(username.trim(), password)}
-              >
-                登录
-              </Button>
-              <Button variant="ghost" size="sm" className="rounded-full" onClick={() => onUserRegister(username.trim(), password)}>
-                没有账号？注册
-              </Button>
-            </div>
+            subView === "login" ? (
+              <div className="flex w-full flex-col gap-3">
+                <Input
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="用户名"
+                  className="rounded-full"
+                  autoComplete="username"
+                />
+                <Input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="密码"
+                  className="rounded-full"
+                  autoComplete="current-password"
+                />
+                <Button
+                  size="lg"
+                  className="rounded-full"
+                  disabled={username.trim().length < 2 || password.length < 6}
+                  onClick={() => onUserLogin(username.trim(), password)}
+                >
+                  登录
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="rounded-full"
+                  onClick={() => setSubView("register")}
+                >
+                  没有账号？注册
+                </Button>
+              </div>
+            ) : (
+              <div className="flex w-full flex-col gap-3">
+                <Input
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="用户名（至少 2 位）"
+                  className="rounded-full"
+                  autoComplete="username"
+                />
+                <Input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="密码（至少 6 位）"
+                  className="rounded-full"
+                  autoComplete="new-password"
+                />
+                <Input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="确认密码"
+                  className="rounded-full"
+                  autoComplete="new-password"
+                />
+                <Button
+                  size="lg"
+                  className="rounded-full"
+                  disabled={
+                    username.trim().length < 2 ||
+                    password.length < 6 ||
+                    confirmPassword !== password
+                  }
+                  onClick={() => {
+                    onUserRegister(username.trim(), password);
+                    setConfirmPassword("");
+                    setSubView("login");
+                  }}
+                >
+                  注册
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="rounded-full"
+                  onClick={() => setSubView("login")}
+                >
+                  已有账号？去登录
+                </Button>
+              </div>
+            )
           ) : login === null ? (
             <Button size="lg" className="rounded-full" onClick={onLogin}>
               <QrCode />
