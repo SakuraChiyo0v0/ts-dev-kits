@@ -4,7 +4,7 @@ import { randomBytes } from "node:crypto";
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, extname, join } from "node:path";
-import { listDirs } from "./dirs.js";
+import { createDir, listDirs } from "./dirs.js";
 import { downloadToFile } from "./download.js";
 import { DownloaderError } from "./errors.js";
 import type {
@@ -50,9 +50,14 @@ export class DownloadManager {
     return this.#root;
   }
 
-  /** 列出可选的子目录（首项为 "" 表示根目录）。 */
-  listDirs(): string[] {
-    return listDirs(this.#root);
+  /** 列出 root 下某目录（subdir，相对 root）的直接子目录名。 */
+  listDirs(subdir = ""): string[] {
+    return listDirs(this.#root, subdir);
+  }
+
+  /** 在 root/subdir 下创建子目录，返回其相对 root 的路径。 */
+  createDir(subdir: string, name: string): string {
+    return createDir(this.#root, subdir, name);
   }
 
   /** 下载一个目标媒体文件。 */

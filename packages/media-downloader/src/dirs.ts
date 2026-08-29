@@ -1,28 +1,31 @@
-import { readdirSync } from "node:fs";
+import { mkdirSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 /**
- * 列出 root 下的子目录（相对路径），首项恒为 ""（表示根目录）。
- * 只列目录、跳过以 `.` 开头的隐藏项；depth 从 1 起。
+ * 列出 root 下某目录（subdir，相对 root）的直接子目录名。
+ * 只列目录、跳过以 `.` 开头的隐藏项，按名称排序。
  */
-export function listDirs(root: string, maxDepth = 2): string[] {
-  const dirs: string[] = [""];
-  const walk = (base: string, prefix: string, depth: number): void => {
-    if (depth > maxDepth) return;
-    let entries;
-    try {
-      entries = readdirSync(base, { withFileTypes: true });
-    } catch {
-      return;
-    }
-    for (const e of entries) {
-      if (e.isDirectory() && !e.name.startsWith(".")) {
-        const rel = prefix === "" ? e.name : `${prefix}/${e.name}`;
-        dirs.push(rel);
-        walk(join(base, e.name), rel, depth + 1);
-      }
-    }
-  };
-  walk(root, "", 1);
-  return dirs;
+export function listDirs(root: string, subdir = ""): string[] {
+  const base = subdir === "" ? root : join(root, subdir);
+  let entries;
+  try {
+    entries = readdirSync(base, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+  return entries
+    .filter((e) => e.isDirectory() && !e.name.startsWith("."))
+    .map((e) => e.name)
+    .sort();
+}
+
+/** 在 root/subdir 下创建子目录，返回其相对 root 的路径。 */
+export function createDir(root: string, subdir: string, name: string): string {
+  const safeName = name.replace(/[\\/:*?"<>|\u0000-\u001f]/gu, "_").trim();
+  if (safeName === "") {
+    throw new Error("folder name must not be empty");
+  }
+  const base = subdir === "" ? root : join(root, subdir);
+  mkdirSync(join(base, safeName), { recursive: true });
+  return subdir === "" ? safeName : `${subdir}/${safeName}`;
 }

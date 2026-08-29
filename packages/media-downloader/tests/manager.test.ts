@@ -31,12 +31,20 @@ async function serve(content: Buffer): Promise<{ server: Server; url: string }> 
 }
 
 describe("DownloadManager", () => {
-  it("listDirs 列出子目录（首项为根目录）", () => {
+  it("listDirs 列出直接子目录", () => {
     const root = tempDir();
     mkdirSync(join(root, "周杰伦"));
     mkdirSync(join(root, "欧美"));
     const m = new DownloadManager({ root });
-    expect(m.listDirs()).toEqual(["", "周杰伦", "欧美"]);
+    expect(m.listDirs()).toEqual(["周杰伦", "欧美"]);
+    expect(m.listDirs("周杰伦")).toEqual([]);
+  });
+
+  it("createDir 创建子目录", () => {
+    const root = tempDir();
+    const m = new DownloadManager({ root });
+    expect(m.createDir("", "新文件夹")).toBe("新文件夹");
+    expect(m.listDirs()).toEqual(["新文件夹"]);
   });
 
   it("download 下载到根目录并写入历史", async () => {
