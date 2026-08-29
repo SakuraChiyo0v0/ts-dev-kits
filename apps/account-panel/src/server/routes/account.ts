@@ -287,7 +287,7 @@ export const accountRoutes = new Hono()
   })
   /** POST /api/playlist/add —— 向歌单添加歌曲。 */
   .post("/playlist/add", async (c) => {
-    const body = await c.req.json<{ playlistId?: unknown; trackIds?: unknown }>().catch(() => ({}));
+    const body = (await c.req.json().catch(() => ({}))) as { playlistId?: unknown; trackIds?: unknown };
     const playlistId = typeof body.playlistId === "string" ? body.playlistId : undefined;
     const trackIds = Array.isArray(body.trackIds)
       ? (body.trackIds as unknown[]).filter((x): x is string => typeof x === "string")
