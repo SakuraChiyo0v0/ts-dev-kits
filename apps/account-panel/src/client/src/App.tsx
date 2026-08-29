@@ -283,6 +283,11 @@ export default function App() {
   const [downloadRecords, setDownloadRecords] = useState<
     Array<{ id: string; title: string; filePath: string; level: string; status: string; time: string }>
   >([]);
+  const [batchProgress, setBatchProgress] = useState<{
+    total: number;
+    done: number;
+    status: string;
+  } | null>(null);
   const [fetching, setFetching] = useState(0);
   const [likedCurrent, setLikedCurrent] = useState(false);
   const [volume, setVolume] = useState<number>(() => {
@@ -668,20 +673,26 @@ export default function App() {
           return;
         }
         const taskId = data.taskId;
-        showToast(`开始批量下载 ${tracks.length} 首`);
+        setBatchProgress({ total: tracks.length, done: 0, status: "running" });
         const timer = window.setInterval(async () => {
           try {
             const pr = await rpc.api["download-batch"].$get({ query: { id: taskId } });
             const p = (await pr.json()) as { total?: number; done?: number; status?: string };
             if (p.status === "done") {
               window.clearInterval(timer);
+              setBatchProgress({ total: p.total ?? tracks.length, done: p.done ?? tracks.length, status: "done" });
               showToast(`已下载 ${p.total ?? 0} 首到 NAS`);
+              window.setTimeout(() => setBatchProgress(null), 3000);
             } else if (p.status === "error") {
               window.clearInterval(timer);
+              setBatchProgress(null);
               showToast("批量下载失败");
+            } else {
+              setBatchProgress({ total: p.total ?? tracks.length, done: p.done ?? 0, status: "running" });
             }
           } catch {
             window.clearInterval(timer);
+            setBatchProgress(null);
             showToast("下载进度查询失败");
           }
         }, 1500);
@@ -942,6 +953,28 @@ export default function App() {
       {toast !== null ? (
         <div className="fixed left-1/2 top-16 z-40 -translate-x-1/2 animate-fade-in rounded-full bg-foreground px-4 py-2 text-sm text-background shadow-lg">
           {toast}
+        </div>
+      ) : null}
+
+      {batchProgress !== null ? (
+        <div className="fixed left-1/2 top-16 z-40 w-64 -translate-x-1/2 rounded-2xl border bg-card p-4 shadow-lg">
+          <div className="mb-2 flex items-center justify-between text-sm">
+            <span className="font-medium">批量下载</span>
+            <span className="tabular-nums text-muted-foreground">
+              {batchProgress.done}/{batchProgress.total}
+            </span>
+          </div>
+          <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-primary transition-[width] duration-500"
+              style={{
+                width: `${batchProgress.total > 0 ? (batchProgress.done / batchProgress.total) * 100 : 0}%`,
+              }}
+            />
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            {batchProgress.status === "done" ? "已完成" : "下载中…"}
+          </p>
         </div>
       ) : null}
 
