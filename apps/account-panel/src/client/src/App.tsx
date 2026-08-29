@@ -1823,17 +1823,17 @@ function DownloadDialog(props: {
         <div className="mb-5 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">音质</span>
-            <button
-              onClick={() =>
-                setLevel((l) => {
-                  const idx = levels.findIndex((x) => x.value === l);
-                  return levels[(idx + 1) % levels.length]?.value ?? l;
-                })
-              }
-              className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium"
+            <select
+              value={level}
+              onChange={(e) => setLevel(e.target.value)}
+              className="rounded-full border bg-background px-2.5 py-1 text-xs"
             >
-              {levelLabel}
-            </button>
+              {levels.map((l) => (
+                <option key={l.value} value={l.value}>
+                  {l.label}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">下载到</span>
@@ -1961,20 +1961,17 @@ function SongDetailModal(props: {
               <TextQuote />
               歌词
             </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="rounded-full"
-              onClick={onAddToPlaylist}
-            >
+          </div>
+          <div className="flex w-full gap-2">
+            <Button size="sm" variant="outline" className="flex-1 rounded-full" onClick={onAddToPlaylist}>
               <ListPlus />
               加入歌单
             </Button>
+            <Button size="sm" variant="outline" className="flex-1 rounded-full" onClick={onDownload}>
+              <Download />
+              下载
+            </Button>
           </div>
-          <Button size="sm" variant="outline" className="rounded-full" onClick={onDownload}>
-            <Download />
-            下载
-          </Button>
         </div>
         <Button variant="ghost" size="sm" className="mt-4 w-full rounded-full" onClick={onClose}>
           关闭
@@ -2866,19 +2863,17 @@ function PlaylistView(props: {
               </Button>
               {batchOpen ? (
                 <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
-                  <button
-                    onClick={() =>
-                      setBatchLevel((l) => {
-                        const levels = ["exhigh", "lossless", "higher", "standard"];
-                        const idx = levels.indexOf(l);
-                        return levels[(idx + 1) % levels.length] ?? l;
-                      })
-                    }
-                    className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium"
-                    title="切换品质"
+                  <select
+                    value={batchLevel}
+                    onChange={(e) => setBatchLevel(e.target.value)}
+                    className="rounded-full border bg-background px-2.5 py-1 text-xs"
                   >
-                    品质：{batchLevel}
-                  </button>
+                    {["exhigh", "lossless", "higher", "standard"].map((l) => (
+                      <option key={l} value={l}>
+                        品质：{l}
+                      </option>
+                    ))}
+                  </select>
                   <button
                     onClick={() => setBatchFolderOpen(true)}
                     className="flex min-w-0 flex-1 items-center gap-1.5 rounded-full border bg-background px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
