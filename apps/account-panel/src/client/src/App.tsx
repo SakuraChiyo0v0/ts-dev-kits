@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ChevronDown,
   ChevronLeft,
+  Download,
+  HardDriveDownload,
   Heart,
   List,
   ListMusic,
@@ -618,6 +620,27 @@ export default function App() {
     [showToast],
   );
 
+  const downloadToLocal = useCallback((track: Track) => {
+    window.open(`/api/download-file?id=${track.id}`, "_blank");
+  }, []);
+
+  const downloadToNas = useCallback(
+    async (track: Track) => {
+      try {
+        const res = await rpc.api.download.$post({ json: { id: track.id } });
+        const data = (await res.json()) as { filePath?: string; error?: string };
+        if (data.error !== undefined) {
+          showToast(`下载失败 ${data.error}`);
+        } else {
+          showToast("已开始下载到 NAS");
+        }
+      } catch {
+        showToast("下载失败");
+      }
+    },
+    [showToast],
+  );
+
   const toggleLike = useCallback(
     async (track: Track, liked: boolean) => {
       try {
@@ -864,6 +887,8 @@ export default function App() {
             void openLyrics(songDetail);
             setSongDetail(null);
           }}
+          onDownloadLocal={() => downloadToLocal(songDetail)}
+          onDownloadNas={() => void downloadToNas(songDetail)}
           onClose={() => setSongDetail(null)}
         />
       ) : null}
@@ -952,9 +977,12 @@ function SongDetailModal(props: {
   onLike: () => void;
   onShare: () => void;
   onLyrics: () => void;
+  onDownloadLocal: () => void;
+  onDownloadNas: () => void;
   onClose: () => void;
 }) {
-  const { track, onPlay, onLike, onShare, onLyrics, onClose } = props;
+  const { track, onPlay, onLike, onShare, onLyrics, onDownloadLocal, onDownloadNas, onClose } = props;
+  const [downloadOpen, setDownloadOpen] = useState(false);
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50" onClick={onClose}>
       <div
@@ -983,23 +1011,47 @@ function SongDetailModal(props: {
             </p>
           </div>
         </div>
-        <div className="flex justify-center gap-2">
-          <Button size="sm" className="rounded-full" onClick={onPlay}>
-            <Play />
-            播放
-          </Button>
-          <Button size="sm" variant="outline" className="rounded-full" onClick={onLike}>
-            <Heart />
-            红心
-          </Button>
-          <Button size="sm" variant="outline" className="rounded-full" onClick={onShare}>
-            <Share />
-            分享
-          </Button>
-          <Button size="sm" variant="outline" className="rounded-full" onClick={onLyrics}>
-            <TextQuote />
-            歌词
-          </Button>
+        <div className="flex flex-col items-center gap-2">
+          <div className="flex justify-center gap-2">
+            <Button size="sm" className="rounded-full" onClick={onPlay}>
+              <Play />
+              播放
+            </Button>
+            <Button size="sm" variant="outline" className="rounded-full" onClick={onLike}>
+              <Heart />
+              红心
+            </Button>
+            <Button size="sm" variant="outline" className="rounded-full" onClick={onShare}>
+              <Share />
+              分享
+            </Button>
+            <Button size="sm" variant="outline" className="rounded-full" onClick={onLyrics}>
+              <TextQuote />
+              歌词
+            </Button>
+          </div>
+          {downloadOpen ? (
+            <div className="flex gap-2">
+              <Button size="sm" variant="secondary" className="rounded-full" onClick={onDownloadLocal}>
+                <Download />
+                下载到本机
+              </Button>
+              <Button size="sm" variant="secondary" className="rounded-full" onClick={onDownloadNas}>
+                <HardDriveDownload />
+                下载到 NAS
+              </Button>
+            </div>
+          ) : (
+            <Button
+              size="sm"
+              variant="outline"
+              className="rounded-full"
+              onClick={() => setDownloadOpen(true)}
+            >
+              <Download />
+              下载
+            </Button>
+          )}
         </div>
         <Button variant="ghost" size="sm" className="mt-4 w-full rounded-full" onClick={onClose}>
           关闭

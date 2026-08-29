@@ -198,4 +198,59 @@ export const accountRoutes = new Hono()
     } catch {
       return c.json({ error: "创建失败" }, 500);
     }
+  })
+  /** POST /api/download —— 下载到 NAS 本地目录（服务器端落盘）。 */
+  .post("/download", async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as { id?: unknown; level?: unknown };
+    const id = typeof body.id === "string" ? body.id : undefined;
+    if (id === undefined) return c.json({ error: "missing id" }, 400);
+    const level = typeof body.level === "string" ? body.level : "exhigh";
+
+    await warmupAuth("netease-music");
+    const client = createClient();
+    if (!client.isLoggedIn) return c.json({ error: "未登录" }, 401);
+    try {
+      const outputDir = process.env.DOWNLOAD_DIR ?? "/downloads";
+      const result = await client.downloadByInput(id, {
+        outputDir,
+        level: level as QualityLevel,
+      });
+      return c.json({ filePath: result.filePath, level: result.level });
+    } catch (error) {
+      return c.json({ error: error instanceof Error ? error.message : "下载失败" }, 500);
+    }
+  })
+  /** GET /api/download-file?id=xxx —— 下载到浏览器（本机），流式转发。 */
+  .get("/download-file", async (c) => {
+    const id = c.req.query("id");
+    if (id === undefined) return c.json({ error: "missing id" }, 400);
+    const levelParam = c.req.query("level") ?? "exhigh";
+    const validLevels: QualityLevel[] = ["standard", "higher", "exhigh", "lossless", "hires"];
+    const level = (validLevels as string[]).includes(levelParam)
+      ? (levelParam as QualityLevel)
+      : "exhigh";
+
+    await warmupAuth("netease-music");
+    const client = createClient();
+    if (!client.isLoggedIn) return c.json({ error: "未登录" }, 401);
+    try {
+      const info = await client.getSongInfo(id);
+      const url = await client.getStreamUrl(id, level);
+      const resp = await fetch(url);
+      if (!resp.ok || resp.body === null) return c.json({ error: "取流失败" }, 500);
+      const ext = level === "lossless" || level === "hires" ? "flac" : "mp3";
+      const artist = info.artists.join(",") || "unknown";
+      const filename = encodeURIComponent(`${artist} - ${info.title}.${ext}`);
+      return new Response(resp.body, {
+        headers: {
+          "content-type": resp.headers.get("content-type") ?? "audio/mpeg",
+          "content-disposition": `attachment; filename*=UTF-8''${filename}`,
+          ...(resp.headers.get("content-length") !== null
+            ? { "content-length": resp.headers.get("content-length") ?? "" }
+            : {}),
+        },
+      });
+    } catch {
+      return c.json({ error: "下载失败" }, 500);
+    }
   });
