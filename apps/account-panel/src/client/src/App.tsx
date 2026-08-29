@@ -14,6 +14,7 @@ import {
   MoreHorizontal,
   Music2,
   Pause,
+  Pencil,
   Play,
   Plus,
   QrCode,
@@ -829,6 +830,19 @@ export default function App() {
     [refresh, showToast],
   );
 
+  const renamePlaylist = useCallback(
+    async (id: string, name: string) => {
+      try {
+        await rpc.api.playlist.update.$post({ json: { id, name } });
+        showToast("已重命名");
+        await refresh();
+      } catch {
+        showToast("重命名失败");
+      }
+    },
+    [refresh, showToast],
+  );
+
   const clearDownloadHistory = useCallback(async () => {
     try {
       await rpc.api["download-history"].clear.$post();
@@ -1008,6 +1022,7 @@ export default function App() {
             onDownloadLocal={(t) => downloadToLocal(t)}
             onDownloadAll={(path, level) => void downloadBatch(detail.tracks, path, level)}
             onDeletePlaylist={(id) => void deletePlaylist(id)}
+            onRenamePlaylist={(id, name) => void renamePlaylist(id, name)}
             downloadedVersion={downloadedVersion}
           />
         ) : account === null ? (
@@ -2282,9 +2297,10 @@ function PlaylistView(props: {
   onDownloadLocal: (track: Track) => void;
   onDownloadAll: (path: string, level: string) => void;
   onDeletePlaylist: (id: string) => void;
+  onRenamePlaylist: (id: string, name: string) => void;
   downloadedVersion: number;
 }) {
-  const { detail, currentTrackId, onBack, onPlay, onPlayAll, onToggleLike, onSharePlaylist, onShowDetail, onDownloadLocal, onDownloadAll, onDeletePlaylist, downloadedVersion } =
+  const { detail, currentTrackId, onBack, onPlay, onPlayAll, onToggleLike, onSharePlaylist, onShowDetail, onDownloadLocal, onDownloadAll, onDeletePlaylist, onRenamePlaylist, downloadedVersion } =
     props;
   const [hearted, setHearted] = useState<Set<string>>(new Set());
   const [downloaded, setDownloaded] = useState<Set<string>>(new Set());
@@ -2376,6 +2392,18 @@ function PlaylistView(props: {
                 title="分享歌单"
               >
                 <Share className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => {
+                  const name = window.prompt("重命名歌单", detail.title);
+                  if (name !== null && name.trim() !== "" && name.trim() !== detail.title) {
+                    onRenamePlaylist(detail.id, name.trim());
+                  }
+                }}
+                className="rounded-full p-1.5 text-muted-foreground transition-colors hover:text-foreground"
+                title="重命名歌单"
+              >
+                <Pencil className="h-4 w-4" />
               </button>
               <button
                 onClick={() => {
