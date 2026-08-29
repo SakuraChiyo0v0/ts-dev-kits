@@ -346,7 +346,9 @@ export const accountRoutes = new Hono()
       return c.json({ filePath: result.filePath, level: result.level });
     } catch (error) {
       getDownloadManager().record({ filename: id, filePath: "", status: "error" });
-      return c.json({ error: error instanceof Error ? error.message : "下载失败" }, 500);
+      // 脱敏：不把内部 error.message 直传客户端。
+      void error;
+      return c.json({ error: "下载失败" }, 500);
     }
   })
   /** GET /api/download-file?id=xxx —— 下载到浏览器（本机），流式转发。 */
@@ -503,6 +505,7 @@ export const accountRoutes = new Hono()
   .get("/recommend-playlists", async (c) => {
     await warmupAuth("netease-music");
     const client = createClient();
+    if (!client.isLoggedIn) return c.json({ error: "未登录" }, 401);
     try {
       const playlists = await client.getRecommendPlaylists();
       return c.json({ playlists });

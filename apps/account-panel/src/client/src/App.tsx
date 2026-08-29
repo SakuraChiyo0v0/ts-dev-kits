@@ -764,7 +764,7 @@ export default function App() {
         if (data.error !== undefined) {
           showToast(`下载失败 ${data.error}`);
         } else {
-          showToast("已开始下载到 NAS");
+          showToast("已下载到 NAS");
         }
       } catch {
         showToast("下载失败");
@@ -2049,6 +2049,12 @@ function HomeView(props: {
     }
   });
   const [searchFocused, setSearchFocused] = useState(false);
+  const blurTimerRef = useRef<number | null>(null);
+  useEffect(() => {
+    return () => {
+      if (blurTimerRef.current !== null) window.clearTimeout(blurTimerRef.current);
+    };
+  }, []);
   const nickname = account.account?.nickname ?? "网易云用户";
   const avatarUrl = account.account?.avatarUrl;
   const vip = account.vip;
@@ -2281,7 +2287,10 @@ function HomeView(props: {
               value={songQuery}
               onChange={(e) => setSongQuery(e.target.value)}
               onFocus={() => setSearchFocused(true)}
-              onBlur={() => window.setTimeout(() => setSearchFocused(false), 200)}
+              onBlur={() => {
+                if (blurTimerRef.current !== null) window.clearTimeout(blurTimerRef.current);
+                blurTimerRef.current = window.setTimeout(() => setSearchFocused(false), 200);
+              }}
               placeholder="搜索歌曲（网易云）"
               className="rounded-full pl-9"
             />
@@ -3175,6 +3184,13 @@ function LyricsView(props: {
     setLocked(true);
     if (lockTimer.current !== null) window.clearTimeout(lockTimer.current);
     lockTimer.current = window.setTimeout(() => setLocked(false), 3000);
+  }, []);
+
+  // 卸载时清理锁 timer。
+  useEffect(() => {
+    return () => {
+      if (lockTimer.current !== null) window.clearTimeout(lockTimer.current);
+    };
   }, []);
 
   useEffect(() => {
