@@ -9,7 +9,7 @@ export interface GlobalConfig {
   url: string;
   username?: string;
   password?: string;
-  /** 加密密钥(可省略,用环境变量 WEBDAV_CONFIG_KEY) */
+  /** 加密密钥(可省略,用环境变量 CONFIG_KEY) */
   key?: string;
 }
 

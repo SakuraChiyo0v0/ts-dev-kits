@@ -14,7 +14,7 @@ import {
 } from "@sakurachiyo0v0/webdav";
 import { createLogger } from "@sakurachiyo0v0/logger";
 import { loadGlobalConfig } from "./global-config.js";
-import { PrefixBackend, type ConfigBackend } from "./backend.js";
+import { JsonBackend, type ConfigBackend } from "./backend.js";
 import { encryptedBackend } from "./encrypt.js";
 import type { ConfigCenter, ConfigCenterOptions, ConfigNamespace, GlobalConfig, NamespaceOptions } from "./types.js";
 
@@ -29,13 +29,13 @@ function logHost(url: string): string {
   }
 }
 
-/** 校验命名空间:不允许路径分隔符/越界(防路径穿越) */
+/** 校验命名空间:不允许路径分隔符/冒号/越界(防路径穿越与前后端语义分叉) */
 function validateNamespace(name: string): void {
   if (!name || name.length === 0) {
     throw new WebdavError(WebdavErrorCode.VALIDATION, "namespace 不能为空");
   }
-  if (name.includes("/") || name.includes("\\") || name.includes("..")) {
-    throw new WebdavError(WebdavErrorCode.VALIDATION, `namespace 非法(不允许路径分隔符/越界): ${name}`);
+  if (name.includes("/") || name.includes("\\") || name.includes("..") || name.includes(":")) {
+    throw new WebdavError(WebdavErrorCode.VALIDATION, `namespace 非法(不允许路径分隔符/冒号/越界): ${name}`);
   }
 }
 
@@ -53,7 +53,9 @@ function createWebdavBackend(global: GlobalConfig): ConfigBackend {
   const makeStore = (basePath: string): ConfigStore => {
     let store = cache.get(basePath);
     if (store === undefined) {
-      store = createConfigStore({ client, basePath, format: "json" });
+      // format: "text" —— 字符串透明，与加密域旧密文（纯文本）兼容；
+      // JSON 序列化统一由上层 JsonBackend/EncryptedBackend 负责。
+      store = createConfigStore({ client, basePath, format: "text" });
       cache.set(basePath, store);
     }
     return store;
@@ -129,9 +131,8 @@ export class ConfigCenterImpl implements ConfigCenter {
     // 统一前缀下按敏感度分域:明文 configs/<ns>,加密 secrets/<ns>
     const prefix = `${AMECHAN_BASE}:${encrypt ? "secrets" : "configs"}:${name}`;
     let nsBackend = this.backend.withPrefix(prefix);
-    if (encrypt) {
-      nsBackend = encryptedBackend(nsBackend, this.key);
-    }
+    // 加密域 → EncryptedBackend；明文域 → JsonBackend（JSON 序列化统一在上层）。
+    nsBackend = encrypt ? encryptedBackend(nsBackend, this.key) : new JsonBackend(nsBackend);
     logger.debug("namespace created", { name, encrypt, prefix });
     return new ConfigNamespaceImpl(name, encrypt, nsBackend);
   }
@@ -142,5 +143,3 @@ export function createConfigCenter(options: ConfigCenterOptions = {}): ConfigCen
   const global = options.global ?? loadGlobalConfig(options.configPath);
   return new ConfigCenterImpl(global, options.backend);
 }
-
-void PrefixBackend;

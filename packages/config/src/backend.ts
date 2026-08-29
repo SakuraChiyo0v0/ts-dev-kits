@@ -53,3 +53,41 @@ export class PrefixBackend implements ConfigBackend {
 export function prefixBackend(inner: ConfigBackend, prefix: string): ConfigBackend {
   return new PrefixBackend(inner, prefix);
 }
+
+/**
+ * 明文 JSON 包装：底层后端按「字符串透明」约定（只存/读字符串），
+ * 此包装负责明文域的 JSON.stringify / JSON.parse。
+ * 加密域用 EncryptedBackend（密文字符串），两者统一上层的 JSON 处理。
+ */
+export class JsonBackend implements ConfigBackend {
+  readonly #inner: ConfigBackend;
+
+  constructor(inner: ConfigBackend) {
+    this.#inner = inner;
+  }
+
+  async load<T = unknown>(key: string): Promise<T> {
+    const raw = await this.#inner.load<string>(key);
+    try {
+      return JSON.parse(raw) as T;
+    } catch {
+      return raw as T;
+    }
+  }
+
+  save(key: string, value: unknown): Promise<void> {
+    return this.#inner.save(key, JSON.stringify(value));
+  }
+
+  list(): Promise<string[]> {
+    return this.#inner.list();
+  }
+
+  remove(key: string): Promise<void> {
+    return this.#inner.remove(key);
+  }
+
+  withPrefix(prefix: string): ConfigBackend {
+    return new JsonBackend(this.#inner.withPrefix(prefix));
+  }
+}

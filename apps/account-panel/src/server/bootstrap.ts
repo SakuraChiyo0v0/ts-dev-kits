@@ -14,19 +14,27 @@ function env(name: string): string {
   return value;
 }
 
+/** 模块级单例：PgBackend（连接池）只建一次，避免每请求 new Pool 泄漏。 */
+let pgBackendSingleton: PgBackend | null = null;
+
 /** 从环境变量创建配置中心（显式传 global，不读本地文件）。 */
 export function createAppCenter(): ConfigCenter {
   const pgUrl = process.env.PG_URL;
   if (pgUrl !== undefined && pgUrl.trim() !== "") {
-    // PostgreSQL 后端：新建部署首选。
-    const backend = new PgBackend({ url: pgUrl.trim() });
-    void backend.init().catch(() => {
-      // 建表失败不阻塞启动（首次连接 PG 未就绪时稍后重试）。
-    });
+    // PostgreSQL 后端：新建部署首选。连接池单例复用。
+    if (pgBackendSingleton === null) {
+      pgBackendSingleton = new PgBackend({ url: pgUrl.trim() });
+      void pgBackendSingleton.init().catch(() => {
+        // 建表失败不阻塞启动（首次连接 PG 未就绪时稍后重试）。
+      });
+    }
     const key = process.env.CONFIG_KEY;
+    if (key === undefined || key.trim() === "") {
+      throw new Error("缺少环境变量 CONFIG_KEY（加密密钥）");
+    }
     return createConfigCenter({
-      global: { url: "", ...(key !== undefined && key !== "" ? { key } : {}) },
-      backend,
+      global: { url: "", key },
+      backend: pgBackendSingleton,
     });
   }
   // WebDAV 兼容路径（无 PG_URL）。
@@ -39,8 +47,8 @@ export function createAppCenter(): ConfigCenter {
       ...(process.env.WEBDAV_PASSWORD !== undefined && process.env.WEBDAV_PASSWORD !== ""
         ? { password: process.env.WEBDAV_PASSWORD }
         : {}),
-      ...(process.env.WEBDAV_CONFIG_KEY !== undefined && process.env.WEBDAV_CONFIG_KEY !== ""
-        ? { key: process.env.WEBDAV_CONFIG_KEY }
+      ...(process.env.CONFIG_KEY !== undefined && process.env.CONFIG_KEY !== ""
+        ? { key: process.env.CONFIG_KEY }
         : {}),
     },
   });

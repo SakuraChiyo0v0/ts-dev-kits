@@ -11,7 +11,12 @@ export class PgBackend implements ConfigBackend {
 
   constructor(options: { url: string; table?: string }) {
     this.#pool = new Pool({ connectionString: options.url });
-    this.#table = options.table ?? "config_kv";
+    const table = options.table ?? "config_kv";
+    // 表名标识符校验，防 SQL 注入。
+    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(table)) {
+      throw new Error(`非法表名: ${table}`);
+    }
+    this.#table = table;
   }
 
   /** 懒建表（幂等，首次操作时确保表存在）。 */
@@ -46,16 +51,16 @@ export class PgBackend implements ConfigBackend {
       [key],
     );
     const raw = rows[0]?.value as string | undefined;
-    if (raw === undefined) return undefined as T;
-    try {
-      return JSON.parse(raw) as T;
-    } catch {
-      return raw as T;
+    if (raw === undefined) {
+      // 与 WebDAV 后端行为对齐：缺 key 抛 NOT_FOUND。
+      throw new Error("NOT_FOUND");
     }
+    return raw as T;
   }
 
   async save(key: string, value: unknown): Promise<void> {
     await this.#ensureTable();
+    // 字符串透明：原样存（JSON 序列化由上层 JsonBackend/EncryptedBackend 负责）。
     const text = typeof value === "string" ? value : JSON.stringify(value);
     await this.#pool.query(
       `INSERT INTO ${this.#table} (key, value) VALUES ($1, $2)

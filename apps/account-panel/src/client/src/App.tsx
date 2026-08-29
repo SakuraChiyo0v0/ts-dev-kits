@@ -455,6 +455,27 @@ export default function App() {
     void refresh();
   }, [refresh]);
 
+  // 启动时校验本地主账号 token：无效则清除。
+  useEffect(() => {
+    if (userAuth === null) return;
+    void (async () => {
+      try {
+        const res = await fetch("/api/users/me", { headers: { authorization: `Bearer ${userAuth.token}` } });
+        if (!res.ok) {
+          setUserAuth(null);
+          try {
+            localStorage.removeItem("user-auth");
+          } catch {
+            // 忽略。
+          }
+        }
+      } catch {
+        // 网络失败不强行登出。
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // 卸载时清理批量下载轮询 timer 与登录 EventSource。
   useEffect(() => {
     return () => {
@@ -1212,6 +1233,7 @@ export default function App() {
             onCancel={() => setLogin(null)}
             onUserLogin={(u, p) => void userLogin(u, p)}
             onUserRegister={(u, p) => void userRegister(u, p)}
+            bindMode={userAuth !== null}
           />
         )}
       </div>
@@ -2200,17 +2222,20 @@ function LoginView(props: {
   onCancel: () => void;
   onUserLogin: (username: string, password: string) => void;
   onUserRegister: (username: string, password: string) => void;
+  bindMode?: boolean;
 }) {
-  const { login, onLogin, onCancel, onUserLogin, onUserRegister } = props;
-  const [mode, setMode] = useState<"account" | "qr">("account");
+  const { login, onLogin, onCancel, onUserLogin, onUserRegister, bindMode } = props;
+  const [mode, setMode] = useState<"account" | "qr">(bindMode === true ? "qr" : "account");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   return (
     <div className="flex flex-1 items-center justify-center p-6">
       <Card className="w-full max-w-sm border-0 bg-card/70 shadow-lg backdrop-blur-xl">
         <CardHeader className="items-center text-center">
-          <CardTitle>登录</CardTitle>
-          <CardDescription>统一账号登录，或扫码绑定网易云</CardDescription>
+          <CardTitle>{bindMode === true ? "绑定网易云" : "登录"}</CardTitle>
+          <CardDescription>
+            {bindMode === true ? "主账号已登录，扫码绑定网易云后开始使用" : "统一账号登录，或扫码绑定网易云"}
+          </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col items-center gap-4">
           <div className="flex gap-1 rounded-full bg-muted p-1">
@@ -2230,7 +2255,7 @@ function LoginView(props: {
                 mode === "qr" ? "bg-background text-foreground shadow" : "text-muted-foreground",
               )}
             >
-              扫码绑定
+              {bindMode === true ? "扫码绑定" : "扫码绑定"}
             </button>
           </div>
 
