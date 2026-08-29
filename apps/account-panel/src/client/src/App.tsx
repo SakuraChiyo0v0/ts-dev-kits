@@ -1924,7 +1924,17 @@ function PlaylistView(props: {
                 <Share className="h-4 w-4" />
               </button>
             </div>
-            <p className="mt-2 text-sm text-muted-foreground">{detail.tracks.length} 首歌曲</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {detail.tracks.length} 首歌曲
+              {(() => {
+                const totalMs = detail.tracks.reduce((sum, t) => sum + (t.durationMs ?? 0), 0);
+                if (totalMs <= 0) return "";
+                const totalMin = Math.round(totalMs / 60000);
+                const label =
+                  totalMin >= 60 ? `约 ${Math.floor(totalMin / 60)} 小时 ${totalMin % 60} 分钟` : `约 ${totalMin} 分钟`;
+                return ` · ${label}`;
+              })()}
+            </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <Button size="sm" className="rounded-full" onClick={onPlayAll}>
                 <Play className="mr-1 h-4 w-4" />
@@ -2412,6 +2422,7 @@ function LyricsView(props: {
   const [size, setSize] = useState<"md" | "lg" | "xl">("lg");
   const [locked, setLocked] = useState(false);
   const lockTimer = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
 
   // 手动滚动时暂停自动滚动，3 秒无操作后恢复。
   const pauseAutoScroll = useCallback(() => {
@@ -2488,7 +2499,18 @@ function LyricsView(props: {
         <div
           className="flex-1 overflow-y-auto px-6 pb-32 [mask-image:linear-gradient(to_bottom,transparent,black_20%,black_80%,transparent)]"
           onWheel={pauseAutoScroll}
-          onTouchMove={pauseAutoScroll}
+          onTouchStart={(e) => {
+            touchStartY.current = e.touches[0]?.clientY ?? null;
+          }}
+          onTouchMove={(e) => {
+            pauseAutoScroll();
+            const start = touchStartY.current;
+            const cur = e.touches[0]?.clientY;
+            if (start !== null && cur !== undefined && cur - start > 120) {
+              onClose();
+              touchStartY.current = null;
+            }
+          }}
         >
           <div className="mx-auto flex max-w-2xl flex-col items-center gap-7 py-[45vh] text-center">
             {lines.length === 0 ? (
