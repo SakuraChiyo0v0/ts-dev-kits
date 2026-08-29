@@ -1130,6 +1130,7 @@ export default function App() {
             void playAt([t], 0);
             setShowHistory(false);
           }}
+          onDownload={(t) => downloadToLocal(t)}
           onClear={clearRecent}
           onClose={() => setShowHistory(false)}
         />
@@ -1205,10 +1206,11 @@ function DownloadHistoryPanel(props: {
 function HistoryPanel(props: {
   tracks: Track[];
   onPlay: (t: Track) => void;
+  onDownload: (t: Track) => void;
   onClear: () => void;
   onClose: () => void;
 }) {
-  const { tracks, onPlay, onClear, onClose } = props;
+  const { tracks, onPlay, onDownload, onClear, onClose } = props;
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
@@ -1232,8 +1234,8 @@ function HistoryPanel(props: {
         </div>
         <ul className="max-h-[60vh] divide-y divide-border/60 overflow-y-auto">
           {tracks.map((t) => (
-            <li key={t.id}>
-              <button onClick={() => onPlay(t)} className="flex w-full items-center gap-3 py-2.5 text-left">
+            <li key={t.id} className="flex items-center">
+              <button onClick={() => onPlay(t)} className="flex flex-1 items-center gap-3 py-2.5 text-left">
                 <div className="h-9 w-9 shrink-0 overflow-hidden rounded bg-muted">
                   {t.coverUrl ? (
                     <img src={t.coverUrl} alt="" className="h-full w-full object-cover" />
@@ -1253,6 +1255,13 @@ function HistoryPanel(props: {
                 <span className="text-xs tabular-nums text-muted-foreground">
                   {formatDuration(t.durationMs)}
                 </span>
+              </button>
+              <button
+                onClick={() => onDownload(t)}
+                className="shrink-0 rounded-full p-2 text-muted-foreground transition-colors hover:text-foreground"
+                title="下载到本机"
+              >
+                <Download className="h-4 w-4" />
               </button>
             </li>
           ))}
