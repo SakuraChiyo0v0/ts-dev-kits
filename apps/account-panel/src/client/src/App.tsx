@@ -510,19 +510,6 @@ export default function App() {
     [refresh, showToast],
   );
 
-  const userRegister = useCallback(
-    async (username: string, password: string) => {
-      try {
-        const res = await rpc.api.users.register.$post({ json: { username, password } });
-        const data = (await res.json()) as { ok?: boolean; error?: string };
-        showToast(data.ok === true ? "注册成功，请登录" : (data.error ?? "注册失败"));
-      } catch {
-        showToast("注册失败");
-      }
-    },
-    [showToast],
-  );
-
   const userLogout = useCallback(async () => {
     try {
       if (userAuth !== null) {
@@ -1245,10 +1232,7 @@ export default function App() {
             onOpenLogs={() => void openLogs()}
           />
         ) : userAuth === null ? (
-          <LoginView
-            onUserLogin={(u, p) => void userLogin(u, p)}
-            onUserRegister={(u, p) => void userRegister(u, p)}
-          />
+          <LoginView onUserLogin={(u, p) => void userLogin(u, p)} />
         ) : activeModule === null ? (
           <Launcher
             username={userAuth.username}
@@ -2325,104 +2309,43 @@ function BindNeteaseView(props: {
 
 function LoginView(props: {
   onUserLogin: (username: string, password: string) => void;
-  onUserRegister: (username: string, password: string) => void;
 }) {
-  const { onUserLogin, onUserRegister } = props;
-  const [subView, setSubView] = useState<"login" | "register">("login");
+  const { onUserLogin } = props;
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   return (
     <div className="flex flex-1 items-center justify-center p-6">
       <Card className="w-full max-w-sm border-0 bg-card/70 shadow-lg backdrop-blur-xl">
         <CardHeader className="items-center text-center">
-          <CardTitle>{subView === "login" ? "登录" : "注册"}</CardTitle>
+          <CardTitle>登录</CardTitle>
           <CardDescription>统一账号，一个登录入口管理所有服务</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col items-center gap-4">
-          {subView === "login" ? (
-            <div className="flex w-full flex-col gap-3">
-              <Input
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="用户名"
-                className="rounded-full"
-                autoComplete="username"
-              />
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="密码"
-                className="rounded-full"
-                autoComplete="current-password"
-              />
-              <Button
-                size="lg"
-                className="rounded-full"
-                disabled={username.trim().length < 2 || password.length < 6}
-                onClick={() => onUserLogin(username.trim(), password)}
-              >
-                登录
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="rounded-full"
-                onClick={() => setSubView("register")}
-              >
-                没有账号？注册
-              </Button>
-            </div>
-          ) : (
-            <div className="flex w-full flex-col gap-3">
-              <Input
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="用户名（至少 2 位）"
-                className="rounded-full"
-                autoComplete="username"
-              />
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="密码（至少 6 位）"
-                className="rounded-full"
-                autoComplete="new-password"
-              />
-              <Input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="确认密码"
-                className="rounded-full"
-                autoComplete="new-password"
-              />
-              <Button
-                size="lg"
-                className="rounded-full"
-                disabled={
-                  username.trim().length < 2 || password.length < 6 || confirmPassword !== password
-                }
-                onClick={() => {
-                  onUserRegister(username.trim(), password);
-                  setConfirmPassword("");
-                  setSubView("login");
-                }}
-              >
-                注册
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="rounded-full"
-                onClick={() => setSubView("login")}
-              >
-                已有账号？去登录
-              </Button>
-            </div>
-          )}
+          <div className="flex w-full flex-col gap-3">
+            <Input
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="用户名"
+              className="rounded-full"
+              autoComplete="username"
+            />
+            <Input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="密码"
+              className="rounded-full"
+              autoComplete="current-password"
+            />
+            <Button
+              size="lg"
+              className="rounded-full"
+              disabled={username.trim().length < 2 || password.length < 6}
+              onClick={() => onUserLogin(username.trim(), password)}
+            >
+              登录
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>
