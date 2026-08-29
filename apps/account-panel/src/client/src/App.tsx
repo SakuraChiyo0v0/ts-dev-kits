@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ChevronDown,
   ChevronLeft,
+  Clock,
   Download,
   HardDriveDownload,
   Heart,
@@ -277,6 +278,10 @@ export default function App() {
   const [showHelp, setShowHelp] = useState(false);
   const [songDetail, setSongDetail] = useState<Track | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [showDownloadHistory, setShowDownloadHistory] = useState(false);
+  const [downloadRecords, setDownloadRecords] = useState<
+    Array<{ id: string; title: string; filePath: string; level: string; status: string; time: string }>
+  >([]);
   const [fetching, setFetching] = useState(0);
   const [likedCurrent, setLikedCurrent] = useState(false);
   const [volume, setVolume] = useState<number>(() => {
@@ -686,6 +691,20 @@ export default function App() {
     [showToast],
   );
 
+  const openDownloadHistory = useCallback(async () => {
+    setShowDownloadHistory(true);
+    setDownloadRecords([]);
+    try {
+      const res = await rpc.api["download-history"].$get();
+      const data = (await res.json()) as {
+        records?: Array<{ id: string; title: string; filePath: string; level: string; status: string; time: string }>;
+      };
+      setDownloadRecords(data.records ?? []);
+    } catch {
+      // 忽略。
+    }
+  }, []);
+
   const toggleLike = useCallback(
     async (track: Track, liked: boolean) => {
       try {
@@ -893,6 +912,7 @@ export default function App() {
         onDownload={() => {
           if (currentTrack !== null) downloadToLocal(currentTrack);
         }}
+        onOpenDownloadHistory={() => void openDownloadHistory()}
       />
 
       {showLyrics && currentTrack !== null ? (
@@ -956,6 +976,57 @@ export default function App() {
           onClose={() => setShowHistory(false)}
         />
       ) : null}
+
+      {showDownloadHistory ? (
+        <DownloadHistoryPanel records={downloadRecords} onClose={() => setShowDownloadHistory(false)} />
+      ) : null}
+    </div>
+  );
+}
+
+function DownloadHistoryPanel(props: {
+  records: Array<{ id: string; title: string; filePath: string; level: string; status: string; time: string }>;
+  onClose: () => void;
+}) {
+  const { records, onClose } = props;
+  return (
+    <div className="fixed inset-0 z-40 flex items-end justify-center">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative w-full max-w-lg animate-slide-up rounded-t-2xl bg-card p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-bold">下载历史（{records.length}）</h2>
+          <button
+            onClick={onClose}
+            className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <ChevronDown className="h-5 w-5" />
+          </button>
+        </div>
+        <ul className="max-h-[60vh] divide-y divide-border/60 overflow-y-auto">
+          {records.map((r) => (
+            <li key={r.id} className="flex items-center gap-3 py-2.5">
+              <span
+                className={cn(
+                  "h-2 w-2 shrink-0 rounded-full",
+                  r.status === "done" ? "bg-emerald-500" : "bg-destructive",
+                )}
+              />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">{r.title}</p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {r.filePath || "(失败)"} · {r.level}
+                </p>
+              </div>
+              <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                {new Date(r.time).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}
+              </span>
+            </li>
+          ))}
+          {records.length === 0 ? (
+            <li className="py-10 text-center text-sm text-muted-foreground">暂无下载记录</li>
+          ) : null}
+        </ul>
+      </div>
     </div>
   );
 }
@@ -1905,6 +1976,7 @@ function PlayerBar(props: {
   onToggleLikeCurrent: () => void;
   onCycleLevel: () => void;
   onDownload: () => void;
+  onOpenDownloadHistory: () => void;
 }) {
   const {
     track,
@@ -1935,6 +2007,7 @@ function PlayerBar(props: {
     onToggleLikeCurrent,
     onCycleLevel,
     onDownload,
+    onOpenDownloadHistory,
   } = props;
   const [menuOpen, setMenuOpen] = useState(false);
   if (track === null) return null;
@@ -2115,6 +2188,16 @@ function PlayerBar(props: {
                 >
                   <Download className="h-4 w-4 text-muted-foreground" />
                   下载到本机
+                </button>
+                <button
+                  onClick={() => {
+                    onOpenDownloadHistory();
+                    setMenuOpen(false);
+                  }}
+                  className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted"
+                >
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  下载历史
                 </button>
                 <button
                   onClick={() => {

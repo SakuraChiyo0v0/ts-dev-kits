@@ -23,6 +23,22 @@ interface DownloadTask {
 }
 const downloadTasks = new Map<string, DownloadTask>();
 
+/** 下载历史记录（内存，最多 100 条）。 */
+interface DownloadRecord {
+  id: string;
+  title: string;
+  filePath: string;
+  level: string;
+  status: "done" | "error";
+  time: string;
+}
+const downloadHistory: DownloadRecord[] = [];
+
+function pushHistory(record: Omit<DownloadRecord, "id" | "time">): void {
+  downloadHistory.unshift({ ...record, id: crypto.randomUUID(), time: new Date().toISOString() });
+  if (downloadHistory.length > 100) downloadHistory.pop();
+}
+
 /** GET /api/account —— 登录状态 + 账号信息 + VIP + 歌单列表。 */
 export const accountRoutes = new Hono()
   .get("/account", async (c) => {
@@ -229,12 +245,21 @@ export const accountRoutes = new Hono()
     try {
       const outputDir = process.env.DOWNLOAD_DIR ?? "/downloads";
       const finalDir = safeSub === "" ? outputDir : `${outputDir}/${safeSub}`;
+      let title = id;
+      try {
+        const info = await client.getSongInfo(id);
+        title = info.artists.length > 0 ? `${info.artists.join(",")} - ${info.title}` : info.title;
+      } catch {
+        // 标题获取失败不影响下载。
+      }
       const result = await client.downloadByInput(id, {
         outputDir: finalDir,
         level: level as QualityLevel,
       });
+      pushHistory({ title, filePath: result.filePath, level: result.level, status: "done" });
       return c.json({ filePath: result.filePath, level: result.level });
     } catch (error) {
+      pushHistory({ title: id, filePath: "", level: level as QualityLevel, status: "error" });
       return c.json({ error: error instanceof Error ? error.message : "下载失败" }, 500);
     }
   })
@@ -307,6 +332,12 @@ export const accountRoutes = new Hono()
           task.done += 1;
         }
         task.status = "done";
+        pushHistory({
+          title: `批量下载 ${ids.length} 首`,
+          filePath: finalDir,
+          level: level as QualityLevel,
+          status: "done",
+        });
       } catch (error) {
         task.status = "error";
         task.error = error instanceof Error ? error.message : String(error);
@@ -327,4 +358,8 @@ export const accountRoutes = new Hono()
       status: task.status,
       ...(task.error !== undefined ? { error: task.error } : {}),
     });
+  })
+  /** GET /api/download-history —— 下载历史（内存，倒序）。 */
+  .get("/download-history", (c) => {
+    return c.json({ records: downloadHistory });
   });
