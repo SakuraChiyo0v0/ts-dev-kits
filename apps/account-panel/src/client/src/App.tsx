@@ -1050,6 +1050,7 @@ export default function App() {
             recommend={recommend}
             recommendPlaylists={recommendPlaylists}
             onPlayPersonalFm={() => void playPersonalFm()}
+            onOpenDownloadHistory={() => void openDownloadHistory()}
           />
         ) : (
           <LoginView login={login} onLogin={() => void startLogin()} onCancel={() => setLogin(null)} />
@@ -1855,8 +1856,9 @@ function HomeView(props: {
   recommend: Track[];
   recommendPlaylists: Array<{ id: string; name: string; coverUrl?: string; playCount: number }>;
   onPlayPersonalFm: () => void;
+  onOpenDownloadHistory: () => void;
 }) {
-  const { account, recentTracks, lastTrack, playCounts, onResume, avatarError, onAvatarError, onOpenPlaylist, onPlayPlaylist, onPlaySong, onRefresh, onShowHistory, onDownloadLocal, onLogout, onDismissLast, onToggleLike, likedIds, recommend, recommendPlaylists, onPlayPersonalFm } =
+  const { account, recentTracks, lastTrack, playCounts, onResume, avatarError, onAvatarError, onOpenPlaylist, onPlayPlaylist, onPlaySong, onRefresh, onShowHistory, onDownloadLocal, onLogout, onDismissLast, onToggleLike, likedIds, recommend, recommendPlaylists, onPlayPersonalFm, onOpenDownloadHistory } =
     props;
   const [search, setSearch] = useState("");
   const [songQuery, setSongQuery] = useState("");
@@ -1953,6 +1955,14 @@ function HomeView(props: {
               title="退出登录"
             >
               退出登录
+            </button>
+            <button
+              onClick={onOpenDownloadHistory}
+              className="ml-auto flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              title="下载列表"
+            >
+              <Clock className="h-3.5 w-3.5" />
+              下载列表
             </button>
           </div>
           {account.account?.signature ? (
