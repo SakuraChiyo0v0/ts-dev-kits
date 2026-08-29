@@ -1373,7 +1373,7 @@ function HistoryPanel(props: {
               <button
                 onClick={() => onDownload(t)}
                 className="shrink-0 rounded-full p-2 text-muted-foreground transition-colors hover:text-foreground"
-                title="下载到本机"
+                title="下载"
               >
                 <Download className="h-4 w-4" />
               </button>
@@ -2170,7 +2170,7 @@ function HomeView(props: {
                   <button
                     onClick={() => onDownloadLocal(t)}
                     className="shrink-0 rounded-full p-2 text-muted-foreground transition-colors hover:text-foreground"
-                    title="下载到本机"
+                    title="下载"
                   >
                     <Download className="h-4 w-4" />
                   </button>
@@ -2611,7 +2611,7 @@ function PlaylistView(props: {
                       "shrink-0 rounded-full p-2 transition-colors",
                       downloaded.has(t.id) ? "text-emerald-500" : "text-muted-foreground hover:text-foreground",
                     )}
-                    title={downloaded.has(t.id) ? "已下载（再次下载）" : "下载到本机"}
+                    title={downloaded.has(t.id) ? "已下载（再次下载）" : "下载"}
                   >
                     <Download className="h-4 w-4" />
                   </button>
@@ -2900,7 +2900,7 @@ function PlayerBar(props: {
                   className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted"
                 >
                   <Download className="h-4 w-4 text-muted-foreground" />
-                  下载到本机
+                  下载
                 </button>
                 <button
                   onClick={() => {
@@ -3050,7 +3050,7 @@ function LyricsView(props: {
             <button
               onClick={onDownload}
               className="rounded-full p-1.5 text-white/70 transition-colors hover:bg-white/10 hover:text-white"
-              title="下载到本机"
+              title="下载"
             >
               <Download className="h-5 w-5" />
             </button>
