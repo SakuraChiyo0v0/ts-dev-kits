@@ -297,10 +297,16 @@ importers:
       '@sakurachiyo0v0/webdav':
         specifier: workspace:*
         version: link:../webdav
+      pg:
+        specifier: ^8.16.0
+        version: 8.23.0
     devDependencies:
       '@types/node':
         specifier: ^26.1.2
         version: 26.1.2
+      '@types/pg':
+        specifier: ^8.15.0
+        version: 8.23.1
       rollup:
         specifier: ^4.62.4
         version: 4.62.4
