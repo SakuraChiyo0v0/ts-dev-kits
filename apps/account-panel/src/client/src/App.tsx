@@ -25,6 +25,8 @@ import {
   Shuffle,
   SkipBack,
   SkipForward,
+  Sparkles,
+  Flame,
   Sun,
   TextQuote,
   Trash2,
@@ -106,6 +108,13 @@ function formatDuration(ms?: number): string {
   if (ms === undefined || ms <= 0) return "--:--";
   const total = Math.floor(ms / 1000);
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+}
+
+/** 播放量格式化（万/亿）。 */
+function formatCount(n: number): string {
+  if (n >= 100000000) return `${(n / 100000000).toFixed(1)}亿`;
+  if (n >= 10000) return `${(n / 10000).toFixed(1)}万`;
+  return String(n);
 }
 
 /** 根据名称生成稳定的渐变背景（无封面时的 fallback）。 */
@@ -296,6 +305,9 @@ export default function App() {
   const [downloadedVersion, setDownloadedVersion] = useState(0);
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const [recommend, setRecommend] = useState<Track[]>([]);
+  const [recommendPlaylists, setRecommendPlaylists] = useState<
+    Array<{ id: string; name: string; coverUrl?: string; playCount: number }>
+  >([]);
   const [fetching, setFetching] = useState(0);
   const [likedCurrent, setLikedCurrent] = useState(false);
   const [volume, setVolume] = useState<number>(() => {
@@ -394,6 +406,26 @@ export default function App() {
         const res = await rpc.api.liked.$get();
         const data = (await res.json()) as { ids?: string[] };
         if (data.ids !== undefined) setLikedIds(new Set(data.ids));
+      } catch {
+        // 忽略。
+      }
+    })();
+    void (async () => {
+      try {
+        const res = await rpc.api.recommend.$get();
+        const data = (await res.json()) as { songs?: Track[] };
+        if (data.songs !== undefined) setRecommend(data.songs);
+      } catch {
+        // 忽略。
+      }
+    })();
+    void (async () => {
+      try {
+        const res = await rpc.api["recommend-playlists"].$get();
+        const data = (await res.json()) as {
+          playlists?: Array<{ id: string; name: string; coverUrl?: string; playCount: number }>;
+        };
+        if (data.playlists !== undefined) setRecommendPlaylists(data.playlists);
       } catch {
         // 忽略。
       }
@@ -535,6 +567,20 @@ export default function App() {
     },
     [playAt, showToast],
   );
+
+  const playPersonalFm = useCallback(async () => {
+    try {
+      const res = await rpc.api["personal-fm"].$get();
+      const data = (await res.json()) as { songs?: Track[] };
+      if (data.songs !== undefined && data.songs.length > 0) {
+        await playAt(data.songs, 0);
+      } else {
+        showToast("暂无电台歌曲");
+      }
+    } catch {
+      showToast("获取电台失败");
+    }
+  }, [playAt, showToast]);
 
   const playNext = useCallback(async () => {
     if (queue.length === 0) return;
@@ -985,6 +1031,9 @@ export default function App() {
             onDismissLast={dismissLast}
             onToggleLike={toggleLike}
             likedIds={likedIds}
+            recommend={recommend}
+            recommendPlaylists={recommendPlaylists}
+            onPlayPersonalFm={() => void playPersonalFm()}
           />
         ) : (
           <LoginView login={login} onLogin={() => void startLogin()} onCancel={() => setLogin(null)} />
@@ -1732,8 +1781,11 @@ function HomeView(props: {
   onDismissLast: () => void;
   onToggleLike: (track: Track, liked: boolean) => void;
   likedIds: Set<string>;
+  recommend: Track[];
+  recommendPlaylists: Array<{ id: string; name: string; coverUrl?: string; playCount: number }>;
+  onPlayPersonalFm: () => void;
 }) {
-  const { account, recentTracks, lastTrack, playCounts, onResume, avatarError, onAvatarError, onOpenPlaylist, onPlayPlaylist, onPlaySong, onRefresh, onShowHistory, onDownloadLocal, onLogout, onDismissLast, onToggleLike, likedIds } =
+  const { account, recentTracks, lastTrack, playCounts, onResume, avatarError, onAvatarError, onOpenPlaylist, onPlayPlaylist, onPlaySong, onRefresh, onShowHistory, onDownloadLocal, onLogout, onDismissLast, onToggleLike, likedIds, recommend, recommendPlaylists, onPlayPersonalFm } =
     props;
   const [search, setSearch] = useState("");
   const [songQuery, setSongQuery] = useState("");
@@ -2060,6 +2112,65 @@ function HomeView(props: {
           </div>
         ) : (
           <>
+            {recommend.length > 0 && search.trim() === "" ? (
+              <div className="mb-6">
+                <div className="mb-3 flex items-center gap-2.5">
+                  <Sparkles className="h-5 w-5 text-primary" />
+                  <h2 className="text-2xl font-bold">每日推荐</h2>
+                  <button
+                    onClick={onPlayPersonalFm}
+                    className="ml-auto rounded-full px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+                    title="私人 FM（每日电台）"
+                  >
+                    ▶ 每日电台
+                  </button>
+                </div>
+                <div className="flex gap-3 overflow-x-auto pb-2">
+                  {recommend.map((t) => (
+                    <button key={t.id} onClick={() => onPlaySong(t)} className="w-32 shrink-0 text-left">
+                      <div className="aspect-square w-full overflow-hidden rounded-xl bg-muted">
+                        {t.coverUrl ? (
+                          <img src={t.coverUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center" style={{ background: coverGradient(t.title) }}>
+                            <ListMusic className="h-8 w-8 text-white/70" />
+                          </div>
+                        )}
+                      </div>
+                      <p className="mt-2 truncate text-sm font-medium">{t.title}</p>
+                      <p className="truncate text-xs text-muted-foreground">{t.artists?.join(" / ")}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {recommendPlaylists.length > 0 && search.trim() === "" ? (
+              <div className="mb-6">
+                <div className="mb-3 flex items-center gap-2.5">
+                  <Flame className="h-5 w-5 text-primary" />
+                  <h2 className="text-2xl font-bold">推荐歌单</h2>
+                </div>
+                <div className="flex gap-3 overflow-x-auto pb-2">
+                  {recommendPlaylists.map((p) => (
+                    <button key={p.id} onClick={() => onOpenPlaylist(p.id)} className="w-32 shrink-0 text-left">
+                      <div className="aspect-square w-full overflow-hidden rounded-xl bg-muted">
+                        {p.coverUrl ? (
+                          <img src={p.coverUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center" style={{ background: coverGradient(p.name) }}>
+                            <ListMusic className="h-8 w-8 text-white/70" />
+                          </div>
+                        )}
+                      </div>
+                      <p className="mt-2 line-clamp-2 text-sm font-medium">{p.name}</p>
+                      <p className="truncate text-xs text-muted-foreground">{formatCount(p.playCount)}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
             <div className="mb-5 flex flex-wrap items-center gap-2.5">
               <ListMusic className="h-5 w-5 text-primary" />
               <h2 className="text-2xl font-bold">

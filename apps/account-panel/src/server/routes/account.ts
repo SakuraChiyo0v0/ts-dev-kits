@@ -462,6 +462,38 @@ export const accountRoutes = new Hono()
       return c.json({ error: "获取失败" }, 500);
     }
   })
+  /** GET /api/recommend-playlists —— 每日推荐歌单。 */
+  .get("/recommend-playlists", async (c) => {
+    await warmupAuth("netease-music");
+    const client = createClient();
+    try {
+      const playlists = await client.getRecommendPlaylists();
+      return c.json({ playlists });
+    } catch {
+      return c.json({ error: "获取失败" }, 500);
+    }
+  })
+  /** GET /api/personal-fm —— 私人 FM（每日电台）歌曲。 */
+  .get("/personal-fm", async (c) => {
+    await warmupAuth("netease-music");
+    const client = createClient();
+    if (!client.isLoggedIn) return c.json({ error: "未登录" }, 401);
+    try {
+      const songs = await client.getPersonalFm();
+      return c.json({
+        songs: songs.map((s) => ({
+          id: s.id,
+          title: s.title,
+          artists: s.artists,
+          album: s.album,
+          durationMs: s.durationMs,
+          ...(s.coverUrl !== undefined ? { coverUrl: s.coverUrl } : {}),
+        })),
+      });
+    } catch {
+      return c.json({ error: "获取失败" }, 500);
+    }
+  })
   /** GET /api/download-dirs —— 列出 NAS 下载目录下的子目录（供下载时选择）。 */
   .get("/download-dirs", (c) => {
     return c.json({ dirs: getDownloadManager().listDirs() });
