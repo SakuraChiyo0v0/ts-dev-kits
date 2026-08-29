@@ -1,4 +1,4 @@
-import { createWriteStream, mkdirSync } from "node:fs";
+import { createWriteStream, mkdirSync, rmSync } from "node:fs";
 import { DownloaderError } from "./errors.js";
 import type { DownloadProgress } from "./types.js";
 
@@ -8,7 +8,7 @@ export interface DownloadToFileOptions {
   onProgress?: (progress: DownloadProgress) => void;
 }
 
-/** 流式下载到文件，带重试与进度回调。失败抛 DownloaderError。 */
+/** 流式下载到文件，带重试与进度回调。失败抛 DownloaderError 并清理残留文件。 */
 export async function downloadToFile(
   url: string,
   filePath: string,
@@ -30,28 +30,49 @@ export async function downloadToFile(
         throw new DownloaderError("EMPTY_BODY", "empty body");
       }
       const total = Number(response.headers.get("content-length") ?? 0);
-      const writeStream = createWriteStream(filePath);
-      let downloaded = 0;
       const reader = response.body.getReader();
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        if (value !== undefined) {
-          downloaded += value.byteLength;
-          writeStream.write(value);
-          options.onProgress?.({
-            downloaded,
-            total,
-            percent: total > 0 ? (downloaded / total) * 100 : 0,
-          });
-        }
-      }
+      let downloaded = 0;
+
       await new Promise<void>((resolve, reject) => {
-        writeStream.end((error?: Error | null) => (error ? reject(error) : resolve()));
+        const writeStream = createWriteStream(filePath);
+        // 监听 error，避免磁盘写满等异步错误变成 uncaught exception 崩进程。
+        writeStream.on("error", (err) => {
+          writeStream.destroy();
+          reject(err);
+        });
+        void (async () => {
+          try {
+            for (;;) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              if (value !== undefined) {
+                downloaded += value.byteLength;
+                if (!writeStream.write(value)) {
+                  // 背压：等待 drain 再继续读。
+                  await new Promise<void>((res) => writeStream.once("drain", res));
+                }
+                options.onProgress?.({
+                  downloaded,
+                  total,
+                  percent: total > 0 ? (downloaded / total) * 100 : 0,
+                });
+              }
+            }
+            writeStream.end(() => resolve());
+          } catch (err) {
+            writeStream.destroy();
+            reject(err);
+          }
+        })();
       });
       return;
     } catch (error) {
       lastError = error;
+      try {
+        rmSync(filePath, { force: true });
+      } catch {
+        // 忽略清理失败。
+      }
       if (attempt >= options.retries) break;
       await new Promise((resolve) => setTimeout(resolve, Math.min(2 ** attempt * 500, 5000)));
     }
