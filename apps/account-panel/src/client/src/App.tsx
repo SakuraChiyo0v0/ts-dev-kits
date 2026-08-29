@@ -271,6 +271,14 @@ function useTheme() {
 export default function App() {
   const [account, setAccount] = useState<AccountPayload | null>(null);
   const [login, setLogin] = useState<LoginView | null>(null);
+  const [userAuth, setUserAuth] = useState<{ token: string; username: string } | null>(() => {
+    try {
+      const raw = localStorage.getItem("user-auth");
+      return raw !== null ? (JSON.parse(raw) as { token: string; username: string }) : null;
+    } catch {
+      return null;
+    }
+  });
   const [detail, setDetail] = useState<PlaylistDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [avatarError, setAvatarError] = useState(false);
@@ -454,6 +462,44 @@ export default function App() {
       loginEsRef.current?.close();
     };
   }, []);
+
+  const userLogin = useCallback(
+    async (username: string, password: string) => {
+      try {
+        const res = await rpc.api.users.login.$post({ json: { username, password } });
+        const data = (await res.json()) as { token?: string; username?: string; error?: string };
+        if (data.token !== undefined && data.username !== undefined) {
+          const auth = { token: data.token, username: data.username };
+          setUserAuth(auth);
+          try {
+            localStorage.setItem("user-auth", JSON.stringify(auth));
+          } catch {
+            // 忽略。
+          }
+          showToast(`欢迎回来，${data.username}`);
+          await refresh();
+        } else {
+          showToast(data.error ?? "登录失败");
+        }
+      } catch {
+        showToast("登录失败");
+      }
+    },
+    [refresh, showToast],
+  );
+
+  const userRegister = useCallback(
+    async (username: string, password: string) => {
+      try {
+        const res = await rpc.api.users.register.$post({ json: { username, password } });
+        const data = (await res.json()) as { ok?: boolean; error?: string };
+        showToast(data.ok === true ? "注册成功，请登录" : (data.error ?? "注册失败"));
+      } catch {
+        showToast("注册失败");
+      }
+    },
+    [showToast],
+  );
 
   const startLogin = useCallback(async () => {
     try {
@@ -1160,7 +1206,13 @@ export default function App() {
             onOpenLogs={() => void openLogs()}
           />
         ) : (
-          <LoginView login={login} onLogin={() => void startLogin()} onCancel={() => setLogin(null)} />
+          <LoginView
+            login={login}
+            onLogin={() => void startLogin()}
+            onCancel={() => setLogin(null)}
+            onUserLogin={(u, p) => void userLogin(u, p)}
+            onUserRegister={(u, p) => void userRegister(u, p)}
+          />
         )}
       </div>
 
@@ -2146,20 +2198,75 @@ function LoginView(props: {
   login: LoginView | null;
   onLogin: () => void;
   onCancel: () => void;
+  onUserLogin: (username: string, password: string) => void;
+  onUserRegister: (username: string, password: string) => void;
 }) {
-  const { login, onLogin, onCancel } = props;
+  const { login, onLogin, onCancel, onUserLogin, onUserRegister } = props;
+  const [mode, setMode] = useState<"account" | "qr">("account");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   return (
     <div className="flex flex-1 items-center justify-center p-6">
       <Card className="w-full max-w-sm border-0 bg-card/70 shadow-lg backdrop-blur-xl">
         <CardHeader className="items-center text-center">
-          <CardTitle>登录网易云音乐</CardTitle>
-          <CardDescription>扫码登录一次，登录态自动同步到所有设备</CardDescription>
+          <CardTitle>登录</CardTitle>
+          <CardDescription>统一账号登录，或扫码绑定网易云</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col items-center gap-4">
-          {login === null ? (
+          <div className="flex gap-1 rounded-full bg-muted p-1">
+            <button
+              onClick={() => setMode("account")}
+              className={cn(
+                "rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                mode === "account" ? "bg-background text-foreground shadow" : "text-muted-foreground",
+              )}
+            >
+              账号登录
+            </button>
+            <button
+              onClick={() => setMode("qr")}
+              className={cn(
+                "rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                mode === "qr" ? "bg-background text-foreground shadow" : "text-muted-foreground",
+              )}
+            >
+              扫码绑定
+            </button>
+          </div>
+
+          {mode === "account" ? (
+            <div className="flex w-full flex-col gap-3">
+              <Input
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="用户名"
+                className="rounded-full"
+                autoComplete="username"
+              />
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="密码"
+                className="rounded-full"
+                autoComplete="current-password"
+              />
+              <Button
+                size="lg"
+                className="rounded-full"
+                disabled={username.trim().length < 2 || password.length < 6}
+                onClick={() => onUserLogin(username.trim(), password)}
+              >
+                登录
+              </Button>
+              <Button variant="ghost" size="sm" className="rounded-full" onClick={() => onUserRegister(username.trim(), password)}>
+                没有账号？注册
+              </Button>
+            </div>
+          ) : login === null ? (
             <Button size="lg" className="rounded-full" onClick={onLogin}>
               <QrCode />
-              扫码登录
+              扫码绑定网易云
             </Button>
           ) : (
             <>

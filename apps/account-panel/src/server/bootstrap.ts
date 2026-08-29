@@ -1,8 +1,8 @@
 /**
  * 统一认证装配 —— 环境变量 → ConfigCenter → 加密命名空间。
- * 不读本地 config.json、不跑 sc-config setup；WebDAV 是唯一事实源。
+ * 存储后端可插拔：设置 PG_URL 走 PostgreSQL（新建部署），否则走 WebDAV（兼容既有）。
  */
-import { createConfigCenter } from "@sakurachiyo0v0/config";
+import { createConfigCenter, PgBackend } from "@sakurachiyo0v0/config";
 import type { ConfigCenter, ConfigNamespace } from "@sakurachiyo0v0/config";
 import { AuthStore } from "@sakurachiyo0v0/account";
 
@@ -16,6 +16,20 @@ function env(name: string): string {
 
 /** 从环境变量创建配置中心（显式传 global，不读本地文件）。 */
 export function createAppCenter(): ConfigCenter {
+  const pgUrl = process.env.PG_URL;
+  if (pgUrl !== undefined && pgUrl.trim() !== "") {
+    // PostgreSQL 后端：新建部署首选。
+    const backend = new PgBackend({ url: pgUrl.trim() });
+    void backend.init().catch(() => {
+      // 建表失败不阻塞启动（首次连接 PG 未就绪时稍后重试）。
+    });
+    const key = process.env.CONFIG_KEY;
+    return createConfigCenter({
+      global: { url: "", ...(key !== undefined && key !== "" ? { key } : {}) },
+      backend,
+    });
+  }
+  // WebDAV 兼容路径（无 PG_URL）。
   return createConfigCenter({
     global: {
       url: env("WEBDAV_URL"),

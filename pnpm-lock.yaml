@@ -56,6 +56,9 @@ importers:
       hono:
         specifier: ^4.13.5
         version: 4.13.5
+      pg:
+        specifier: ^8.16.0
+        version: 8.23.0
     devDependencies:
       '@tailwindcss/vite':
         specifier: ^4.3.3
@@ -63,6 +66,9 @@ importers:
       '@types/node':
         specifier: ^26.1.2
         version: 26.1.2
+      '@types/pg':
+        specifier: ^8.15.0
+        version: 8.23.1
       '@types/react':
         specifier: ^19.2.0
         version: 19.2.18

@@ -7,9 +7,11 @@ import { Hono } from "hono";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { authRoutes } from "./routes/auth.js";
 import { accountRoutes } from "./routes/account.js";
+import { userRoutes } from "./routes/users.js";
 
 const api = new Hono()
   .route("/auth", authRoutes)
+  .route("/users", userRoutes)
   .route("/", accountRoutes)
   .get("/health", (c) => c.json({ ok: true }));
 
