@@ -28,6 +28,7 @@ import {
   TextQuote,
   Volume2,
   VolumeX,
+  X,
 } from "lucide-react";
 import { rpc } from "./lib/rpc";
 import { cn } from "@/lib/utils";
@@ -743,6 +744,34 @@ export default function App() {
     }
   }, []);
 
+  const reorderQueue = useCallback((from: number, to: number) => {
+    setQueue((prev) => {
+      if (from < 0 || from >= prev.length || to < 0 || to >= prev.length || from === to) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      if (moved !== undefined) next.splice(to, 0, moved);
+      return next;
+    });
+    setQueueIndex((idx) => {
+      if (idx === from) return to;
+      if (from < idx && to >= idx) return idx - 1;
+      if (from > idx && to <= idx) return idx + 1;
+      return idx;
+    });
+  }, []);
+
+  const removeFromQueue = useCallback(
+    (index: number) => {
+      setQueue((prev) => prev.filter((_, i) => i !== index));
+      setQueueIndex((idx) => {
+        if (index === idx) return Math.min(idx, Math.max(0, queue.length - 2));
+        if (index < idx) return idx - 1;
+        return idx;
+      });
+    },
+    [queue.length],
+  );
+
   const toggleLike = useCallback(
     async (track: Track, liked: boolean) => {
       try {
@@ -976,6 +1005,8 @@ export default function App() {
           queue={queue}
           currentIndex={queueIndex}
           onPlay={(i) => void playAt(queue, i)}
+          onReorder={reorderQueue}
+          onRemove={removeFromQueue}
           onClose={() => setShowQueue(false)}
         />
       ) : null}
@@ -1379,9 +1410,12 @@ function QueuePanel(props: {
   queue: Track[];
   currentIndex: number;
   onPlay: (index: number) => void;
+  onReorder: (from: number, to: number) => void;
+  onRemove: (index: number) => void;
   onClose: () => void;
 }) {
-  const { queue, currentIndex, onPlay, onClose } = props;
+  const { queue, currentIndex, onPlay, onReorder, onRemove, onClose } = props;
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
   return (
     <div className="fixed inset-0 z-30 flex items-end justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
@@ -1399,10 +1433,21 @@ function QueuePanel(props: {
           {queue.map((t, i) => {
             const isCurrent = i === currentIndex;
             return (
-              <li key={t.id}>
+              <li
+                key={t.id}
+                draggable
+                onDragStart={() => setDragIndex(i)}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => {
+                  if (dragIndex !== null && dragIndex !== i) onReorder(dragIndex, i);
+                  setDragIndex(null);
+                }}
+                onDragEnd={() => setDragIndex(null)}
+                className="flex items-center"
+              >
                 <button
                   onClick={() => onPlay(i)}
-                  className={cn("flex w-full items-center gap-3 py-2.5 text-left", isCurrent && "text-primary")}
+                  className={cn("flex flex-1 items-center gap-3 py-2.5 text-left", isCurrent && "text-primary")}
                 >
                   <span className="w-6 shrink-0 text-right text-sm tabular-nums text-muted-foreground">
                     {i + 1}
@@ -1421,6 +1466,13 @@ function QueuePanel(props: {
                     <p className="truncate text-xs text-muted-foreground">{t.artists?.join(" / ")}</p>
                   </div>
                   {isCurrent ? <Music2 className="h-4 w-4 shrink-0 animate-pulse" /> : null}
+                </button>
+                <button
+                  onClick={() => onRemove(i)}
+                  className="shrink-0 rounded-full p-2 text-muted-foreground transition-colors hover:text-destructive"
+                  title="从队列移除"
+                >
+                  <X className="h-4 w-4" />
                 </button>
               </li>
             );
