@@ -820,6 +820,7 @@ export default function App() {
             onPlaySong={(t) => void playAt([t], 0)}
             onRefresh={() => void refresh()}
             onShowHistory={() => setShowHistory(true)}
+            onDownloadLocal={(t) => downloadToLocal(t)}
           />
         ) : (
           <LoginView login={login} onLogin={() => void startLogin()} onCancel={() => setLogin(null)} />
@@ -889,6 +890,9 @@ export default function App() {
           setLikedCurrent((v) => !v);
         }}
         onCycleLevel={() => void changeLevel()}
+        onDownload={() => {
+          if (currentTrack !== null) downloadToLocal(currentTrack);
+        }}
       />
 
       {showLyrics && currentTrack !== null ? (
@@ -900,6 +904,7 @@ export default function App() {
             const audio = audioRef.current;
             if (audio !== null) audio.currentTime = time;
           }}
+          onDownload={() => downloadToLocal(currentTrack)}
           onClose={() => setShowLyrics(false)}
         />
       ) : null}
@@ -1350,8 +1355,9 @@ function HomeView(props: {
   onPlaySong: (track: Track) => void;
   onRefresh: () => void;
   onShowHistory: () => void;
+  onDownloadLocal: (track: Track) => void;
 }) {
-  const { account, recentTracks, lastTrack, playCounts, onResume, avatarError, onAvatarError, onOpenPlaylist, onPlaySong, onRefresh, onShowHistory } =
+  const { account, recentTracks, lastTrack, playCounts, onResume, avatarError, onAvatarError, onOpenPlaylist, onPlaySong, onRefresh, onShowHistory, onDownloadLocal } =
     props;
   const [search, setSearch] = useState("");
   const [songQuery, setSongQuery] = useState("");
@@ -1595,10 +1601,10 @@ function HomeView(props: {
           <div className="overflow-hidden rounded-2xl bg-card shadow-sm">
             <ul className="divide-y divide-border/60">
               {songResults.map((t, i) => (
-                <li key={t.id}>
+                <li key={t.id} className="flex items-center">
                   <button
                     onClick={() => onPlaySong(t)}
-                    className="flex w-full items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-muted/60 sm:gap-4 sm:px-4"
+                    className="flex flex-1 items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-muted/60 sm:gap-4 sm:px-4"
                   >
                     <span className="w-6 shrink-0 text-right text-sm tabular-nums text-muted-foreground">
                       {i + 1}
@@ -1621,6 +1627,13 @@ function HomeView(props: {
                     <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
                       {formatDuration(t.durationMs)}
                     </span>
+                  </button>
+                  <button
+                    onClick={() => onDownloadLocal(t)}
+                    className="shrink-0 rounded-full p-2 text-muted-foreground transition-colors hover:text-foreground"
+                    title="下载到本机"
+                  >
+                    <Download className="h-4 w-4" />
                   </button>
                 </li>
               ))}
@@ -1891,6 +1904,7 @@ function PlayerBar(props: {
   liked: boolean;
   onToggleLikeCurrent: () => void;
   onCycleLevel: () => void;
+  onDownload: () => void;
 }) {
   const {
     track,
@@ -1920,6 +1934,7 @@ function PlayerBar(props: {
     liked,
     onToggleLikeCurrent,
     onCycleLevel,
+    onDownload,
   } = props;
   const [menuOpen, setMenuOpen] = useState(false);
   if (track === null) return null;
@@ -2093,6 +2108,16 @@ function PlayerBar(props: {
                 </button>
                 <button
                   onClick={() => {
+                    onDownload();
+                    setMenuOpen(false);
+                  }}
+                  className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted"
+                >
+                  <Download className="h-4 w-4 text-muted-foreground" />
+                  下载到本机
+                </button>
+                <button
+                  onClick={() => {
                     onToggleLikeCurrent();
                     setMenuOpen(false);
                   }}
@@ -2159,9 +2184,10 @@ function LyricsView(props: {
   lines: LyricLine[];
   currentTime: number;
   onSeekTime: (time: number) => void;
+  onDownload: () => void;
   onClose: () => void;
 }) {
-  const { track, lines, currentTime, onSeekTime, onClose } = props;
+  const { track, lines, currentTime, onSeekTime, onDownload, onClose } = props;
   const activeIdx = currentLineIndex(lines, currentTime);
   const [mode, setMode] = useState<"both" | "original" | "translated">("both");
   const [size, setSize] = useState<"md" | "lg" | "xl">("lg");
@@ -2223,6 +2249,13 @@ function LyricsView(props: {
               title="减小字号"
             >
               A-
+            </button>
+            <button
+              onClick={onDownload}
+              className="rounded-full p-1.5 text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+              title="下载到本机"
+            >
+              <Download className="h-5 w-5" />
             </button>
             <button
               onClick={onClose}
