@@ -9,8 +9,9 @@ import { createNeteaseClient, type QualityLevel } from "@sakurachiyo0v0/netease-
 import { AuthStore } from "@sakurachiyo0v0/account";
 import { DownloadManager } from "@sakurachiyo0v0/media-downloader";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { basename, dirname } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { createAuthNamespace, warmupAuth } from "../bootstrap.js";
+import { appLogger, logFilePath } from "../logger.js";
 
 /** 构造已预热登录态的网易云客户端。 */
 function createClient() {
@@ -360,9 +361,11 @@ export const accountRoutes = new Hono()
       downloadedIds.add(id);
       saveDownloaded();
       getDownloadManager().record({ filename: basename(result.filePath), filePath: result.filePath, status: "done" });
+      appLogger.info("download ok", { id, level, dir: safeSub, filePath: result.filePath });
       return c.json({ filePath: result.filePath, level: result.level });
     } catch (error) {
       getDownloadManager().record({ filename: id, filePath: "", status: "error" });
+      appLogger.error("download failed", { id, level, dir: safeSub, error });
       // 脱敏：不把内部 error.message 直传客户端。
       void error;
       return c.json({ error: "下载失败" }, 500);
@@ -583,8 +586,32 @@ export const accountRoutes = new Hono()
       await warmupAuth("netease-music");
       const store = new AuthStore({ platform: "netease-music", remote: createAuthNamespace() });
       await store.clear();
+      appLogger.info("logout ok");
       return c.json({ ok: true });
     } catch {
       return c.json({ error: "退出失败" }, 500);
+    }
+  })
+  /** GET /api/logs?limit=200 —— 读取应用日志（最近 N 条）。 */
+  .get("/logs", (c) => {
+    const limit = Math.min(Math.max(Number(c.req.query("limit") ?? "200"), 1), 1000);
+    try {
+      const content = readFileSync(logFilePath, "utf8");
+      const lines = content
+        .trim()
+        .split("\n")
+        .filter((l) => l !== "")
+        .slice(-limit);
+      return c.json({
+        lines: lines.map((l) => {
+          try {
+            return JSON.parse(l) as unknown;
+          } catch {
+            return { raw: l };
+          }
+        }),
+      });
+    } catch {
+      return c.json({ lines: [] });
     }
   });

@@ -20,6 +20,7 @@
     "@hono/node-server": "^2.1.1",
     "@sakurachiyo0v0/account": "workspace:*",
     "@sakurachiyo0v0/config": "workspace:*",
+    "@sakurachiyo0v0/logger": "workspace:*",
     "@sakurachiyo0v0/media-downloader": "workspace:*",
     "@sakurachiyo0v0/netease-music": "workspace:*",
     "hono": "^4.13.5"

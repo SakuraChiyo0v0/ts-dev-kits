@@ -299,6 +299,8 @@ export default function App() {
   const [addPlaylistTarget, setAddPlaylistTarget] = useState<Track | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [showDownloadHistory, setShowDownloadHistory] = useState(false);
+  const [showLogs, setShowLogs] = useState(false);
+  const [logLines, setLogLines] = useState<Array<Record<string, unknown>>>([]);
   const [downloadRecords, setDownloadRecords] = useState<
     Array<{ id: string; filename: string; filePath: string; status: string; time: string }>
   >([]);
@@ -838,6 +840,18 @@ export default function App() {
     }
   }, []);
 
+  const openLogs = useCallback(async () => {
+    setShowLogs(true);
+    setLogLines([]);
+    try {
+      const res = await rpc.api.logs.$get({ query: { limit: "300" } });
+      const data = (await res.json()) as { lines?: Array<Record<string, unknown>> };
+      setLogLines(data.lines ?? []);
+    } catch {
+      // 忽略。
+    }
+  }, []);
+
   const logout = useCallback(async () => {
     try {
       await rpc.api.logout.$post();
@@ -1143,6 +1157,7 @@ export default function App() {
             recommendPlaylists={recommendPlaylists}
             onPlayPersonalFm={() => void playPersonalFm()}
             onOpenDownloadHistory={() => void openDownloadHistory()}
+            onOpenLogs={() => void openLogs()}
           />
         ) : (
           <LoginView login={login} onLogin={() => void startLogin()} onCancel={() => setLogin(null)} />
@@ -1345,6 +1360,8 @@ export default function App() {
           onClose={() => setShowDownloadHistory(false)}
         />
       ) : null}
+
+      {showLogs ? <LogsPanel lines={logLines} onClose={() => setShowLogs(false)} /> : null}
     </div>
   );
 }
@@ -1404,6 +1421,54 @@ function DownloadHistoryPanel(props: {
           ))}
           {records.length === 0 ? (
             <li className="py-10 text-center text-sm text-muted-foreground">暂无下载记录</li>
+          ) : null}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+function LogsPanel(props: {
+  lines: Array<Record<string, unknown>>;
+  onClose: () => void;
+}) {
+  const { lines, onClose } = props;
+  const levelColor = (lv: unknown): string => {
+    if (lv === "ERROR") return "text-destructive";
+    if (lv === "WARN") return "text-amber-500";
+    if (lv === "DEBUG") return "text-muted-foreground";
+    return "text-muted-foreground";
+  };
+  return (
+    <div className="fixed inset-0 z-40 flex items-end justify-center">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative w-full max-w-lg animate-slide-up rounded-t-2xl bg-card p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-bold">操作日志（{lines.length}）</h2>
+          <button
+            onClick={onClose}
+            className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <ChevronDown className="h-5 w-5" />
+          </button>
+        </div>
+        <ul className="max-h-[60vh] divide-y divide-border/60 overflow-y-auto font-mono text-xs">
+          {lines.map((line, i) => {
+            const time = typeof line.t === "string" ? line.t.slice(11, 19) : "";
+            const lv = line.lv;
+            const ns = typeof line.ns === "string" ? line.ns : "";
+            const msg = typeof line.msg === "string" ? line.msg : JSON.stringify(line);
+            return (
+              <li key={i} className="flex gap-2 py-1.5">
+                <span className="shrink-0 text-muted-foreground/60">{time}</span>
+                <span className={cn("w-12 shrink-0", levelColor(lv))}>{String(lv ?? "")}</span>
+                <span className="shrink-0 text-muted-foreground/70">{ns}</span>
+                <span className="min-w-0 break-all">{msg}</span>
+              </li>
+            );
+          })}
+          {lines.length === 0 ? (
+            <li className="py-10 text-center text-sm text-muted-foreground">暂无日志</li>
           ) : null}
         </ul>
       </div>
@@ -2146,8 +2211,9 @@ function HomeView(props: {
   recommendPlaylists: Array<{ id: string; name: string; coverUrl?: string; playCount: number }>;
   onPlayPersonalFm: () => void;
   onOpenDownloadHistory: () => void;
+  onOpenLogs: () => void;
 }) {
-  const { account, recentTracks, lastTrack, playCounts, onResume, avatarError, onAvatarError, onOpenPlaylist, onPlayPlaylist, onPlaySong, onRefresh, onShowHistory, onDownloadLocal, onLogout, onDismissLast, onToggleLike, likedIds, recommend, recommendPlaylists, onPlayPersonalFm, onOpenDownloadHistory } =
+  const { account, recentTracks, lastTrack, playCounts, onResume, avatarError, onAvatarError, onOpenPlaylist, onPlayPlaylist, onPlaySong, onRefresh, onShowHistory, onDownloadLocal, onLogout, onDismissLast, onToggleLike, likedIds, recommend, recommendPlaylists, onPlayPersonalFm, onOpenDownloadHistory, onOpenLogs } =
     props;
   const [search, setSearch] = useState("");
   const [songQuery, setSongQuery] = useState("");
@@ -2263,6 +2329,14 @@ function HomeView(props: {
             >
               <Clock className="h-3.5 w-3.5" />
               下载列表
+            </button>
+            <button
+              onClick={onOpenLogs}
+              className="flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              title="操作日志"
+            >
+              <List className="h-3.5 w-3.5" />
+              日志
             </button>
           </div>
           {account.account?.signature ? (
