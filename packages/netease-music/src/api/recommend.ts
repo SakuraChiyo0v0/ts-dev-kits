@@ -2,7 +2,7 @@
 import type { RecommendPlaylist, SongInfo } from "../types.js";
 import { WeapiSession } from "./session.js";
 
-const RECOMMEND_PLAYLIST_PATH = "/weapi/v1/discovery/recommend/resource";
+const RECOMMEND_PLAYLIST_PATH = "/weapi/personalized/playlist";
 const PERSONAL_FM_PATH = "/weapi/v1/radio/get";
 
 /** 把私人 FM 的歌曲对象解析为 SongInfo（兼容 detail 的 ar/al/dt 与 fm 的 artists/album/duration 命名）。 */
@@ -40,8 +40,13 @@ export class RecommendApi {
 
   /** 每日推荐歌单（约 30 个）。 */
   async getRecommendPlaylists(): Promise<RecommendPlaylist[]> {
-    const body = await this.#session.post(RECOMMEND_PLAYLIST_PATH, {});
-    const list = Array.isArray(body.recommend) ? (body.recommend as Array<Record<string, unknown>>) : [];
+    const body = await this.#session.post(RECOMMEND_PLAYLIST_PATH, { limit: 30 });
+    const rawList = Array.isArray(body.result)
+      ? body.result
+      : Array.isArray(body.recommend)
+        ? body.recommend
+        : [];
+    const list = rawList as Array<Record<string, unknown>>;
     const result: RecommendPlaylist[] = [];
     for (const item of list) {
       const id = String(item.id ?? "");
@@ -52,7 +57,7 @@ export class RecommendApi {
         id,
         name,
         ...(typeof picUrl === "string" && picUrl !== "" ? { coverUrl: picUrl } : {}),
-        playCount: Number(item.playCount ?? 0),
+        playCount: Number(item.playCount ?? item.playcount ?? 0),
       });
     }
     return result;
