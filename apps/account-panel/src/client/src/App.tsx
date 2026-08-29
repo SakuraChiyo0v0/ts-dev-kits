@@ -1441,7 +1441,13 @@ function FolderPicker(props: {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      onClick={(e) => {
+        e.stopPropagation();
+        onClose();
+      }}
+    >
       <div
         className="w-full max-w-sm animate-fade-in rounded-2xl bg-card p-5 shadow-lg"
         onClick={(e) => e.stopPropagation()}

@@ -17,6 +17,12 @@ function createClient() {
   return createNeteaseClient({ remote: createAuthNamespace() });
 }
 
+/** 解析并校验品质，白名单外回退 exhigh。 */
+function parseLevel(value: unknown): QualityLevel {
+  const valid: QualityLevel[] = ["standard", "higher", "exhigh", "lossless", "hires"];
+  return typeof value === "string" && (valid as string[]).includes(value) ? (value as QualityLevel) : "exhigh";
+}
+
 /** 批量下载任务（内存表，单实例够用）。 */
 interface DownloadTask {
   total: number;
@@ -140,11 +146,7 @@ export const accountRoutes = new Hono()
     const id = c.req.query("id");
     if (id === undefined) return c.json({ error: "missing id" }, 400);
 
-    const validLevels: QualityLevel[] = ["standard", "higher", "exhigh", "lossless", "hires"];
-    const levelParam = c.req.query("level") ?? "exhigh";
-    const level = (validLevels as string[]).includes(levelParam)
-      ? (levelParam as QualityLevel)
-      : "exhigh";
+    const level = parseLevel(c.req.query("level") ?? "exhigh");
 
     await warmupAuth("netease-music");
     const client = createClient();
@@ -323,7 +325,7 @@ export const accountRoutes = new Hono()
     };
     const id = typeof body.id === "string" ? body.id : undefined;
     if (id === undefined) return c.json({ error: "missing id" }, 400);
-    const level = typeof body.level === "string" ? body.level : "exhigh";
+    const level = parseLevel(body.level);
     // 子路径：去路径穿越（..）与首尾斜杠，防止越出下载根目录。
     const subPath = typeof body.path === "string" ? body.path.trim() : "";
     const safeSub = subPath.replace(/\.\./gu, "").replace(/^\/+|\/+$/gu, "");
@@ -336,7 +338,7 @@ export const accountRoutes = new Hono()
       const finalDir = safeSub === "" ? outputDir : `${outputDir}/${safeSub}`;
       const result = await client.downloadByInput(id, {
         outputDir: finalDir,
-        level: level as QualityLevel,
+        level,
       });
       downloadedIds.add(id);
       saveDownloaded();
@@ -351,11 +353,7 @@ export const accountRoutes = new Hono()
   .get("/download-file", async (c) => {
     const id = c.req.query("id");
     if (id === undefined) return c.json({ error: "missing id" }, 400);
-    const levelParam = c.req.query("level") ?? "exhigh";
-    const validLevels: QualityLevel[] = ["standard", "higher", "exhigh", "lossless", "hires"];
-    const level = (validLevels as string[]).includes(levelParam)
-      ? (levelParam as QualityLevel)
-      : "exhigh";
+    const level = parseLevel(c.req.query("level") ?? "exhigh");
 
     await warmupAuth("netease-music");
     const client = createClient();
@@ -392,9 +390,13 @@ export const accountRoutes = new Hono()
       ? (body.ids as unknown[]).filter((x): x is string => typeof x === "string")
       : [];
     if (ids.length === 0) return c.json({ error: "empty ids" }, 400);
-    const level = typeof body.level === "string" ? body.level : "exhigh";
+    const level = parseLevel(body.level);
     const subPath = typeof body.path === "string" ? body.path.trim() : "";
     const safeSub = subPath.replace(/\.\./gu, "").replace(/^\/+|\/+$/gu, "");
+
+    await warmupAuth("netease-music");
+    const preflightClient = createClient();
+    if (!preflightClient.isLoggedIn) return c.json({ error: "未登录" }, 401);
 
     const taskId = crypto.randomUUID();
     const task: DownloadTask = { total: ids.length, done: 0, status: "running" };
@@ -402,26 +404,35 @@ export const accountRoutes = new Hono()
 
     void (async () => {
       try {
-        await warmupAuth("netease-music");
         const client = createClient();
         const outputDir = process.env.DOWNLOAD_DIR ?? "/downloads";
         const finalDir = safeSub === "" ? outputDir : `${outputDir}/${safeSub}`;
+        const failed = new Set<string>();
         for (const id of ids) {
           task.current = id;
           try {
-            await client.downloadByInput(id, { outputDir: finalDir, level: level as QualityLevel });
+            await client.downloadByInput(id, { outputDir: finalDir, level });
           } catch {
-            // 单曲失败不阻断整批。
+            failed.add(id);
           }
           task.done += 1;
         }
         task.status = "done";
-        getDownloadManager().record({ filename: `批量下载 ${ids.length} 首`, filePath: finalDir, status: "done" });
-        for (const id of ids) downloadedIds.add(id);
+        for (const id of ids) {
+          if (!failed.has(id)) downloadedIds.add(id);
+        }
         saveDownloaded();
+        getDownloadManager().record({
+          filename: `批量下载 ${ids.length} 首（失败 ${failed.size}）`,
+          filePath: finalDir,
+          status: failed.size === ids.length ? "error" : "done",
+        });
       } catch (error) {
         task.status = "error";
         task.error = error instanceof Error ? error.message : String(error);
+      } finally {
+        // 任务完成后延时清理，避免内存增长。
+        setTimeout(() => downloadTasks.delete(taskId), 5 * 60 * 1000);
       }
     })();
 
