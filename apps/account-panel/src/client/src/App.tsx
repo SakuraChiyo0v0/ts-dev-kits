@@ -1789,12 +1789,13 @@ function PlayerBar(props: {
             </div>
           )}
         </button>
-        <button onClick={() => onOpenLyrics(track)} className="w-28 min-w-0 text-left sm:w-40">
+        <button
+          onClick={() => onOpenLyrics(track)}
+          className="min-w-0 flex-1 text-left sm:w-40 sm:flex-none"
+        >
           <p className="truncate text-sm font-medium">{track.title}</p>
           <p className="truncate text-xs text-muted-foreground">
-            {[track.artists?.join(" / "), queueTotal > 0 ? `${queueIndex + 1}/${queueTotal}` : null, level]
-              .filter(Boolean)
-              .join(" · ")}
+            {[track.artists?.join(" / "), level].filter(Boolean).join(" · ")}
           </p>
         </button>
 
