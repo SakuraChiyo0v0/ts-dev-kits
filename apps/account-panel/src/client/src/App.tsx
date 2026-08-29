@@ -1161,14 +1161,16 @@ export default function App() {
     <div className="flex h-screen flex-col bg-background">
       <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border/60 bg-background/70 px-4 py-3 backdrop-blur-xl sm:px-6 sm:py-4">
         <div className="flex items-center gap-2.5">
-          <button
-            onClick={() => setActiveModule(null)}
-            className="flex items-center gap-1 rounded-full px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            title="返回服务列表"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            服务列表
-          </button>
+          {activeModule !== null ? (
+            <button
+              onClick={() => setActiveModule(null)}
+              className="flex items-center gap-1 rounded-full px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              title="返回服务列表"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              服务列表
+            </button>
+          ) : null}
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
             <Music2 className="h-4 w-4" />
           </div>
