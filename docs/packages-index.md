@@ -19,7 +19,7 @@
 | `@sakurachiyo0v0/lol` | 0.1.3 | 英雄联盟 LCU 本地能力 SDK(召唤师/战绩/段位/对局流程/游戏数据/事件) | 可用(查询+对局感知, 国服 SGP) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/lol` |
 | `@sakurachiyo0v0/account` | 0.5.5 | 跨平台账号认证底座(登录态存储/扫码+密码+浏览器登录骨架/错误模型) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/account` |
 | `@sakurachiyo0v0/netease-music` | 0.8.0 | 网易云音乐下载 SDK(weapi 加密/二维码登录/权限感知品质/试听拦截/取流/歌词/搜索) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/netease-music` |
-| `@sakurachiyo0v0/media-downloader` | 0.2.2 | 通用媒体下载 SDK:目录选择/流式下载+重试+进度/元数据封面写入/下载历史 | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/media-downloader` |
+| `@sakurachiyo0v0/media-downloader` | 0.2.3 | 通用媒体下载 SDK:目录选择/流式下载+重试+进度/元数据封面写入/下载历史 | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/media-downloader` |
 | `@sakurachiyo0v0/booth` | 0.4.3 | BOOTH(booth.pm)领取/购买 SDK:登录态管理/商品解析/免费领取/付费下单/文件下载 | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/booth` |
 | `@sakurachiyo0v0/vrchat` | 0.4.3 | VRChat 官方 REST API SDK(认证/用户/世界/头像/实例/好友/通知/收藏/群组/文件/权限/系统/经济/审核) | 可用(全功能覆盖) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/vrchat` |
 | `@sakurachiyo0v0/steam` | 0.8.3 | Steam SDK(查询向):Web API/Storefront/Community 三套接口,登录态支持,写操作仅激活码兑换一项 | 可用(全阶段交付) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/steam` |

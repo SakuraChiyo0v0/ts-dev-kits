@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/media-downloader",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "通用媒体下载 SDK：列出目标目录、流式下载 + 重试 + 进度、元数据/封面写入、下载历史",
   "license": "UNLICENSED",
   "publishConfig": {

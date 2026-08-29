@@ -18,6 +18,7 @@ export async function downloadToFile(
   mkdirSync(dir, { recursive: true });
 
   let lastError: unknown;
+  let downloaded = 0;
   for (let attempt = 0; attempt <= options.retries; attempt += 1) {
     try {
       const response = await fetch(url, {
@@ -31,7 +32,6 @@ export async function downloadToFile(
       }
       const total = Number(response.headers.get("content-length") ?? 0);
       const reader = response.body.getReader();
-      let downloaded = 0;
 
       await new Promise<void>((resolve, reject) => {
         const writeStream = createWriteStream(filePath);

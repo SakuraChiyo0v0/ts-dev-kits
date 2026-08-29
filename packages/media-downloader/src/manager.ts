@@ -116,9 +116,27 @@ export class DownloadManager {
       const raw = JSON.parse(readFileSync(p, "utf8")) as { history?: unknown };
       if (Array.isArray(raw.history)) {
         for (const r of raw.history) {
-          if (r !== null && typeof r === "object") {
-            this.#history.push(r as DownloadHistoryRecord);
+          if (r === null || typeof r !== "object") continue;
+          const rec = r as Record<string, unknown>;
+          if (
+            typeof rec.filename !== "string" ||
+            typeof rec.filePath !== "string" ||
+            (rec.status !== "done" && rec.status !== "error")
+          ) {
+            continue;
           }
+          const time =
+            typeof rec.time === "string" && !Number.isNaN(Date.parse(rec.time))
+              ? rec.time
+              : new Date(0).toISOString();
+          const id = typeof rec.id === "string" ? rec.id : randomBytes(8).toString("hex");
+          this.#history.push({
+            id,
+            filename: rec.filename,
+            filePath: rec.filePath,
+            status: rec.status,
+            time,
+          });
         }
       }
     } catch {
