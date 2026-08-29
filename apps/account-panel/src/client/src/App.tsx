@@ -625,9 +625,11 @@ export default function App() {
   }, []);
 
   const downloadToNas = useCallback(
-    async (track: Track) => {
+    async (track: Track, path?: string) => {
       try {
-        const res = await rpc.api.download.$post({ json: { id: track.id } });
+        const res = await rpc.api.download.$post({
+          json: { id: track.id, ...(path !== undefined && path.trim() !== "" ? { path: path.trim() } : {}) },
+        });
         const data = (await res.json()) as { filePath?: string; error?: string };
         if (data.error !== undefined) {
           showToast(`下载失败 ${data.error}`);
@@ -888,7 +890,7 @@ export default function App() {
             setSongDetail(null);
           }}
           onDownloadLocal={() => downloadToLocal(songDetail)}
-          onDownloadNas={() => void downloadToNas(songDetail)}
+          onDownloadNas={(path) => void downloadToNas(songDetail, path)}
           onClose={() => setSongDetail(null)}
         />
       ) : null}
@@ -978,11 +980,13 @@ function SongDetailModal(props: {
   onShare: () => void;
   onLyrics: () => void;
   onDownloadLocal: () => void;
-  onDownloadNas: () => void;
+  onDownloadNas: (path: string) => void;
   onClose: () => void;
 }) {
   const { track, onPlay, onLike, onShare, onLyrics, onDownloadLocal, onDownloadNas, onClose } = props;
   const [downloadOpen, setDownloadOpen] = useState(false);
+  const [nasPathOpen, setNasPathOpen] = useState(false);
+  const [nasPath, setNasPath] = useState("");
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50" onClick={onClose}>
       <div
@@ -1031,15 +1035,39 @@ function SongDetailModal(props: {
             </Button>
           </div>
           {downloadOpen ? (
-            <div className="flex gap-2">
-              <Button size="sm" variant="secondary" className="rounded-full" onClick={onDownloadLocal}>
-                <Download />
-                下载到本机
-              </Button>
-              <Button size="sm" variant="secondary" className="rounded-full" onClick={onDownloadNas}>
-                <HardDriveDownload />
-                下载到 NAS
-              </Button>
+            <div className="flex flex-col items-center gap-2">
+              <div className="flex gap-2">
+                <Button size="sm" variant="secondary" className="rounded-full" onClick={onDownloadLocal}>
+                  <Download />
+                  下载到本机
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="rounded-full"
+                  onClick={() => setNasPathOpen((v) => !v)}
+                >
+                  <HardDriveDownload />
+                  下载到 NAS
+                </Button>
+              </div>
+              {nasPathOpen ? (
+                <div className="flex w-full max-w-xs gap-2">
+                  <Input
+                    value={nasPath}
+                    onChange={(e) => setNasPath(e.target.value)}
+                    placeholder="NAS 子目录（留空=根目录 downloads）"
+                    className="rounded-full text-xs"
+                  />
+                  <Button
+                    size="sm"
+                    className="shrink-0 rounded-full"
+                    onClick={() => onDownloadNas(nasPath)}
+                  >
+                    确认
+                  </Button>
+                </div>
+              ) : null}
             </div>
           ) : (
             <Button

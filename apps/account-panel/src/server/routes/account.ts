@@ -199,20 +199,28 @@ export const accountRoutes = new Hono()
       return c.json({ error: "创建失败" }, 500);
     }
   })
-  /** POST /api/download —— 下载到 NAS 本地目录（服务器端落盘）。 */
+  /** POST /api/download —— 下载到 NAS 本地目录（服务器端落盘，支持子路径）。 */
   .post("/download", async (c) => {
-    const body = (await c.req.json().catch(() => ({}))) as { id?: unknown; level?: unknown };
+    const body = (await c.req.json().catch(() => ({}))) as {
+      id?: unknown;
+      level?: unknown;
+      path?: unknown;
+    };
     const id = typeof body.id === "string" ? body.id : undefined;
     if (id === undefined) return c.json({ error: "missing id" }, 400);
     const level = typeof body.level === "string" ? body.level : "exhigh";
+    // 子路径：去路径穿越（..）与首尾斜杠，防止越出下载根目录。
+    const subPath = typeof body.path === "string" ? body.path.trim() : "";
+    const safeSub = subPath.replace(/\.\./gu, "").replace(/^\/+|\/+$/gu, "");
 
     await warmupAuth("netease-music");
     const client = createClient();
     if (!client.isLoggedIn) return c.json({ error: "未登录" }, 401);
     try {
       const outputDir = process.env.DOWNLOAD_DIR ?? "/downloads";
+      const finalDir = safeSub === "" ? outputDir : `${outputDir}/${safeSub}`;
       const result = await client.downloadByInput(id, {
-        outputDir,
+        outputDir: finalDir,
         level: level as QualityLevel,
       });
       return c.json({ filePath: result.filePath, level: result.level });
