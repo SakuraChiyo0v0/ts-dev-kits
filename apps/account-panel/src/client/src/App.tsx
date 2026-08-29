@@ -508,6 +508,19 @@ export default function App() {
     }
   }, [showToast]);
 
+  const playPlaylist = useCallback(
+    async (id: string) => {
+      try {
+        const res = await rpc.api.playlist.$get({ query: { id } });
+        const d = (await res.json()) as PlaylistDetail;
+        if (d.tracks.length > 0) await playAt(d.tracks, 0);
+      } catch {
+        showToast("播放失败");
+      }
+    },
+    [playAt, showToast],
+  );
+
   const playNext = useCallback(async () => {
     if (queue.length === 0) return;
     if (repeatMode === "one") {
@@ -861,6 +874,7 @@ export default function App() {
             avatarError={avatarError}
             onAvatarError={() => setAvatarError(true)}
             onOpenPlaylist={(id) => void openPlaylist(id)}
+            onPlayPlaylist={(id) => void playPlaylist(id)}
             onPlaySong={(t) => void playAt([t], 0)}
             onRefresh={() => void refresh()}
             onShowHistory={() => setShowHistory(true)}
@@ -925,6 +939,7 @@ export default function App() {
         onToggleMute={toggleMute}
         onVolumeChange={changeVolume}
         onOpenLyrics={(t) => void openLyrics(t)}
+        onShowDetail={setSongDetail}
         onOpenQueue={() => setShowQueue(true)}
         onShare={(t) => void shareTrack(t)}
         onCycleRate={cycleRate}
@@ -1472,12 +1487,13 @@ function HomeView(props: {
   avatarError: boolean;
   onAvatarError: () => void;
   onOpenPlaylist: (id: string) => void;
+  onPlayPlaylist: (id: string) => void;
   onPlaySong: (track: Track) => void;
   onRefresh: () => void;
   onShowHistory: () => void;
   onDownloadLocal: (track: Track) => void;
 }) {
-  const { account, recentTracks, lastTrack, playCounts, onResume, avatarError, onAvatarError, onOpenPlaylist, onPlaySong, onRefresh, onShowHistory, onDownloadLocal } =
+  const { account, recentTracks, lastTrack, playCounts, onResume, avatarError, onAvatarError, onOpenPlaylist, onPlayPlaylist, onPlaySong, onRefresh, onShowHistory, onDownloadLocal } =
     props;
   const [search, setSearch] = useState("");
   const [songQuery, setSongQuery] = useState("");
@@ -1805,7 +1821,7 @@ function HomeView(props: {
             <div className="grid grid-cols-2 gap-x-4 gap-y-5 sm:gap-x-5 sm:gap-y-7 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
               {filtered.map((p) => (
                 <button key={p.id} onClick={() => onOpenPlaylist(p.id)} className="group text-left">
-                  <Tilt className="aspect-square w-full overflow-hidden rounded-xl bg-muted shadow-sm transition-shadow duration-300 group-hover:shadow-xl">
+                  <Tilt className="relative aspect-square w-full overflow-hidden rounded-xl bg-muted shadow-sm transition-shadow duration-300 group-hover:shadow-xl">
                     {p.coverUrl ? (
                       <img
                         src={p.coverUrl}
@@ -1821,6 +1837,17 @@ function HomeView(props: {
                         <ListMusic className="h-10 w-10 text-white/70" />
                       </div>
                     )}
+                    <span
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onPlayPlaylist(p.id);
+                      }}
+                      className="absolute inset-0 hidden items-center justify-center bg-black/30 group-hover:flex"
+                    >
+                      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/90 text-primary shadow-lg">
+                        <Play className="ml-0.5 h-5 w-5" />
+                      </span>
+                    </span>
                   </Tilt>
                   <p className="mt-2.5 truncate text-base font-medium">{p.name}</p>
                   <p className="mt-0.5 text-sm text-muted-foreground">{p.trackCount} 首</p>
@@ -2101,6 +2128,7 @@ function PlayerBar(props: {
   onToggleMute: () => void;
   onVolumeChange: (v: number) => void;
   onOpenLyrics: (track: Track) => void;
+  onShowDetail: (track: Track) => void;
   onOpenQueue: () => void;
   onShare: (track: Track) => void;
   onCycleRate: () => void;
@@ -2134,6 +2162,7 @@ function PlayerBar(props: {
     onToggleMute,
     onVolumeChange,
     onOpenLyrics,
+    onShowDetail,
     onOpenQueue,
     onShare,
     onCycleRate,
@@ -2158,8 +2187,12 @@ function PlayerBar(props: {
       <div className="mx-auto flex max-w-4xl items-center gap-3 px-4 py-2 sm:gap-4 sm:px-6 sm:py-2.5">
         <button
           onClick={() => onOpenLyrics(track)}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            onShowDetail(track);
+          }}
           className="h-11 w-11 shrink-0 overflow-hidden rounded-full bg-muted shadow-sm sm:h-12 sm:w-12"
-          title="查看歌词"
+          title="查看歌词（右键查看详情）"
         >
           {track.coverUrl ? (
             <img
@@ -2175,6 +2208,10 @@ function PlayerBar(props: {
         </button>
         <button
           onClick={() => onOpenLyrics(track)}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            onShowDetail(track);
+          }}
           className="min-w-0 flex-1 text-left sm:w-40 sm:flex-none"
         >
           <p className="truncate text-sm font-medium">{track.title}</p>
