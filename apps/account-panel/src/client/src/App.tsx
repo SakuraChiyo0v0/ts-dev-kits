@@ -1156,6 +1156,8 @@ export default function App() {
             setShowHistory(false);
           }}
           onDownload={(t) => downloadToLocal(t)}
+          onToggleLike={(t) => void toggleLike(t, likedIds.has(t.id))}
+          likedIds={likedIds}
           onClear={clearRecent}
           onClose={() => setShowHistory(false)}
         />
@@ -1232,10 +1234,12 @@ function HistoryPanel(props: {
   tracks: Track[];
   onPlay: (t: Track) => void;
   onDownload: (t: Track) => void;
+  onToggleLike: (t: Track) => void;
+  likedIds: Set<string>;
   onClear: () => void;
   onClose: () => void;
 }) {
-  const { tracks, onPlay, onDownload, onClear, onClose } = props;
+  const { tracks, onPlay, onDownload, onToggleLike, likedIds, onClear, onClose } = props;
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
@@ -1280,6 +1284,16 @@ function HistoryPanel(props: {
                 <span className="text-xs tabular-nums text-muted-foreground">
                   {formatDuration(t.durationMs)}
                 </span>
+              </button>
+              <button
+                onClick={() => onToggleLike(t)}
+                className={cn(
+                  "shrink-0 rounded-full p-2 transition-colors",
+                  likedIds.has(t.id) ? "text-primary" : "text-muted-foreground hover:text-foreground",
+                )}
+                title={likedIds.has(t.id) ? "取消红心" : "红心收藏"}
+              >
+                <Heart className={cn("h-4 w-4", likedIds.has(t.id) && "fill-primary")} />
               </button>
               <button
                 onClick={() => onDownload(t)}
