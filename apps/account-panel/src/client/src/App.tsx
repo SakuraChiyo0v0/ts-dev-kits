@@ -620,15 +620,19 @@ export default function App() {
     [showToast],
   );
 
-  const downloadToLocal = useCallback((track: Track) => {
-    window.open(`/api/download-file?id=${track.id}`, "_blank");
+  const downloadToLocal = useCallback((track: Track, level?: string) => {
+    window.open(`/api/download-file?id=${track.id}&level=${level ?? "exhigh"}`, "_blank");
   }, []);
 
   const downloadToNas = useCallback(
-    async (track: Track, path?: string) => {
+    async (track: Track, path?: string, level?: string) => {
       try {
         const res = await rpc.api.download.$post({
-          json: { id: track.id, ...(path !== undefined && path.trim() !== "" ? { path: path.trim() } : {}) },
+          json: {
+            id: track.id,
+            level: level ?? "exhigh",
+            ...(path !== undefined && path.trim() !== "" ? { path: path.trim() } : {}),
+          },
         });
         const data = (await res.json()) as { filePath?: string; error?: string };
         if (data.error !== undefined) {
@@ -638,6 +642,45 @@ export default function App() {
         }
       } catch {
         showToast("下载失败");
+      }
+    },
+    [showToast],
+  );
+
+  const downloadBatch = useCallback(
+    async (tracks: Track[], path?: string) => {
+      try {
+        const res = await rpc.api["download-batch"].$post({
+          json: {
+            ids: tracks.map((t) => t.id),
+            ...(path !== undefined && path.trim() !== "" ? { path: path.trim() } : {}),
+          },
+        });
+        const data = (await res.json()) as { taskId?: string; error?: string };
+        if (data.error !== undefined || data.taskId === undefined) {
+          showToast("批量下载失败");
+          return;
+        }
+        const taskId = data.taskId;
+        showToast(`开始批量下载 ${tracks.length} 首`);
+        const timer = window.setInterval(async () => {
+          try {
+            const pr = await rpc.api["download-batch"].$get({ query: { id: taskId } });
+            const p = (await pr.json()) as { total?: number; done?: number; status?: string };
+            if (p.status === "done") {
+              window.clearInterval(timer);
+              showToast(`已下载 ${p.total ?? 0} 首到 NAS`);
+            } else if (p.status === "error") {
+              window.clearInterval(timer);
+              showToast("批量下载失败");
+            }
+          } catch {
+            window.clearInterval(timer);
+            showToast("下载进度查询失败");
+          }
+        }, 1500);
+      } catch {
+        showToast("批量下载失败");
       }
     },
     [showToast],
@@ -759,6 +802,8 @@ export default function App() {
             onToggleLike={toggleLike}
             onSharePlaylist={(id) => void sharePlaylist(id)}
             onShowDetail={setSongDetail}
+            onDownloadLocal={(t) => downloadToLocal(t)}
+            onDownloadAll={() => void downloadBatch(detail.tracks)}
           />
         ) : account === null ? (
           <HomeSkeleton />
@@ -889,8 +934,8 @@ export default function App() {
             void openLyrics(songDetail);
             setSongDetail(null);
           }}
-          onDownloadLocal={() => downloadToLocal(songDetail)}
-          onDownloadNas={(path) => void downloadToNas(songDetail, path)}
+          onDownloadLocal={(level) => downloadToLocal(songDetail, level)}
+          onDownloadNas={(path, level) => void downloadToNas(songDetail, path, level)}
           onClose={() => setSongDetail(null)}
         />
       ) : null}
@@ -979,14 +1024,22 @@ function SongDetailModal(props: {
   onLike: () => void;
   onShare: () => void;
   onLyrics: () => void;
-  onDownloadLocal: () => void;
-  onDownloadNas: (path: string) => void;
+  onDownloadLocal: (level: string) => void;
+  onDownloadNas: (path: string, level: string) => void;
   onClose: () => void;
 }) {
   const { track, onPlay, onLike, onShare, onLyrics, onDownloadLocal, onDownloadNas, onClose } = props;
   const [downloadOpen, setDownloadOpen] = useState(false);
   const [nasPathOpen, setNasPathOpen] = useState(false);
   const [nasPath, setNasPath] = useState("");
+  const [level, setLevel] = useState("exhigh");
+  const levels: Array<{ value: string; label: string }> = [
+    { value: "exhigh", label: "320k MP3" },
+    { value: "lossless", label: "无损 FLAC" },
+    { value: "higher", label: "192k MP3" },
+    { value: "standard", label: "128k MP3" },
+  ];
+  const levelLabel = levels.find((l) => l.value === level)?.label ?? level;
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50" onClick={onClose}>
       <div
@@ -1036,8 +1089,20 @@ function SongDetailModal(props: {
           </div>
           {downloadOpen ? (
             <div className="flex flex-col items-center gap-2">
+              <button
+                onClick={() =>
+                  setLevel((l) => {
+                    const idx = levels.findIndex((x) => x.value === l);
+                    return levels[(idx + 1) % levels.length]?.value ?? l;
+                  })
+                }
+                className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium transition-colors hover:bg-muted/70"
+                title="切换下载品质"
+              >
+                品质：{levelLabel}
+              </button>
               <div className="flex gap-2">
-                <Button size="sm" variant="secondary" className="rounded-full" onClick={onDownloadLocal}>
+                <Button size="sm" variant="secondary" className="rounded-full" onClick={() => onDownloadLocal(level)}>
                   <Download />
                   下载到本机
                 </Button>
@@ -1062,7 +1127,7 @@ function SongDetailModal(props: {
                   <Button
                     size="sm"
                     className="shrink-0 rounded-full"
-                    onClick={() => onDownloadNas(nasPath)}
+                    onClick={() => onDownloadNas(nasPath, level)}
                   >
                     确认
                   </Button>
@@ -1653,8 +1718,11 @@ function PlaylistView(props: {
   onToggleLike: (track: Track, liked: boolean) => void;
   onSharePlaylist: (id: string) => void;
   onShowDetail: (track: Track) => void;
+  onDownloadLocal: (track: Track) => void;
+  onDownloadAll: () => void;
 }) {
-  const { detail, currentTrackId, onBack, onPlay, onPlayAll, onToggleLike, onSharePlaylist, onShowDetail } = props;
+  const { detail, currentTrackId, onBack, onPlay, onPlayAll, onToggleLike, onSharePlaylist, onShowDetail, onDownloadLocal, onDownloadAll } =
+    props;
   const [hearted, setHearted] = useState<Set<string>>(new Set());
 
   const toggleHeart = (t: Track) => {
@@ -1699,10 +1767,16 @@ function PlaylistView(props: {
               </button>
             </div>
             <p className="mt-2 text-sm text-muted-foreground">{detail.tracks.length} 首歌曲</p>
-            <Button size="sm" className="mt-4 rounded-full" onClick={onPlayAll}>
-              <Play className="mr-1 h-4 w-4" />
-              播放全部
-            </Button>
+            <div className="mt-4 flex gap-2">
+              <Button size="sm" className="rounded-full" onClick={onPlayAll}>
+                <Play className="mr-1 h-4 w-4" />
+                播放全部
+              </Button>
+              <Button size="sm" variant="outline" className="rounded-full" onClick={onDownloadAll}>
+                <HardDriveDownload className="mr-1 h-4 w-4" />
+                下载全部
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -1761,6 +1835,13 @@ function PlaylistView(props: {
                     title={hearted.has(t.id) ? "取消红心" : "红心收藏"}
                   >
                     <Heart className={cn("h-4 w-4", hearted.has(t.id) && "fill-primary")} />
+                  </button>
+                  <button
+                    onClick={() => onDownloadLocal(t)}
+                    className="shrink-0 rounded-full p-2 text-muted-foreground transition-colors hover:text-foreground"
+                    title="下载到本机"
+                  >
+                    <Download className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => onShowDetail(t)}

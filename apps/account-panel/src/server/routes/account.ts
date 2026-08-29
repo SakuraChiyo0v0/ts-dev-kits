@@ -13,6 +13,16 @@ function createClient() {
   return createNeteaseClient({ remote: createAuthNamespace() });
 }
 
+/** 批量下载任务（内存表，单实例够用）。 */
+interface DownloadTask {
+  total: number;
+  done: number;
+  current?: string;
+  status: "running" | "done" | "error";
+  error?: string;
+}
+const downloadTasks = new Map<string, DownloadTask>();
+
 /** GET /api/account —— 登录状态 + 账号信息 + VIP + 歌单列表。 */
 export const accountRoutes = new Hono()
   .get("/account", async (c) => {
@@ -261,4 +271,60 @@ export const accountRoutes = new Hono()
     } catch {
       return c.json({ error: "下载失败" }, 500);
     }
+  })
+  /** POST /api/download-batch —— 批量下载到 NAS，返回任务 id 供轮询进度。 */
+  .post("/download-batch", async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as {
+      ids?: unknown;
+      path?: unknown;
+      level?: unknown;
+    };
+    const ids = Array.isArray(body.ids)
+      ? (body.ids as unknown[]).filter((x): x is string => typeof x === "string")
+      : [];
+    if (ids.length === 0) return c.json({ error: "empty ids" }, 400);
+    const level = typeof body.level === "string" ? body.level : "exhigh";
+    const subPath = typeof body.path === "string" ? body.path.trim() : "";
+    const safeSub = subPath.replace(/\.\./gu, "").replace(/^\/+|\/+$/gu, "");
+
+    const taskId = crypto.randomUUID();
+    const task: DownloadTask = { total: ids.length, done: 0, status: "running" };
+    downloadTasks.set(taskId, task);
+
+    void (async () => {
+      try {
+        await warmupAuth("netease-music");
+        const client = createClient();
+        const outputDir = process.env.DOWNLOAD_DIR ?? "/downloads";
+        const finalDir = safeSub === "" ? outputDir : `${outputDir}/${safeSub}`;
+        for (const id of ids) {
+          task.current = id;
+          try {
+            await client.downloadByInput(id, { outputDir: finalDir, level: level as QualityLevel });
+          } catch {
+            // 单曲失败不阻断整批。
+          }
+          task.done += 1;
+        }
+        task.status = "done";
+      } catch (error) {
+        task.status = "error";
+        task.error = error instanceof Error ? error.message : String(error);
+      }
+    })();
+
+    return c.json({ taskId });
+  })
+  /** GET /api/download-batch?id=xxx —— 查询批量下载进度。 */
+  .get("/download-batch", (c) => {
+    const id = c.req.query("id");
+    if (id === undefined) return c.json({ error: "missing id" }, 400);
+    const task = downloadTasks.get(id);
+    if (task === undefined) return c.json({ error: "task not found" }, 404);
+    return c.json({
+      total: task.total,
+      done: task.done,
+      status: task.status,
+      ...(task.error !== undefined ? { error: task.error } : {}),
+    });
   });
