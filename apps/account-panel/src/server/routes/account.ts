@@ -39,23 +39,31 @@ const downloadHistory: DownloadRecord[] = [];
 function pushHistory(record: Omit<DownloadRecord, "id" | "time">): void {
   downloadHistory.unshift({ ...record, id: crypto.randomUUID(), time: new Date().toISOString() });
   if (downloadHistory.length > 100) downloadHistory.pop();
+  saveState();
 }
 
-/** 已下载歌曲 id 集合（持久化到下载目录的 .downloaded.json）。 */
+/** 已下载歌曲 id 集合 + 下载历史，持久化到下载目录的 .download-state.json。 */
 const downloadedIds = new Set<string>();
 
-function downloadedStatePath(): string {
-  return `${process.env.DOWNLOAD_DIR ?? "/downloads"}/.downloaded.json`;
+function statePath(): string {
+  return `${process.env.DOWNLOAD_DIR ?? "/downloads"}/.download-state.json`;
 }
 
-function loadDownloaded(): void {
+function loadState(): void {
   try {
-    const p = downloadedStatePath();
+    const p = statePath();
     if (existsSync(p)) {
-      const arr = JSON.parse(readFileSync(p, "utf8")) as unknown;
-      if (Array.isArray(arr)) {
-        for (const id of arr) {
+      const raw = JSON.parse(readFileSync(p, "utf8")) as { downloaded?: unknown; history?: unknown };
+      if (Array.isArray(raw.downloaded)) {
+        for (const id of raw.downloaded) {
           if (typeof id === "string") downloadedIds.add(id);
+        }
+      }
+      if (Array.isArray(raw.history)) {
+        for (const r of raw.history) {
+          if (r !== null && typeof r === "object") {
+            downloadHistory.push(r as DownloadRecord);
+          }
         }
       }
     }
@@ -64,17 +72,17 @@ function loadDownloaded(): void {
   }
 }
 
-function saveDownloaded(): void {
+function saveState(): void {
   try {
-    const p = downloadedStatePath();
+    const p = statePath();
     mkdirSync(dirname(p), { recursive: true });
-    writeFileSync(p, JSON.stringify([...downloadedIds]), "utf8");
+    writeFileSync(p, JSON.stringify({ downloaded: [...downloadedIds], history: downloadHistory }), "utf8");
   } catch {
     // 忽略。
   }
 }
 
-loadDownloaded();
+loadState();
 
 /** GET /api/account —— 登录状态 + 账号信息 + VIP + 歌单列表。 */
 export const accountRoutes = new Hono()
@@ -295,7 +303,7 @@ export const accountRoutes = new Hono()
       });
       pushHistory({ title, filePath: result.filePath, level: result.level, status: "done" });
       downloadedIds.add(id);
-      saveDownloaded();
+      saveState();
       return c.json({ filePath: result.filePath, level: result.level });
     } catch (error) {
       pushHistory({ title: id, filePath: "", level: level as QualityLevel, status: "error" });
@@ -378,7 +386,7 @@ export const accountRoutes = new Hono()
           status: "done",
         });
         for (const id of ids) downloadedIds.add(id);
-        saveDownloaded();
+        saveState();
       } catch (error) {
         task.status = "error";
         task.error = error instanceof Error ? error.message : String(error);
