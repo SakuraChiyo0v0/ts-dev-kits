@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/netease-music",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "NetEase Cloud Music download SDK: weapi encryption, QR-code login, privilege-aware quality selection and compliant downloading",
   "license": "UNLICENSED",
   "publishConfig": {

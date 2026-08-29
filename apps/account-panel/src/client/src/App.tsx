@@ -286,7 +286,7 @@ export default function App() {
   const [showHistory, setShowHistory] = useState(false);
   const [showDownloadHistory, setShowDownloadHistory] = useState(false);
   const [downloadRecords, setDownloadRecords] = useState<
-    Array<{ id: string; title: string; filePath: string; level: string; status: string; time: string }>
+    Array<{ id: string; filename: string; filePath: string; status: string; time: string }>
   >([]);
   const [batchProgress, setBatchProgress] = useState<{
     total: number;
@@ -295,6 +295,7 @@ export default function App() {
   } | null>(null);
   const [downloadedVersion, setDownloadedVersion] = useState(0);
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
+  const [recommend, setRecommend] = useState<Track[]>([]);
   const [fetching, setFetching] = useState(0);
   const [likedCurrent, setLikedCurrent] = useState(false);
   const [volume, setVolume] = useState<number>(() => {
@@ -750,7 +751,7 @@ export default function App() {
     try {
       const res = await rpc.api["download-history"].$get();
       const data = (await res.json()) as {
-        records?: Array<{ id: string; title: string; filePath: string; level: string; status: string; time: string }>;
+        records?: Array<{ id: string; filename: string; filePath: string; status: string; time: string }>;
       };
       setDownloadRecords(data.records ?? []);
     } catch {
@@ -1175,7 +1176,7 @@ export default function App() {
 }
 
 function DownloadHistoryPanel(props: {
-  records: Array<{ id: string; title: string; filePath: string; level: string; status: string; time: string }>;
+  records: Array<{ id: string; filename: string; filePath: string; status: string; time: string }>;
   onClear: () => void;
   onClose: () => void;
 }) {
@@ -1211,10 +1212,8 @@ function DownloadHistoryPanel(props: {
                 )}
               />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{r.title}</p>
-                <p className="truncate text-xs text-muted-foreground">
-                  {r.filePath || "(失败)"} · {r.level}
-                </p>
+                <p className="truncate text-sm font-medium">{r.filename}</p>
+                <p className="truncate text-xs text-muted-foreground">{r.filePath || "(失败)"}</p>
               </div>
               <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
                 {new Date(r.time).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}
@@ -1333,6 +1332,7 @@ function SongDetailModal(props: {
   const [nasPath, setNasPath] = useState("");
   const [level, setLevel] = useState("exhigh");
   const [playlistOpen, setPlaylistOpen] = useState(false);
+  const [dirs, setDirs] = useState<string[]>([""]);
   const levels: Array<{ value: string; label: string }> = [
     { value: "exhigh", label: "320k MP3" },
     { value: "lossless", label: "无损 FLAC" },
@@ -1340,6 +1340,20 @@ function SongDetailModal(props: {
     { value: "standard", label: "128k MP3" },
   ];
   const levelLabel = levels.find((l) => l.value === level)?.label ?? level;
+
+  // 展开 NAS 下载时拉取可选目录。
+  useEffect(() => {
+    if (!nasPathOpen) return;
+    void (async () => {
+      try {
+        const res = await rpc.api["download-dirs"].$get();
+        const data = (await res.json()) as { dirs?: string[] };
+        if (data.dirs !== undefined) setDirs(data.dirs);
+      } catch {
+        // 忽略。
+      }
+    })();
+  }, [nasPathOpen]);
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50" onClick={onClose}>
       <div
@@ -1451,12 +1465,20 @@ function SongDetailModal(props: {
               </div>
               {nasPathOpen ? (
                 <div className="flex w-full max-w-xs gap-2">
-                  <Input
+                  <select
                     value={nasPath}
                     onChange={(e) => setNasPath(e.target.value)}
-                    placeholder="NAS 子目录（留空=根目录 downloads）"
-                    className="rounded-full text-xs"
-                  />
+                    className="min-w-0 flex-1 rounded-full border bg-background px-3 py-1.5 text-xs"
+                  >
+                    <option value="">根目录（downloads）</option>
+                    {dirs
+                      .filter((d) => d !== "")
+                      .map((d) => (
+                        <option key={d} value={d}>
+                          {d}
+                        </option>
+                      ))}
+                  </select>
                   <Button
                     size="sm"
                     className="shrink-0 rounded-full"
@@ -2158,6 +2180,21 @@ function PlaylistView(props: {
   const [batchOpen, setBatchOpen] = useState(false);
   const [batchPath, setBatchPath] = useState("");
   const [batchLevel, setBatchLevel] = useState("exhigh");
+  const [batchDirs, setBatchDirs] = useState<string[]>([""]);
+
+  // 展开批量下载时拉取可选目录。
+  useEffect(() => {
+    if (!batchOpen) return;
+    void (async () => {
+      try {
+        const res = await rpc.api["download-dirs"].$get();
+        const data = (await res.json()) as { dirs?: string[] };
+        if (data.dirs !== undefined) setBatchDirs(data.dirs);
+      } catch {
+        // 忽略。
+      }
+    })();
+  }, [batchOpen]);
 
   // 加载时查询哪些歌已下载、哪些已红心。
   useEffect(() => {
@@ -2272,12 +2309,20 @@ function PlaylistView(props: {
                   >
                     品质：{batchLevel}
                   </button>
-                  <Input
+                  <select
                     value={batchPath}
                     onChange={(e) => setBatchPath(e.target.value)}
-                    placeholder="NAS 子目录（留空=根目录）"
-                    className="rounded-full text-xs"
-                  />
+                    className="min-w-0 flex-1 rounded-full border bg-background px-3 py-1.5 text-xs"
+                  >
+                    <option value="">根目录（downloads）</option>
+                    {batchDirs
+                      .filter((d) => d !== "")
+                      .map((d) => (
+                        <option key={d} value={d}>
+                          {d}
+                        </option>
+                      ))}
+                  </select>
                   <Button
                     size="sm"
                     className="shrink-0 rounded-full"

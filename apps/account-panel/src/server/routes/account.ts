@@ -7,8 +7,9 @@
 import { Hono } from "hono";
 import { createNeteaseClient, type QualityLevel } from "@sakurachiyo0v0/netease-music";
 import { AuthStore } from "@sakurachiyo0v0/account";
+import { DownloadManager } from "@sakurachiyo0v0/media-downloader";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
+import { basename, dirname } from "node:path";
 import { createAuthNamespace, warmupAuth } from "../bootstrap.js";
 
 /** 构造已预热登录态的网易云客户端。 */
@@ -26,45 +27,30 @@ interface DownloadTask {
 }
 const downloadTasks = new Map<string, DownloadTask>();
 
-/** 下载历史记录（内存，最多 100 条）。 */
-interface DownloadRecord {
-  id: string;
-  title: string;
-  filePath: string;
-  level: string;
-  status: "done" | "error";
-  time: string;
-}
-const downloadHistory: DownloadRecord[] = [];
-
-function pushHistory(record: Omit<DownloadRecord, "id" | "time">): void {
-  downloadHistory.unshift({ ...record, id: crypto.randomUUID(), time: new Date().toISOString() });
-  if (downloadHistory.length > 100) downloadHistory.pop();
-  saveState();
+/** 通用下载管理器（root = DOWNLOAD_DIR，管理目录列表与下载历史）。 */
+let downloadManager: DownloadManager | null = null;
+function getDownloadManager(): DownloadManager {
+  if (downloadManager === null) {
+    downloadManager = new DownloadManager({ root: process.env.DOWNLOAD_DIR ?? "/downloads" });
+  }
+  return downloadManager;
 }
 
-/** 已下载歌曲 id 集合 + 下载历史，持久化到下载目录的 .download-state.json。 */
+/** 已下载歌曲 id 集合（持久化到 .downloaded.json，与下载历史分开）。 */
 const downloadedIds = new Set<string>();
 
-function statePath(): string {
-  return `${process.env.DOWNLOAD_DIR ?? "/downloads"}/.download-state.json`;
+function downloadedPath(): string {
+  return `${process.env.DOWNLOAD_DIR ?? "/downloads"}/.downloaded.json`;
 }
 
-function loadState(): void {
+function loadDownloaded(): void {
   try {
-    const p = statePath();
+    const p = downloadedPath();
     if (existsSync(p)) {
-      const raw = JSON.parse(readFileSync(p, "utf8")) as { downloaded?: unknown; history?: unknown };
-      if (Array.isArray(raw.downloaded)) {
-        for (const id of raw.downloaded) {
+      const arr = JSON.parse(readFileSync(p, "utf8")) as unknown;
+      if (Array.isArray(arr)) {
+        for (const id of arr) {
           if (typeof id === "string") downloadedIds.add(id);
-        }
-      }
-      if (Array.isArray(raw.history)) {
-        for (const r of raw.history) {
-          if (r !== null && typeof r === "object") {
-            downloadHistory.push(r as DownloadRecord);
-          }
         }
       }
     }
@@ -73,17 +59,17 @@ function loadState(): void {
   }
 }
 
-function saveState(): void {
+function saveDownloaded(): void {
   try {
-    const p = statePath();
+    const p = downloadedPath();
     mkdirSync(dirname(p), { recursive: true });
-    writeFileSync(p, JSON.stringify({ downloaded: [...downloadedIds], history: downloadHistory }), "utf8");
+    writeFileSync(p, JSON.stringify([...downloadedIds]), "utf8");
   } catch {
     // 忽略。
   }
 }
 
-loadState();
+loadDownloaded();
 
 /** GET /api/account —— 登录状态 + 账号信息 + VIP + 歌单列表。 */
 export const accountRoutes = new Hono()
@@ -322,23 +308,16 @@ export const accountRoutes = new Hono()
     try {
       const outputDir = process.env.DOWNLOAD_DIR ?? "/downloads";
       const finalDir = safeSub === "" ? outputDir : `${outputDir}/${safeSub}`;
-      let title = id;
-      try {
-        const info = await client.getSongInfo(id);
-        title = info.artists.length > 0 ? `${info.artists.join(",")} - ${info.title}` : info.title;
-      } catch {
-        // 标题获取失败不影响下载。
-      }
       const result = await client.downloadByInput(id, {
         outputDir: finalDir,
         level: level as QualityLevel,
       });
-      pushHistory({ title, filePath: result.filePath, level: result.level, status: "done" });
       downloadedIds.add(id);
-      saveState();
+      saveDownloaded();
+      getDownloadManager().record({ filename: basename(result.filePath), filePath: result.filePath, status: "done" });
       return c.json({ filePath: result.filePath, level: result.level });
     } catch (error) {
-      pushHistory({ title: id, filePath: "", level: level as QualityLevel, status: "error" });
+      getDownloadManager().record({ filename: id, filePath: "", status: "error" });
       return c.json({ error: error instanceof Error ? error.message : "下载失败" }, 500);
     }
   })
@@ -411,14 +390,9 @@ export const accountRoutes = new Hono()
           task.done += 1;
         }
         task.status = "done";
-        pushHistory({
-          title: `批量下载 ${ids.length} 首`,
-          filePath: finalDir,
-          level: level as QualityLevel,
-          status: "done",
-        });
+        getDownloadManager().record({ filename: `批量下载 ${ids.length} 首`, filePath: finalDir, status: "done" });
         for (const id of ids) downloadedIds.add(id);
-        saveState();
+        saveDownloaded();
       } catch (error) {
         task.status = "error";
         task.error = error instanceof Error ? error.message : String(error);
@@ -442,12 +416,11 @@ export const accountRoutes = new Hono()
   })
   /** GET /api/download-history —— 下载历史（内存，倒序）。 */
   .get("/download-history", (c) => {
-    return c.json({ records: downloadHistory });
+    return c.json({ records: getDownloadManager().history() });
   })
   /** POST /api/download-history/clear —— 清空下载历史。 */
   .post("/download-history/clear", (c) => {
-    downloadHistory.length = 0;
-    saveState();
+    getDownloadManager().clearHistory();
     return c.json({ ok: true });
   })
   /** GET /api/downloaded?ids=a,b,c —— 查询哪些歌曲已下载。 */
@@ -467,6 +440,31 @@ export const accountRoutes = new Hono()
     } catch {
       return c.json({ error: "获取失败" }, 500);
     }
+  })
+  /** GET /api/recommend —— 每日推荐歌曲。 */
+  .get("/recommend", async (c) => {
+    await warmupAuth("netease-music");
+    const client = createClient();
+    if (!client.isLoggedIn) return c.json({ error: "未登录" }, 401);
+    try {
+      const songs = await client.getRecommendSongs();
+      return c.json({
+        songs: songs.map((s) => ({
+          id: s.id,
+          title: s.title,
+          artists: s.artists,
+          album: s.album,
+          durationMs: s.durationMs,
+          ...(s.coverUrl !== undefined ? { coverUrl: s.coverUrl } : {}),
+        })),
+      });
+    } catch {
+      return c.json({ error: "获取失败" }, 500);
+    }
+  })
+  /** GET /api/download-dirs —— 列出 NAS 下载目录下的子目录（供下载时选择）。 */
+  .get("/download-dirs", (c) => {
+    return c.json({ dirs: getDownloadManager().listDirs() });
   })
   /** POST /api/logout —— 退出登录（清除本地 + 远程 WebDAV 登录态）。 */
   .post("/logout", async (c) => {

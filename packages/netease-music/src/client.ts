@@ -154,6 +154,11 @@ export class NeteaseMusicClient {
     return this.#user.getLikeList(options);
   }
 
+  /** 获取每日推荐歌曲（需登录）。 */
+  async getRecommendSongs(): Promise<SongInfo[]> {
+    return this.#songs.getRecommendSongs();
+  }
+
   /** 批量检查歌曲是否已红心。 */
   async checkLiked(trackIds: Array<string | number>): Promise<Map<string, boolean>> {
     return this.#user.checkLiked(trackIds);

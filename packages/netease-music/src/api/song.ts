@@ -52,6 +52,33 @@ export function extractAvailableLevels(
   return ["standard", "higher", "exhigh"];
 }
 
+/** 把服务端歌曲对象解析为 SongInfo（兼容 detail 与 recommend 两种字段命名）。 */
+function parseSong(raw: Record<string, unknown>): SongInfo | null {
+  const id = String(raw.id ?? "");
+  const title = String(raw.name ?? "");
+  if (id === "" || title === "") return null;
+  const artistsArr = Array.isArray(raw.ar)
+    ? raw.ar
+    : Array.isArray(raw.artists)
+      ? raw.artists
+      : [];
+  const artists = (artistsArr as Array<Record<string, unknown>>).map((a) => String(a.name ?? ""));
+  const albumObj = (raw.al ?? raw.album ?? {}) as Record<string, unknown>;
+  const album = albumObj.name;
+  const durationMs = Number(raw.dt ?? raw.duration ?? 0);
+  const picUrl = albumObj.picUrl ?? raw.picUrl;
+  return {
+    id,
+    title,
+    artists: artists.filter((name) => name !== ""),
+    album: typeof album === "string" ? album : "",
+    durationMs,
+    ...(typeof picUrl === "string" && picUrl !== "" ? { coverUrl: picUrl } : {}),
+    ...(Number(raw.st ?? -1) !== -1 ? { st: Number(raw.st) } : {}),
+    ...(Number(raw.fee ?? -1) !== -1 ? { fee: Number(raw.fee) } : {}),
+  };
+}
+
 /** 歌曲 API。 */
 export class SongApi {
   readonly #session: WeapiSession;
@@ -67,28 +94,22 @@ export class SongApi {
     const songs = Array.isArray(body.songs) ? (body.songs as Array<Record<string, unknown>>) : [];
     const result: SongInfo[] = [];
     for (const song of songs) {
-      const id = String(song.id ?? "");
-      const title = String(song.name ?? "");
-      if (id === "" || title === "") {
-        continue;
-      }
-      const artists = Array.isArray(song.ar)
-        ? (song.ar as Array<Record<string, unknown>>).map((artist) => String(artist.name ?? ""))
-        : [];
-      const album = ((song.al ?? {}) as Record<string, unknown>).name;
-      const durationMs = Number(song.dt ?? 0);
-      const picUrl = ((song.al ?? {}) as Record<string, unknown>).picUrl;
-      const info: SongInfo = {
-        id,
-        title,
-        artists: artists.filter((name) => name !== ""),
-        album: typeof album === "string" ? album : "",
-        durationMs,
-        ...(typeof picUrl === "string" && picUrl !== "" ? { coverUrl: picUrl } : {}),
-        ...(Number(song.st ?? -1) !== -1 ? { st: Number(song.st) } : {}),
-        ...(Number(song.fee ?? -1) !== -1 ? { fee: Number(song.fee) } : {}),
-      };
-      result.push(info);
+      const info = parseSong(song);
+      if (info !== null) result.push(info);
+    }
+    return result;
+  }
+
+  /** 获取每日推荐歌曲（需登录，约 30 首）。 */
+  async getRecommendSongs(): Promise<SongInfo[]> {
+    const body = await this.#session.post("/weapi/v1/discovery/recommend/songs", {});
+    const list = Array.isArray(body.recommend)
+      ? (body.recommend as Array<Record<string, unknown>>)
+      : [];
+    const result: SongInfo[] = [];
+    for (const song of list) {
+      const info = parseSong(song);
+      if (info !== null) result.push(info);
     }
     return result;
   }
