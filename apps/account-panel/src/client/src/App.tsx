@@ -293,6 +293,7 @@ export default function App() {
     done: number;
     status: string;
   } | null>(null);
+  const [downloadedVersion, setDownloadedVersion] = useState(0);
   const [fetching, setFetching] = useState(0);
   const [likedCurrent, setLikedCurrent] = useState(false);
   const [volume, setVolume] = useState<number>(() => {
@@ -710,6 +711,7 @@ export default function App() {
             if (p.status === "done") {
               window.clearInterval(timer);
               setBatchProgress({ total: p.total ?? tracks.length, done: p.done ?? tracks.length, status: "done" });
+              setDownloadedVersion((v) => v + 1);
               showToast(`已下载 ${p.total ?? 0} 首到 NAS`);
               window.setTimeout(() => setBatchProgress(null), 3000);
             } else if (p.status === "error") {
@@ -949,6 +951,7 @@ export default function App() {
             onDownloadLocal={(t) => downloadToLocal(t)}
             onDownloadAll={(path, level) => void downloadBatch(detail.tracks, path, level)}
             onDeletePlaylist={(id) => void deletePlaylist(id)}
+            downloadedVersion={downloadedVersion}
           />
         ) : account === null ? (
           <HomeSkeleton />
@@ -2092,8 +2095,9 @@ function PlaylistView(props: {
   onDownloadLocal: (track: Track) => void;
   onDownloadAll: (path: string, level: string) => void;
   onDeletePlaylist: (id: string) => void;
+  downloadedVersion: number;
 }) {
-  const { detail, currentTrackId, onBack, onPlay, onPlayAll, onToggleLike, onSharePlaylist, onShowDetail, onDownloadLocal, onDownloadAll, onDeletePlaylist } =
+  const { detail, currentTrackId, onBack, onPlay, onPlayAll, onToggleLike, onSharePlaylist, onShowDetail, onDownloadLocal, onDownloadAll, onDeletePlaylist, downloadedVersion } =
     props;
   const [hearted, setHearted] = useState<Set<string>>(new Set());
   const [downloaded, setDownloaded] = useState<Set<string>>(new Set());
@@ -2129,7 +2133,7 @@ function PlaylistView(props: {
     return () => {
       cancelled = true;
     };
-  }, [detail.tracks]);
+  }, [detail.tracks, downloadedVersion]);
 
   const toggleHeart = (t: Track) => {
     const liked = hearted.has(t.id);
