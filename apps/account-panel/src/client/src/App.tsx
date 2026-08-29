@@ -293,6 +293,7 @@ export default function App() {
   const [showQueue, setShowQueue] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [songDetail, setSongDetail] = useState<Track | null>(null);
+  const [downloadTarget, setDownloadTarget] = useState<Track | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [showDownloadHistory, setShowDownloadHistory] = useState(false);
   const [downloadRecords, setDownloadRecords] = useState<
@@ -1019,7 +1020,7 @@ export default function App() {
             onToggleLike={toggleLike}
             onSharePlaylist={(id) => void sharePlaylist(id)}
             onShowDetail={setSongDetail}
-            onDownloadLocal={(t) => downloadToLocal(t)}
+            onDownloadLocal={(t) => setDownloadTarget(t)}
             onDownloadAll={(path, level) => void downloadBatch(detail.tracks, path, level)}
             onDeletePlaylist={(id) => void deletePlaylist(id)}
             onRenamePlaylist={(id, name) => void renamePlaylist(id, name)}
@@ -1041,7 +1042,7 @@ export default function App() {
             onPlaySong={(t) => void playAt([t], 0)}
             onRefresh={() => void refresh()}
             onShowHistory={() => setShowHistory(true)}
-            onDownloadLocal={(t) => downloadToLocal(t)}
+            onDownloadLocal={(t) => setDownloadTarget(t)}
             onLogout={() => void logout()}
             onDismissLast={dismissLast}
             onToggleLike={toggleLike}
@@ -1122,7 +1123,7 @@ export default function App() {
         }}
         onCycleLevel={() => void changeLevel()}
         onDownload={() => {
-          if (currentTrack !== null) downloadToLocal(currentTrack);
+          if (currentTrack !== null) setDownloadTarget(currentTrack);
         }}
         onOpenDownloadHistory={() => void openDownloadHistory()}
       />
@@ -1136,7 +1137,7 @@ export default function App() {
             const audio = audioRef.current;
             if (audio !== null) audio.currentTime = time;
           }}
-          onDownload={() => downloadToLocal(currentTrack)}
+          onDownload={() => setDownloadTarget(currentTrack)}
           onClose={() => setShowLyrics(false)}
         />
       ) : null}
@@ -1205,11 +1206,22 @@ export default function App() {
             void openLyrics(songDetail);
             setSongDetail(null);
           }}
-          onDownloadLocal={(level) => downloadToLocal(songDetail, level)}
-          onDownloadNas={(path, level) => void downloadToNas(songDetail, path, level)}
+          onDownload={() => {
+            setDownloadTarget(songDetail);
+            setSongDetail(null);
+          }}
           playlists={account?.playlists ?? []}
           onAddToPlaylist={(playlistId) => void addToPlaylist(songDetail.id, playlistId)}
           onClose={() => setSongDetail(null)}
+        />
+      ) : null}
+
+      {downloadTarget !== null ? (
+        <DownloadDialog
+          track={downloadTarget}
+          onDownloadLocal={(level) => downloadToLocal(downloadTarget, level)}
+          onDownloadNas={(path, level) => void downloadToNas(downloadTarget, path, level)}
+          onClose={() => setDownloadTarget(null)}
         />
       ) : null}
 
@@ -1220,7 +1232,7 @@ export default function App() {
             void playAt([t], 0);
             setShowHistory(false);
           }}
-          onDownload={(t) => downloadToLocal(t)}
+          onDownload={(t) => setDownloadTarget(t)}
           onToggleLike={(t) => void toggleLike(t, likedIds.has(t.id))}
           likedIds={likedIds}
           onClear={clearRecent}
@@ -1376,26 +1388,16 @@ function HistoryPanel(props: {
   );
 }
 
-function SongDetailModal(props: {
+function DownloadDialog(props: {
   track: Track;
-  onPlay: () => void;
-  liked: boolean;
-  onToggleLike: () => void;
-  onShare: () => void;
-  onLyrics: () => void;
   onDownloadLocal: (level: string) => void;
   onDownloadNas: (path: string, level: string) => void;
-  playlists: PlaylistSummary[];
-  onAddToPlaylist: (playlistId: string) => void;
   onClose: () => void;
 }) {
-  const { track, onPlay, liked, onToggleLike, onShare, onLyrics, onDownloadLocal, onDownloadNas, playlists, onAddToPlaylist, onClose } =
-    props;
-  const [downloadOpen, setDownloadOpen] = useState(false);
-  const [nasPathOpen, setNasPathOpen] = useState(false);
-  const [nasPath, setNasPath] = useState("");
+  const { track, onDownloadLocal, onDownloadNas, onClose } = props;
   const [level, setLevel] = useState("exhigh");
-  const [playlistOpen, setPlaylistOpen] = useState(false);
+  const [channel, setChannel] = useState<"local" | "nas">("local");
+  const [nasPath, setNasPath] = useState("");
   const [dirs, setDirs] = useState<string[]>([""]);
   const levels: Array<{ value: string; label: string }> = [
     { value: "exhigh", label: "320k MP3" },
@@ -1405,9 +1407,8 @@ function SongDetailModal(props: {
   ];
   const levelLabel = levels.find((l) => l.value === level)?.label ?? level;
 
-  // 展开 NAS 下载时拉取可选目录。
   useEffect(() => {
-    if (!nasPathOpen) return;
+    if (channel !== "nas") return;
     void (async () => {
       try {
         const res = await rpc.api["download-dirs"].$get();
@@ -1417,7 +1418,124 @@ function SongDetailModal(props: {
         // 忽略。
       }
     })();
-  }, [nasPathOpen]);
+  }, [channel]);
+
+  const confirm = () => {
+    if (channel === "local") onDownloadLocal(level);
+    else onDownloadNas(nasPath, level);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50" onClick={onClose}>
+      <div
+        className="w-full max-w-sm animate-fade-in rounded-2xl bg-card p-6 shadow-lg"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-4 flex items-center gap-3">
+          <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-muted">
+            {track.coverUrl ? (
+              <img src={track.coverUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center" style={{ background: coverGradient(track.title) }}>
+                <ListMusic className="h-6 w-6 text-white/70" />
+              </div>
+            )}
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-base font-bold">{track.title}</p>
+            <p className="truncate text-sm text-muted-foreground">{track.artists?.join(" / ")}</p>
+          </div>
+        </div>
+
+        <div className="mb-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">音质</span>
+            <button
+              onClick={() =>
+                setLevel((l) => {
+                  const idx = levels.findIndex((x) => x.value === l);
+                  return levels[(idx + 1) % levels.length]?.value ?? l;
+                })
+              }
+              className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium"
+            >
+              {levelLabel}
+            </button>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">下载到</span>
+            <div className="flex gap-1 rounded-full bg-muted p-1">
+              <button
+                onClick={() => setChannel("local")}
+                className={cn(
+                  "rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                  channel === "local" ? "bg-background text-foreground shadow" : "text-muted-foreground",
+                )}
+              >
+                本机
+              </button>
+              <button
+                onClick={() => setChannel("nas")}
+                className={cn(
+                  "rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                  channel === "nas" ? "bg-background text-foreground shadow" : "text-muted-foreground",
+                )}
+              >
+                NAS
+              </button>
+            </div>
+          </div>
+          {channel === "nas" ? (
+            <div className="flex items-center gap-2">
+              <span className="shrink-0 text-sm text-muted-foreground">目录</span>
+              <select
+                value={nasPath}
+                onChange={(e) => setNasPath(e.target.value)}
+                className="min-w-0 flex-1 rounded-full border bg-background px-3 py-1.5 text-xs"
+              >
+                <option value="">根目录（downloads）</option>
+                {dirs
+                  .filter((d) => d !== "")
+                  .map((d) => (
+                    <option key={d} value={d}>
+                      {d}
+                    </option>
+                  ))}
+              </select>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="flex gap-2">
+          <Button variant="ghost" size="sm" className="flex-1 rounded-full" onClick={onClose}>
+            取消
+          </Button>
+          <Button size="sm" className="flex-1 rounded-full" onClick={confirm}>
+            <Download />
+            下载
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SongDetailModal(props: {
+  track: Track;
+  onPlay: () => void;
+  liked: boolean;
+  onToggleLike: () => void;
+  onShare: () => void;
+  onLyrics: () => void;
+  onDownload: () => void;
+  playlists: PlaylistSummary[];
+  onAddToPlaylist: (playlistId: string) => void;
+  onClose: () => void;
+}) {
+  const { track, onPlay, liked, onToggleLike, onShare, onLyrics, onDownload, playlists, onAddToPlaylist, onClose } =
+    props;
+  const [playlistOpen, setPlaylistOpen] = useState(false);
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50" onClick={onClose}>
       <div
@@ -1498,72 +1616,10 @@ function SongDetailModal(props: {
               ) : null}
             </div>
           ) : null}
-          {downloadOpen ? (
-            <div className="flex flex-col items-center gap-2">
-              <button
-                onClick={() =>
-                  setLevel((l) => {
-                    const idx = levels.findIndex((x) => x.value === l);
-                    return levels[(idx + 1) % levels.length]?.value ?? l;
-                  })
-                }
-                className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium transition-colors hover:bg-muted/70"
-                title="切换下载品质"
-              >
-                品质：{levelLabel}
-              </button>
-              <div className="flex gap-2">
-                <Button size="sm" variant="secondary" className="rounded-full" onClick={() => onDownloadLocal(level)}>
-                  <Download />
-                  下载到本机
-                </Button>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  className="rounded-full"
-                  onClick={() => setNasPathOpen((v) => !v)}
-                >
-                  <HardDriveDownload />
-                  下载到 NAS
-                </Button>
-              </div>
-              {nasPathOpen ? (
-                <div className="flex w-full max-w-xs gap-2">
-                  <select
-                    value={nasPath}
-                    onChange={(e) => setNasPath(e.target.value)}
-                    className="min-w-0 flex-1 rounded-full border bg-background px-3 py-1.5 text-xs"
-                  >
-                    <option value="">根目录（downloads）</option>
-                    {dirs
-                      .filter((d) => d !== "")
-                      .map((d) => (
-                        <option key={d} value={d}>
-                          {d}
-                        </option>
-                      ))}
-                  </select>
-                  <Button
-                    size="sm"
-                    className="shrink-0 rounded-full"
-                    onClick={() => onDownloadNas(nasPath, level)}
-                  >
-                    确认
-                  </Button>
-                </div>
-              ) : null}
-            </div>
-          ) : (
-            <Button
-              size="sm"
-              variant="outline"
-              className="rounded-full"
-              onClick={() => setDownloadOpen(true)}
-            >
-              <Download />
-              下载
-            </Button>
-          )}
+          <Button size="sm" variant="outline" className="rounded-full" onClick={onDownload}>
+            <Download />
+            下载
+          </Button>
         </div>
         <Button variant="ghost" size="sm" className="mt-4 w-full rounded-full" onClick={onClose}>
           关闭
