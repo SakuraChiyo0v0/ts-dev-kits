@@ -271,6 +271,7 @@ function useTheme() {
 export default function App() {
   const [account, setAccount] = useState<AccountPayload | null>(null);
   const [login, setLogin] = useState<LoginView | null>(null);
+  const [activeModule, setActiveModule] = useState<string | null>(null);
   const [userAuth, setUserAuth] = useState<{ token: string; username: string } | null>(() => {
     try {
       const raw = localStorage.getItem("user-auth");
@@ -521,6 +522,23 @@ export default function App() {
     },
     [showToast],
   );
+
+  const userLogout = useCallback(async () => {
+    try {
+      if (userAuth !== null) {
+        await fetch("/api/users/logout", { method: "POST", headers: { authorization: `Bearer ${userAuth.token}` } });
+      }
+    } catch {
+      // 忽略。
+    }
+    setUserAuth(null);
+    setActiveModule(null);
+    try {
+      localStorage.removeItem("user-auth");
+    } catch {
+      // 忽略。
+    }
+  }, [userAuth]);
 
   const startLogin = useCallback(async () => {
     try {
@@ -1226,16 +1244,56 @@ export default function App() {
             onOpenDownloadHistory={() => void openDownloadHistory()}
             onOpenLogs={() => void openLogs()}
           />
-        ) : (
+        ) : userAuth === null ? (
           <LoginView
-            login={login}
-            onLogin={() => void startLogin()}
-            onCancel={() => setLogin(null)}
             onUserLogin={(u, p) => void userLogin(u, p)}
             onUserRegister={(u, p) => void userRegister(u, p)}
-            bindMode={userAuth !== null}
           />
-        )}
+        ) : activeModule === null ? (
+          <Launcher
+            username={userAuth.username}
+            onOpenNetease={() => setActiveModule("netease")}
+            onLogout={() => void userLogout()}
+          />
+        ) : activeModule === "netease" ? (
+          account === null ? (
+            <HomeSkeleton />
+          ) : account.loggedIn ? (
+            <HomeView
+              account={account}
+              recentTracks={recentTracks}
+              lastTrack={lastTrack}
+              playCounts={playCounts}
+              onResume={() => void resumePlay()}
+              avatarError={avatarError}
+              onAvatarError={() => setAvatarError(true)}
+              onOpenPlaylist={(id) => void openPlaylist(id)}
+              onPlayPlaylist={(id) => void playPlaylist(id)}
+              onPlaySong={(t) => void playAt([t], 0)}
+              onRefresh={() => void refresh()}
+              onShowHistory={() => setShowHistory(true)}
+              onDownloadLocal={(t) => setDownloadTarget(t)}
+              onLogout={() => {
+                setActiveModule(null);
+              }}
+              onDismissLast={dismissLast}
+              onToggleLike={toggleLike}
+              likedIds={likedIds}
+              recommend={recommend}
+              recommendPlaylists={recommendPlaylists}
+              onPlayPersonalFm={() => void playPersonalFm()}
+              onOpenDownloadHistory={() => void openDownloadHistory()}
+              onOpenLogs={() => void openLogs()}
+            />
+          ) : (
+            <BindNeteaseView
+              login={login}
+              onLogin={() => void startLogin()}
+              onCancel={() => setLogin(null)}
+              onBack={() => setActiveModule(null)}
+            />
+          )
+        ) : null}
       </div>
 
       <audio
@@ -2216,138 +2274,23 @@ function QueuePanel(props: {
   );
 }
 
-function LoginView(props: {
+/** 网易云模块内：未绑定时显示绑定页（扫码登录网易云）。 */
+function BindNeteaseView(props: {
   login: LoginView | null;
   onLogin: () => void;
   onCancel: () => void;
-  onUserLogin: (username: string, password: string) => void;
-  onUserRegister: (username: string, password: string) => void;
-  bindMode?: boolean;
+  onBack: () => void;
 }) {
-  const { login, onLogin, onCancel, onUserLogin, onUserRegister, bindMode } = props;
-  const [mode, setMode] = useState<"account" | "qr">(bindMode === true ? "qr" : "account");
-  const [subView, setSubView] = useState<"login" | "register">("login");
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const { login, onLogin, onCancel, onBack } = props;
   return (
     <div className="flex flex-1 items-center justify-center p-6">
       <Card className="w-full max-w-sm border-0 bg-card/70 shadow-lg backdrop-blur-xl">
         <CardHeader className="items-center text-center">
-          <CardTitle>{bindMode === true ? "绑定网易云" : "登录"}</CardTitle>
-          <CardDescription>
-            {bindMode === true ? "主账号已登录，扫码绑定网易云后开始使用" : "统一账号登录，或扫码绑定网易云"}
-          </CardDescription>
+          <CardTitle>绑定网易云</CardTitle>
+          <CardDescription>扫码登录网易云，登录态将同步到你的统一账号</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col items-center gap-4">
-          <div className="flex gap-1 rounded-full bg-muted p-1">
-            <button
-              onClick={() => setMode("account")}
-              className={cn(
-                "rounded-full px-3 py-1 text-xs font-medium transition-colors",
-                mode === "account" ? "bg-background text-foreground shadow" : "text-muted-foreground",
-              )}
-            >
-              账号登录
-            </button>
-            <button
-              onClick={() => setMode("qr")}
-              className={cn(
-                "rounded-full px-3 py-1 text-xs font-medium transition-colors",
-                mode === "qr" ? "bg-background text-foreground shadow" : "text-muted-foreground",
-              )}
-            >
-              {bindMode === true ? "扫码绑定" : "扫码绑定"}
-            </button>
-          </div>
-
-          {mode === "account" ? (
-            subView === "login" ? (
-              <div className="flex w-full flex-col gap-3">
-                <Input
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="用户名"
-                  className="rounded-full"
-                  autoComplete="username"
-                />
-                <Input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="密码"
-                  className="rounded-full"
-                  autoComplete="current-password"
-                />
-                <Button
-                  size="lg"
-                  className="rounded-full"
-                  disabled={username.trim().length < 2 || password.length < 6}
-                  onClick={() => onUserLogin(username.trim(), password)}
-                >
-                  登录
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="rounded-full"
-                  onClick={() => setSubView("register")}
-                >
-                  没有账号？注册
-                </Button>
-              </div>
-            ) : (
-              <div className="flex w-full flex-col gap-3">
-                <Input
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="用户名（至少 2 位）"
-                  className="rounded-full"
-                  autoComplete="username"
-                />
-                <Input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="密码（至少 6 位）"
-                  className="rounded-full"
-                  autoComplete="new-password"
-                />
-                <Input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="确认密码"
-                  className="rounded-full"
-                  autoComplete="new-password"
-                />
-                <Button
-                  size="lg"
-                  className="rounded-full"
-                  disabled={
-                    username.trim().length < 2 ||
-                    password.length < 6 ||
-                    confirmPassword !== password
-                  }
-                  onClick={() => {
-                    onUserRegister(username.trim(), password);
-                    setConfirmPassword("");
-                    setSubView("login");
-                  }}
-                >
-                  注册
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="rounded-full"
-                  onClick={() => setSubView("login")}
-                >
-                  已有账号？去登录
-                </Button>
-              </div>
-            )
-          ) : login === null ? (
+          {login === null ? (
             <Button size="lg" className="rounded-full" onClick={onLogin}>
               <QrCode />
               扫码绑定网易云
@@ -2371,8 +2314,160 @@ function LoginView(props: {
               </Button>
             </>
           )}
+          <Button variant="ghost" size="sm" className="rounded-full" onClick={onBack}>
+            返回服务列表
+          </Button>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function LoginView(props: {
+  onUserLogin: (username: string, password: string) => void;
+  onUserRegister: (username: string, password: string) => void;
+}) {
+  const { onUserLogin, onUserRegister } = props;
+  const [subView, setSubView] = useState<"login" | "register">("login");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  return (
+    <div className="flex flex-1 items-center justify-center p-6">
+      <Card className="w-full max-w-sm border-0 bg-card/70 shadow-lg backdrop-blur-xl">
+        <CardHeader className="items-center text-center">
+          <CardTitle>{subView === "login" ? "登录" : "注册"}</CardTitle>
+          <CardDescription>统一账号，一个登录入口管理所有服务</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col items-center gap-4">
+          {subView === "login" ? (
+            <div className="flex w-full flex-col gap-3">
+              <Input
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="用户名"
+                className="rounded-full"
+                autoComplete="username"
+              />
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="密码"
+                className="rounded-full"
+                autoComplete="current-password"
+              />
+              <Button
+                size="lg"
+                className="rounded-full"
+                disabled={username.trim().length < 2 || password.length < 6}
+                onClick={() => onUserLogin(username.trim(), password)}
+              >
+                登录
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="rounded-full"
+                onClick={() => setSubView("register")}
+              >
+                没有账号？注册
+              </Button>
+            </div>
+          ) : (
+            <div className="flex w-full flex-col gap-3">
+              <Input
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="用户名（至少 2 位）"
+                className="rounded-full"
+                autoComplete="username"
+              />
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="密码（至少 6 位）"
+                className="rounded-full"
+                autoComplete="new-password"
+              />
+              <Input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="确认密码"
+                className="rounded-full"
+                autoComplete="new-password"
+              />
+              <Button
+                size="lg"
+                className="rounded-full"
+                disabled={
+                  username.trim().length < 2 || password.length < 6 || confirmPassword !== password
+                }
+                onClick={() => {
+                  onUserRegister(username.trim(), password);
+                  setConfirmPassword("");
+                  setSubView("login");
+                }}
+              >
+                注册
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="rounded-full"
+                onClick={() => setSubView("login")}
+              >
+                已有账号？去登录
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+/** 模块选择页（统一登录后的路由分发入口）。 */
+function Launcher(props: {
+  username: string;
+  onOpenNetease: () => void;
+  onLogout: () => void;
+}) {
+  const { username, onOpenNetease, onLogout } = props;
+  return (
+    <div className="flex-1 animate-fade-in overflow-auto">
+      <div className="mx-auto max-w-4xl px-4 py-10 sm:px-8">
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">你好，{username}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">选择一个服务开始使用</p>
+          </div>
+          <button
+            onClick={onLogout}
+            className="rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            退出登录
+          </button>
+        </div>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+          <button
+            onClick={onOpenNetease}
+            className="group flex aspect-square flex-col items-center justify-center gap-3 rounded-2xl border bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg"
+          >
+            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Music2 className="h-7 w-7" />
+            </span>
+            <span className="text-sm font-medium">网易云音乐</span>
+            <span className="text-xs text-muted-foreground">歌单 / 播放 / 下载</span>
+          </button>
+          <div className="flex aspect-square flex-col items-center justify-center gap-3 rounded-2xl border border-dashed bg-card/50 text-muted-foreground">
+            <span className="text-3xl">+</span>
+            <span className="text-xs">更多服务接入中…</span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
