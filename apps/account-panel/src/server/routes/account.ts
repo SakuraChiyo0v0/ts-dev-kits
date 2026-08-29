@@ -285,6 +285,23 @@ export const accountRoutes = new Hono()
       return c.json({ error: "删除失败" }, 500);
     }
   })
+  /** POST /api/playlist/add —— 向歌单添加歌曲。 */
+  .post("/playlist/add", async (c) => {
+    const body = await c.req.json<{ playlistId?: unknown; trackIds?: unknown }>().catch(() => ({}));
+    const playlistId = typeof body.playlistId === "string" ? body.playlistId : undefined;
+    const trackIds = Array.isArray(body.trackIds)
+      ? (body.trackIds as unknown[]).filter((x): x is string => typeof x === "string")
+      : [];
+    if (playlistId === undefined || trackIds.length === 0) return c.json({ error: "参数错误" }, 400);
+    await warmupAuth("netease-music");
+    const client = createClient();
+    try {
+      await client.addTracksToPlaylist(playlistId, trackIds);
+      return c.json({ ok: true });
+    } catch {
+      return c.json({ error: "添加失败" }, 500);
+    }
+  })
   /** POST /api/download —— 下载到 NAS 本地目录（服务器端落盘，支持子路径）。 */
   .post("/download", async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as {

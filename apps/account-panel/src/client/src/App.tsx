@@ -9,6 +9,7 @@ import {
   Heart,
   List,
   ListMusic,
+  ListPlus,
   Moon,
   MoreHorizontal,
   Music2,
@@ -779,6 +780,18 @@ export default function App() {
     }
   }, [showToast]);
 
+  const addToPlaylist = useCallback(
+    async (trackId: string, playlistId: string) => {
+      try {
+        await rpc.api.playlist.add.$post({ json: { playlistId, trackIds: [trackId] } });
+        showToast("已加入歌单");
+      } catch {
+        showToast("添加失败");
+      }
+    },
+    [showToast],
+  );
+
   const reorderQueue = useCallback((from: number, to: number) => {
     setQueue((prev) => {
       if (from < 0 || from >= prev.length || to < 0 || to >= prev.length || from === to) return prev;
@@ -1093,6 +1106,8 @@ export default function App() {
           }}
           onDownloadLocal={(level) => downloadToLocal(songDetail, level)}
           onDownloadNas={(path, level) => void downloadToNas(songDetail, path, level)}
+          playlists={account?.playlists ?? []}
+          onAddToPlaylist={(playlistId) => void addToPlaylist(songDetail.id, playlistId)}
           onClose={() => setSongDetail(null)}
         />
       ) : null}
@@ -1247,13 +1262,17 @@ function SongDetailModal(props: {
   onLyrics: () => void;
   onDownloadLocal: (level: string) => void;
   onDownloadNas: (path: string, level: string) => void;
+  playlists: PlaylistSummary[];
+  onAddToPlaylist: (playlistId: string) => void;
   onClose: () => void;
 }) {
-  const { track, onPlay, onLike, onShare, onLyrics, onDownloadLocal, onDownloadNas, onClose } = props;
+  const { track, onPlay, onLike, onShare, onLyrics, onDownloadLocal, onDownloadNas, playlists, onAddToPlaylist, onClose } =
+    props;
   const [downloadOpen, setDownloadOpen] = useState(false);
   const [nasPathOpen, setNasPathOpen] = useState(false);
   const [nasPath, setNasPath] = useState("");
   const [level, setLevel] = useState("exhigh");
+  const [playlistOpen, setPlaylistOpen] = useState(false);
   const levels: Array<{ value: string; label: string }> = [
     { value: "exhigh", label: "320k MP3" },
     { value: "lossless", label: "无损 FLAC" },
@@ -1307,7 +1326,35 @@ function SongDetailModal(props: {
               <TextQuote />
               歌词
             </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="rounded-full"
+              onClick={() => setPlaylistOpen((v) => !v)}
+            >
+              <ListPlus />
+              加入歌单
+            </Button>
           </div>
+          {playlistOpen ? (
+            <div className="max-h-40 w-full overflow-y-auto rounded-xl border p-1.5">
+              {playlists.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => {
+                    onAddToPlaylist(p.id);
+                    setPlaylistOpen(false);
+                  }}
+                  className="block w-full truncate rounded-lg px-3 py-2 text-left text-sm hover:bg-muted"
+                >
+                  {p.name}
+                </button>
+              ))}
+              {playlists.length === 0 ? (
+                <p className="px-3 py-2 text-xs text-muted-foreground">暂无歌单</p>
+              ) : null}
+            </div>
+          ) : null}
           {downloadOpen ? (
             <div className="flex flex-col items-center gap-2">
               <button
