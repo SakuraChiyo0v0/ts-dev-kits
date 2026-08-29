@@ -1186,6 +1186,17 @@ export default function App() {
       ) : null}
 
       <div className={cn("flex min-h-0 flex-1 flex-col", currentTrack !== null && "pb-24")}>
+        {activeModule !== null ? (
+          <div className="flex items-center gap-2 border-b bg-background/80 px-4 py-2 backdrop-blur">
+            <button
+              onClick={() => setActiveModule(null)}
+              className="flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              服务列表
+            </button>
+          </div>
+        ) : null}
         {detailLoading ? (
           <PlaylistSkeleton />
         ) : detail !== null ? (
@@ -1204,33 +1215,6 @@ export default function App() {
             onDeletePlaylist={(id) => void deletePlaylist(id)}
             onRenamePlaylist={(id, name) => void renamePlaylist(id, name)}
             downloadedVersion={downloadedVersion}
-          />
-        ) : account === null ? (
-          <HomeSkeleton />
-        ) : account.loggedIn ? (
-          <HomeView
-            account={account}
-            recentTracks={recentTracks}
-            lastTrack={lastTrack}
-            playCounts={playCounts}
-            onResume={() => void resumePlay()}
-            avatarError={avatarError}
-            onAvatarError={() => setAvatarError(true)}
-            onOpenPlaylist={(id) => void openPlaylist(id)}
-            onPlayPlaylist={(id) => void playPlaylist(id)}
-            onPlaySong={(t) => void playAt([t], 0)}
-            onRefresh={() => void refresh()}
-            onShowHistory={() => setShowHistory(true)}
-            onDownloadLocal={(t) => setDownloadTarget(t)}
-            onLogout={() => void logout()}
-            onDismissLast={dismissLast}
-            onToggleLike={toggleLike}
-            likedIds={likedIds}
-            recommend={recommend}
-            recommendPlaylists={recommendPlaylists}
-            onPlayPersonalFm={() => void playPersonalFm()}
-            onOpenDownloadHistory={() => void openDownloadHistory()}
-            onOpenLogs={() => void openLogs()}
           />
         ) : userAuth === null ? (
           <LoginView onUserLogin={(u, p) => void userLogin(u, p)} />
@@ -1259,7 +1243,6 @@ export default function App() {
               onShowHistory={() => setShowHistory(true)}
               onDownloadLocal={(t) => setDownloadTarget(t)}
               onLogout={() => void logout()}
-              onBackToLauncher={() => setActiveModule(null)}
               onDismissLast={dismissLast}
               onToggleLike={toggleLike}
               likedIds={likedIds}
@@ -2410,7 +2393,6 @@ function HomeView(props: {
   onShowHistory: () => void;
   onDownloadLocal: (track: Track) => void;
   onLogout: () => void;
-  onBackToLauncher: () => void;
   onDismissLast: () => void;
   onToggleLike: (track: Track, liked: boolean) => void;
   likedIds: Set<string>;
@@ -2420,7 +2402,7 @@ function HomeView(props: {
   onOpenDownloadHistory: () => void;
   onOpenLogs: () => void;
 }) {
-  const { account, recentTracks, lastTrack, playCounts, onResume, avatarError, onAvatarError, onOpenPlaylist, onPlayPlaylist, onPlaySong, onRefresh, onShowHistory, onDownloadLocal, onLogout, onBackToLauncher, onDismissLast, onToggleLike, likedIds, recommend, recommendPlaylists, onPlayPersonalFm, onOpenDownloadHistory, onOpenLogs } =
+  const { account, recentTracks, lastTrack, playCounts, onResume, avatarError, onAvatarError, onOpenPlaylist, onPlayPlaylist, onPlaySong, onRefresh, onShowHistory, onDownloadLocal, onLogout, onDismissLast, onToggleLike, likedIds, recommend, recommendPlaylists, onPlayPersonalFm, onOpenDownloadHistory, onOpenLogs } =
     props;
   const [search, setSearch] = useState("");
   const [songQuery, setSongQuery] = useState("");
@@ -2522,14 +2504,6 @@ function HomeView(props: {
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{nickname}</h1>
             {vip?.isVip ? <Badge variant="vip">VIP {vip.level}</Badge> : null}
-            <button
-              onClick={onBackToLauncher}
-              className="ml-2 flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              title="返回服务列表"
-            >
-              <ChevronLeft className="h-3.5 w-3.5" />
-              服务列表
-            </button>
             <button
               onClick={onLogout}
               className="rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
