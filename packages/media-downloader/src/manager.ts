@@ -100,6 +100,12 @@ export class DownloadManager {
     this.#saveHistory();
   }
 
+  /** 删除单条历史记录。 */
+  removeHistory(id: string): void {
+    this.#history = this.#history.filter((r) => r.id !== id);
+    this.#saveHistory();
+  }
+
   /** 外部下载完成后记录一条历史（供不走 `download` 方法的场景复用历史能力）。 */
   record(record: Omit<DownloadHistoryRecord, "id" | "time">): void {
     this.#pushHistory(record);
