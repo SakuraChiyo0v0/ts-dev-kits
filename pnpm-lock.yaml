@@ -44,6 +44,9 @@ importers:
       '@sakurachiyo0v0/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@sakurachiyo0v0/media-downloader':
+        specifier: workspace:*
+        version: link:../../packages/media-downloader
       '@sakurachiyo0v0/netease-music':
         specifier: workspace:*
         version: link:../../packages/netease-music
@@ -568,6 +571,31 @@ importers:
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
+
+  packages/media-downloader:
+    dependencies:
+      '@sakurachiyo0v0/ffmpeg':
+        specifier: workspace:*
+        version: link:../ffmpeg
+      '@sakurachiyo0v0/logger':
+        specifier: workspace:*
+        version: link:../logger
+    devDependencies:
+      '@types/node':
+        specifier: ^26.1.2
+        version: 26.1.2
+      rollup:
+        specifier: ^4.62.4
+        version: 4.62.4
+      tslib:
+        specifier: ^2.8.1
+        version: 2.8.1
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@types/node@26.1.2)(vite@8.2.2(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))
 
   packages/netease-music:
     dependencies:

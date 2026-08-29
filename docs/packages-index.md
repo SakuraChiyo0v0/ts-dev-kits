@@ -19,6 +19,7 @@
 | `@sakurachiyo0v0/lol` | 0.1.3 | 英雄联盟 LCU 本地能力 SDK(召唤师/战绩/段位/对局流程/游戏数据/事件) | 可用(查询+对局感知, 国服 SGP) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/lol` |
 | `@sakurachiyo0v0/account` | 0.5.5 | 跨平台账号认证底座(登录态存储/扫码+密码+浏览器登录骨架/错误模型) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/account` |
 | `@sakurachiyo0v0/netease-music` | 0.5.0 | 网易云音乐下载 SDK(weapi 加密/二维码登录/权限感知品质/试听拦截/取流/歌词/搜索) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/netease-music` |
+| `@sakurachiyo0v0/media-downloader` | 0.1.0 | 通用媒体下载 SDK:目录选择/流式下载+重试+进度/元数据封面写入/下载历史 | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/media-downloader` |
 | `@sakurachiyo0v0/booth` | 0.4.3 | BOOTH(booth.pm)领取/购买 SDK:登录态管理/商品解析/免费领取/付费下单/文件下载 | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/booth` |
 | `@sakurachiyo0v0/vrchat` | 0.4.3 | VRChat 官方 REST API SDK(认证/用户/世界/头像/实例/好友/通知/收藏/群组/文件/权限/系统/经济/审核) | 可用(全功能覆盖) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/vrchat` |
 | `@sakurachiyo0v0/steam` | 0.8.3 | Steam SDK(查询向):Web API/Storefront/Community 三套接口,登录态支持,写操作仅激活码兑换一项 | 可用(全阶段交付) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/steam` |
@@ -463,6 +464,61 @@ pnpm --filter @sakurachiyo0v0/netease-music build       # 构建 ESM + CJS + d.t
 ```
 
 **更多细节：** [`packages/netease-music/README.md`](../packages/netease-music/README.md)
+
+### `@sakurachiyo0v0/media-downloader`
+
+通用媒体下载 SDK：与具体平台无关。调用方负责拿到「最终媒体 URL + 文件名」，本包负责落盘到选定目录、流式下载（重试 + 进度）、元数据/封面写入、下载历史。设计初衷：B 站/番剧/网易云等多平台共用同一套「选目录 + 下载执行 + 历史」，避免重复实现。
+
+**适用环境：** Node.js 20+；元数据标签与内嵌封面写入需系统安装 `ffmpeg`（通过 `@sakurachiyo0v0/ffmpeg`）。
+
+**核心接口：**
+
+- `new DownloadManager({ root, userAgent?, retries? })` — 创建管理器，root 为下载根目录
+- `manager.listDirs()` — 列出可选的子目录（首项 `""` 表示根目录，递归到第 2 层）
+- `manager.download(target, onProgress?)` — 下载一个目标（`{ url, filename, dir?, tags?, coverUrl? }`），返回 `{ filePath }`
+- `manager.history()` / `manager.clearHistory()` — 下载历史（内存 + 持久化到 `root/.download-state.json`，最多 100 条）
+- `manager.record(record)` — 外部下载完成后记录一条历史（供不走 `download` 方法的场景复用）
+- `DownloaderError` — 统一错误码 `INVALID_TARGET` / `DOWNLOAD_FAILED` / `EMPTY_BODY`
+
+**安装方式：**
+
+同一 pnpm workspace 内：
+
+```powershell
+pnpm add @sakurachiyo0v0/media-downloader@workspace:*
+```
+
+从 GitHub monorepo 安装（需授权 `@sakurachiyo0v0/media-downloader`、`@sakurachiyo0v0/ffmpeg`、`@sakurachiyo0v0/logger` 构建脚本）：
+
+```powershell
+pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/media-downloader"
+```
+
+**API 示例：**
+
+```ts
+import { DownloadManager } from "@sakurachiyo0v0/media-downloader";
+
+const manager = new DownloadManager({ root: "/downloads" });
+const dirs = manager.listDirs(); // ["", "周杰伦", "欧美"]
+const result = await manager.download({
+  url: "http://m804.music.126.net/xxx.mp3",
+  filename: "周杰伦 - 晴天.mp3",
+  dir: "周杰伦",
+  tags: { title: "晴天", artist: "周杰伦", album: "叶惠美" },
+  coverUrl: "http://p1.music.126.net/xxx.jpg",
+});
+```
+
+**在仓库内的验证方式：**
+
+```powershell
+pnpm --filter @sakurachiyo0v0/media-downloader typecheck   # 类型检查
+pnpm --filter @sakurachiyo0v0/media-downloader test        # 单测（本地 HTTP 服务真实下载链路）
+pnpm --filter @sakurachiyo0v0/media-downloader build       # 构建 ESM + CJS + d.ts
+```
+
+**更多细节：** [`packages/media-downloader/README.md`](../packages/media-downloader/README.md)
 
 ### `@sakurachiyo0v0/booth`
 

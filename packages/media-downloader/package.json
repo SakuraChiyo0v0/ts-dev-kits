@@ -1,0 +1,46 @@
+{
+  "name": "@sakurachiyo0v0/media-downloader",
+  "version": "0.1.0",
+  "description": "通用媒体下载 SDK：列出目标目录、流式下载 + 重试 + 进度、元数据/封面写入、下载历史",
+  "license": "UNLICENSED",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "clean": "node scripts/clean.mjs",
+    "build": "node scripts/clean.mjs && tsc --project tsconfig.bundle.json && rollup --config rollup.config.mjs && tsc --project tsconfig.build.json && node scripts/clean.mjs --intermediate-only",
+    "prepare": "npm run build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@sakurachiyo0v0/ffmpeg": "workspace:*",
+    "@sakurachiyo0v0/logger": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.2",
+    "rollup": "^4.62.4",
+    "tslib": "^2.8.1",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  }
+}
