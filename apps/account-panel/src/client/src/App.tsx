@@ -1934,7 +1934,7 @@ function HomeView(props: {
                 查看全部
               </button>
             </div>
-            <div className="flex gap-4 overflow-x-auto pb-2">
+            <div className="flex gap-4 no-scrollbar overflow-x-auto pb-2">
               {recentTracks.map((t) => (
                 <button key={t.id} onClick={() => onPlaySong(t)} className="w-36 shrink-0 text-left">
                   <div className="aspect-square w-full overflow-hidden rounded-xl bg-muted shadow-sm">
@@ -1957,7 +1957,7 @@ function HomeView(props: {
         {mostPlayed.length > 0 ? (
           <div className="mb-8">
             <h2 className="mb-4 text-2xl font-bold">最常播放</h2>
-            <div className="flex gap-4 overflow-x-auto pb-2">
+            <div className="flex gap-4 no-scrollbar overflow-x-auto pb-2">
               {mostPlayed.map((t) => (
                 <button key={t.id} onClick={() => onPlaySong(t)} className="w-36 shrink-0 text-left">
                   <div className="aspect-square w-full overflow-hidden rounded-xl bg-muted shadow-sm">
@@ -2125,7 +2125,7 @@ function HomeView(props: {
                     ▶ 每日电台
                   </button>
                 </div>
-                <div className="flex gap-3 overflow-x-auto pb-2">
+                <div className="flex gap-3 no-scrollbar overflow-x-auto pb-2">
                   {recommend.map((t) => (
                     <button key={t.id} onClick={() => onPlaySong(t)} className="w-32 shrink-0 text-left">
                       <div className="aspect-square w-full overflow-hidden rounded-xl bg-muted">
@@ -2151,7 +2151,7 @@ function HomeView(props: {
                   <Flame className="h-5 w-5 text-primary" />
                   <h2 className="text-2xl font-bold">推荐歌单</h2>
                 </div>
-                <div className="flex gap-3 overflow-x-auto pb-2">
+                <div className="flex gap-3 no-scrollbar overflow-x-auto pb-2">
                   {recommendPlaylists.map((p) => (
                     <button key={p.id} onClick={() => onOpenPlaylist(p.id)} className="w-32 shrink-0 text-left">
                       <div className="aspect-square w-full overflow-hidden rounded-xl bg-muted">
