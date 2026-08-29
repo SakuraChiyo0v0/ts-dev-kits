@@ -273,14 +273,8 @@ export default function App() {
   const [account, setAccount] = useState<AccountPayload | null>(null);
   const [login, setLogin] = useState<LoginView | null>(null);
   const [activeModule, setActiveModule] = useState<string | null>(null);
-  const [userAuth, setUserAuth] = useState<{ token: string; username: string } | null>(() => {
-    try {
-      const raw = localStorage.getItem("user-auth");
-      return raw !== null ? (JSON.parse(raw) as { token: string; username: string }) : null;
-    } catch {
-      return null;
-    }
-  });
+  // 主账号登录态：由 httpOnly Cookie 承载（浏览器自动携带），这里只存用户名。
+  const [userAuth, setUserAuth] = useState<{ username: string } | null>(null);
   const [detail, setDetail] = useState<PlaylistDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [avatarError, setAvatarError] = useState(false);
@@ -457,25 +451,18 @@ export default function App() {
     void refresh();
   }, [refresh]);
 
-  // 启动时校验本地主账号 token：无效则清除。
+  // 启动时校验主账号 Cookie：有效则恢复登录态（重启/刷新后免登录）。
   useEffect(() => {
-    if (userAuth === null) return;
     void (async () => {
       try {
-        const res = await fetch("/api/users/me", { headers: { authorization: `Bearer ${userAuth.token}` } });
-        if (!res.ok) {
-          setUserAuth(null);
-          try {
-            localStorage.removeItem("user-auth");
-          } catch {
-            // 忽略。
-          }
+        const res = await fetch("/api/users/me");
+        if (res.ok) {
+          setUserAuth({ username: "管理员" });
         }
       } catch {
-        // 网络失败不强行登出。
+        // 网络失败保持未登录。
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 卸载时清理批量下载轮询 timer 与登录 EventSource。
@@ -490,15 +477,10 @@ export default function App() {
     async (username: string, password: string) => {
       try {
         const res = await rpc.api.users.login.$post({ json: { username, password } });
-        const data = (await res.json()) as { token?: string; username?: string; error?: string };
-        if (data.token !== undefined && data.username !== undefined) {
-          const auth = { token: data.token, username: data.username };
-          setUserAuth(auth);
-          try {
-            localStorage.setItem("user-auth", JSON.stringify(auth));
-          } catch {
-            // 忽略。
-          }
+        const data = (await res.json()) as { ok?: boolean; username?: string; error?: string };
+        if (data.ok === true && data.username !== undefined) {
+          // session 已通过 httpOnly Cookie 下发，前端只记用户名。
+          setUserAuth({ username: data.username });
           showToast(`欢迎回来，${data.username}`);
           await refresh();
         } else {
@@ -513,19 +495,12 @@ export default function App() {
 
   const userLogout = useCallback(async () => {
     try {
-      if (userAuth !== null) {
-        await fetch("/api/users/logout", { method: "POST", headers: { authorization: `Bearer ${userAuth.token}` } });
-      }
+      await fetch("/api/users/logout", { method: "POST" });
     } catch {
       // 忽略。
     }
     setUserAuth(null);
     setActiveModule(null);
-    try {
-      localStorage.removeItem("user-auth");
-    } catch {
-      // 忽略。
-    }
   }, [userAuth]);
 
   const startLogin = useCallback(async () => {
