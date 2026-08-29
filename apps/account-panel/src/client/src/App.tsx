@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  Check,
   ChevronDown,
   ChevronLeft,
   Clock,
@@ -1808,6 +1809,28 @@ function PlaylistView(props: {
   const { detail, currentTrackId, onBack, onPlay, onPlayAll, onToggleLike, onSharePlaylist, onShowDetail, onDownloadLocal, onDownloadAll } =
     props;
   const [hearted, setHearted] = useState<Set<string>>(new Set());
+  const [downloaded, setDownloaded] = useState<Set<string>>(new Set());
+
+  // 加载时查询哪些歌已下载。
+  useEffect(() => {
+    const ids = detail.tracks.map((t) => t.id);
+    if (ids.length === 0) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await rpc.api.downloaded.$get({ query: { ids: ids.join(",") } });
+        const data = (await res.json()) as { downloaded?: string[] };
+        if (!cancelled && data.downloaded !== undefined) {
+          setDownloaded(new Set(data.downloaded));
+        }
+      } catch {
+        // 忽略。
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [detail.tracks]);
 
   const toggleHeart = (t: Track) => {
     const liked = hearted.has(t.id);
@@ -1909,6 +1932,9 @@ function PlaylistView(props: {
                         {formatDuration(t.durationMs)}
                       </span>
                     )}
+                    {downloaded.has(t.id) ? (
+                      <Check className="h-4 w-4 shrink-0 text-emerald-500" />
+                    ) : null}
                   </button>
                   <button
                     onClick={() => toggleHeart(t)}
@@ -1921,9 +1947,19 @@ function PlaylistView(props: {
                     <Heart className={cn("h-4 w-4", hearted.has(t.id) && "fill-primary")} />
                   </button>
                   <button
-                    onClick={() => onDownloadLocal(t)}
-                    className="shrink-0 rounded-full p-2 text-muted-foreground transition-colors hover:text-foreground"
-                    title="下载到本机"
+                    onClick={() => {
+                      onDownloadLocal(t);
+                      setDownloaded((prev) => {
+                        const next = new Set(prev);
+                        next.add(t.id);
+                        return next;
+                      });
+                    }}
+                    className={cn(
+                      "shrink-0 rounded-full p-2 transition-colors",
+                      downloaded.has(t.id) ? "text-emerald-500" : "text-muted-foreground hover:text-foreground",
+                    )}
+                    title={downloaded.has(t.id) ? "已下载（再次下载）" : "下载到本机"}
                   >
                     <Download className="h-4 w-4" />
                   </button>

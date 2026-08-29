@@ -6,6 +6,8 @@
  */
 import { Hono } from "hono";
 import { createNeteaseClient, type QualityLevel } from "@sakurachiyo0v0/netease-music";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
 import { createAuthNamespace, warmupAuth } from "../bootstrap.js";
 
 /** 构造已预热登录态的网易云客户端。 */
@@ -38,6 +40,41 @@ function pushHistory(record: Omit<DownloadRecord, "id" | "time">): void {
   downloadHistory.unshift({ ...record, id: crypto.randomUUID(), time: new Date().toISOString() });
   if (downloadHistory.length > 100) downloadHistory.pop();
 }
+
+/** 已下载歌曲 id 集合（持久化到下载目录的 .downloaded.json）。 */
+const downloadedIds = new Set<string>();
+
+function downloadedStatePath(): string {
+  return `${process.env.DOWNLOAD_DIR ?? "/downloads"}/.downloaded.json`;
+}
+
+function loadDownloaded(): void {
+  try {
+    const p = downloadedStatePath();
+    if (existsSync(p)) {
+      const arr = JSON.parse(readFileSync(p, "utf8")) as unknown;
+      if (Array.isArray(arr)) {
+        for (const id of arr) {
+          if (typeof id === "string") downloadedIds.add(id);
+        }
+      }
+    }
+  } catch {
+    // 忽略。
+  }
+}
+
+function saveDownloaded(): void {
+  try {
+    const p = downloadedStatePath();
+    mkdirSync(dirname(p), { recursive: true });
+    writeFileSync(p, JSON.stringify([...downloadedIds]), "utf8");
+  } catch {
+    // 忽略。
+  }
+}
+
+loadDownloaded();
 
 /** GET /api/account —— 登录状态 + 账号信息 + VIP + 歌单列表。 */
 export const accountRoutes = new Hono()
@@ -257,6 +294,8 @@ export const accountRoutes = new Hono()
         level: level as QualityLevel,
       });
       pushHistory({ title, filePath: result.filePath, level: result.level, status: "done" });
+      downloadedIds.add(id);
+      saveDownloaded();
       return c.json({ filePath: result.filePath, level: result.level });
     } catch (error) {
       pushHistory({ title: id, filePath: "", level: level as QualityLevel, status: "error" });
@@ -338,6 +377,8 @@ export const accountRoutes = new Hono()
           level: level as QualityLevel,
           status: "done",
         });
+        for (const id of ids) downloadedIds.add(id);
+        saveDownloaded();
       } catch (error) {
         task.status = "error";
         task.error = error instanceof Error ? error.message : String(error);
@@ -362,4 +403,11 @@ export const accountRoutes = new Hono()
   /** GET /api/download-history —— 下载历史（内存，倒序）。 */
   .get("/download-history", (c) => {
     return c.json({ records: downloadHistory });
+  })
+  /** GET /api/downloaded?ids=a,b,c —— 查询哪些歌曲已下载。 */
+  .get("/downloaded", (c) => {
+    const idsParam = c.req.query("ids") ?? "";
+    const ids = idsParam.split(",").filter((x) => x !== "");
+    const downloaded = ids.filter((id) => downloadedIds.has(id));
+    return c.json({ downloaded });
   });
