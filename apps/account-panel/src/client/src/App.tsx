@@ -21,6 +21,7 @@ import {
   Repeat1,
   Search,
   Share,
+  Shuffle,
   SkipBack,
   SkipForward,
   Sun,
@@ -269,6 +270,7 @@ export default function App() {
       return "all";
     }
   });
+  const [shuffle, setShuffle] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -512,6 +514,16 @@ export default function App() {
       await playAt(queue, queueIndex);
       return;
     }
+    if (shuffle) {
+      let next = queueIndex;
+      if (queue.length > 1) {
+        do {
+          next = Math.floor(Math.random() * queue.length);
+        } while (next === queueIndex);
+      }
+      await playAt(queue, next);
+      return;
+    }
     const next = queueIndex + 1;
     if (next >= queue.length) {
       if (repeatMode === "all") await playAt(queue, 0);
@@ -519,7 +531,7 @@ export default function App() {
       return;
     }
     await playAt(queue, next);
-  }, [queue, queueIndex, repeatMode, playAt]);
+  }, [queue, queueIndex, repeatMode, shuffle, playAt]);
 
   const playPrev = useCallback(async () => {
     if (queue.length === 0) return;
@@ -897,6 +909,8 @@ export default function App() {
         queueIndex={queueIndex}
         queueTotal={queue.length}
         repeatMode={repeatMode}
+        shuffle={shuffle}
+        onToggleShuffle={() => setShuffle((v) => !v)}
         volume={volume}
         muted={muted}
         level={level}
@@ -2024,6 +2038,8 @@ function PlayerBar(props: {
   queueIndex: number;
   queueTotal: number;
   repeatMode: RepeatMode;
+  shuffle: boolean;
+  onToggleShuffle: () => void;
   volume: number;
   muted: boolean;
   level: string;
@@ -2055,6 +2071,8 @@ function PlayerBar(props: {
     queueIndex,
     queueTotal,
     repeatMode,
+    shuffle,
+    onToggleShuffle,
     volume,
     muted,
     level,
@@ -2146,6 +2164,17 @@ function PlayerBar(props: {
         </div>
 
         <div className="ml-auto flex shrink-0 items-center gap-0.5">
+          <button
+            onClick={onToggleShuffle}
+            className={cn(
+              "rounded-full p-1.5 transition-colors",
+              shuffle ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground",
+            )}
+            title={shuffle ? "关闭随机播放" : "随机播放"}
+            aria-label="随机播放"
+          >
+            <Shuffle className="h-5 w-5" />
+          </button>
           <button
             onClick={onToggleRepeat}
             className={cn(
