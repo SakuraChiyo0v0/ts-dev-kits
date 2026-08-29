@@ -479,6 +479,14 @@ export const accountRoutes = new Hono()
     getDownloadManager().clearHistory();
     return c.json({ ok: true });
   })
+  /** POST /api/download-history/remove —— 删除单条历史。 */
+  .post("/download-history/remove", async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as { id?: unknown };
+    const id = typeof body.id === "string" ? body.id : undefined;
+    if (id === undefined) return c.json({ error: "missing id" }, 400);
+    getDownloadManager().removeHistory(id);
+    return c.json({ ok: true });
+  })
   /** GET /api/downloaded?ids=a,b,c —— 查询哪些歌曲已下载。 */
   .get("/downloaded", (c) => {
     const idsParam = c.req.query("ids") ?? "";

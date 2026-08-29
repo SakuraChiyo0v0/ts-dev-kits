@@ -885,6 +885,15 @@ export default function App() {
     }
   }, [showToast]);
 
+  const removeDownloadHistory = useCallback(async (id: string) => {
+    try {
+      await rpc.api["download-history"].remove.$post({ json: { id } });
+      setDownloadRecords((prev) => prev.filter((r) => r.id !== id));
+    } catch {
+      showToast("删除失败");
+    }
+  }, [showToast]);
+
   const addToPlaylist = useCallback(
     async (trackIds: string[], playlistIds: string[]) => {
       try {
@@ -1332,6 +1341,7 @@ export default function App() {
         <DownloadHistoryPanel
           records={downloadRecords}
           onClear={() => void clearDownloadHistory()}
+          onRemove={(id) => void removeDownloadHistory(id)}
           onClose={() => setShowDownloadHistory(false)}
         />
       ) : null}
@@ -1342,9 +1352,10 @@ export default function App() {
 function DownloadHistoryPanel(props: {
   records: Array<{ id: string; filename: string; filePath: string; status: string; time: string }>;
   onClear: () => void;
+  onRemove: (id: string) => void;
   onClose: () => void;
 }) {
-  const { records, onClear, onClose } = props;
+  const { records, onClear, onRemove, onClose } = props;
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
@@ -1382,6 +1393,13 @@ function DownloadHistoryPanel(props: {
               <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
                 {new Date(r.time).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}
               </span>
+              <button
+                onClick={() => onRemove(r.id)}
+                className="shrink-0 rounded-full p-1.5 text-muted-foreground transition-colors hover:text-destructive"
+                title="删除记录"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </li>
           ))}
           {records.length === 0 ? (
