@@ -2491,21 +2491,7 @@ function PlaylistView(props: {
   const [batchOpen, setBatchOpen] = useState(false);
   const [batchPath, setBatchPath] = useState("");
   const [batchLevel, setBatchLevel] = useState("exhigh");
-  const [batchDirs, setBatchDirs] = useState<string[]>([""]);
-
-  // 展开批量下载时拉取可选目录。
-  useEffect(() => {
-    if (!batchOpen) return;
-    void (async () => {
-      try {
-        const res = await rpc.api["download-dirs"].$get();
-        const data = (await res.json()) as { dirs?: string[] };
-        if (data.dirs !== undefined) setBatchDirs(data.dirs);
-      } catch {
-        // 忽略。
-      }
-    })();
-  }, [batchOpen]);
+  const [batchFolderOpen, setBatchFolderOpen] = useState(false);
 
   // 加载时查询哪些歌已下载、哪些已红心。
   useEffect(() => {
@@ -2632,20 +2618,13 @@ function PlaylistView(props: {
                   >
                     品质：{batchLevel}
                   </button>
-                  <select
-                    value={batchPath}
-                    onChange={(e) => setBatchPath(e.target.value)}
-                    className="min-w-0 flex-1 rounded-full border bg-background px-3 py-1.5 text-xs"
+                  <button
+                    onClick={() => setBatchFolderOpen(true)}
+                    className="flex min-w-0 flex-1 items-center gap-1.5 rounded-full border bg-background px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
                   >
-                    <option value="">根目录（downloads）</option>
-                    {batchDirs
-                      .filter((d) => d !== "")
-                      .map((d) => (
-                        <option key={d} value={d}>
-                          {d}
-                        </option>
-                      ))}
-                  </select>
+                    <Folder className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">/{batchPath || "根目录"}</span>
+                  </button>
                   <Button
                     size="sm"
                     className="shrink-0 rounded-full"
@@ -2666,6 +2645,17 @@ function PlaylistView(props: {
             </div>
           </div>
         </div>
+
+        {batchFolderOpen ? (
+          <FolderPicker
+            value={batchPath}
+            onSelect={(path) => {
+              setBatchPath(path);
+              setBatchFolderOpen(false);
+            }}
+            onClose={() => setBatchFolderOpen(false)}
+          />
+        ) : null}
 
         <div className="overflow-hidden rounded-2xl bg-card shadow-sm">
           <ul className="divide-y divide-border/60">
