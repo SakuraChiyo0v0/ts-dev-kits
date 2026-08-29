@@ -238,3 +238,39 @@ sshpass -e ssh ... "echo '${P1}${P2}' | sudo -S docker load -i /tmp/account-pane
 - [ ] 提交用 GitHub 身份，bump 了 SDK 版本
 - [ ] repo-structure.html 冲突已处理（gen:structure）
 - [ ] 视觉回归（playwright + kiro）
+
+---
+
+## 十一、架构演进：PG 统一存储 + 主账号（2026-08 追加）
+
+### 新架构目标（已落地第一阶段）
+- **统一大应用**：单容器多模块（网易云当前，B站/番剧后续并入），一个入口。
+- **PostgreSQL 统一存储**：配置/登录态/用户数据全存 NAS 的 postgres 容器，**WebDAV 彻底移除**。
+- **主账号登录**：用户名/密码（scrypt）统一登录，登录后扫码绑定各平台，token 存 PG。
+
+### 已实现
+1. `@sakurachiyo0v0/config`（0.6.0）后端可插拔：
+   - `ConfigBackend` 接口 + `PrefixBackend`（前缀分域）+ `JsonBackend`（明文 JSON 包装）+ `EncryptedBackend`（AES-256-GCM）+ `PgBackend`（node-postgres 键值，懒建表）。
+   - **序列化契约**：底层后端「字符串透明」，JSON/加密统一在上层包装——PG 与 WebDAV 一致。
+   - `createConfigCenter({ backend })`：传 PgBackend 走 PG；不传走 WebDAV（兼容既有）。
+2. `bootstrap.ts`：`PG_URL` 优先（PgBackend **单例**，连接池不泄漏），否则 WebDAV；加密密钥统一 `CONFIG_KEY`。
+3. 主账号（`/api/users`）：注册/登录（scrypt + timingSafeEqual + 时间侧信道防护）、带 TTL 的 session token（7天）、`/me` 校验、`/logout`。仅当 PG_URL 配置时启用。
+4. 前端：LoginView「账号登录 / 扫码绑定」双 tab；主账号登录后未绑平台显示「绑定网易云」；启动时校验本地 token 无效即清。
+
+### NAS 部署（PG）
+- postgres 容器：`docker run -d --name postgres --network app-net -e POSTGRES_USER=app -e POSTGRES_DB=app -v /home/AmeChan/pgdata:/var/lib/postgresql/data postgres:16-alpine`（密码见 NAS /tmp/account-panel.env 的 PG_URL）。
+- account-panel 容器：`--network app-net --env-file /tmp/account-panel.env`（含 PG_URL + CONFIG_KEY）。
+- 表：`users`（主账号）、`config_kv`（配置/登录态键值）。
+
+### 子代理审查修复记录（重要教训）
+- **PG 加密往返断裂**：PgBackend save/load 序列化不对称（string 短路 vs 无条件 parse）→ 加密命名空间每次 load 500。修复：底层字符串透明 + 上层 Json/Encrypted 包装统一。
+- **连接池泄漏**：createAuthNamespace 每请求 new Pool 永不 close → 单例化。
+- **WebDAV 旧密文兼容**：加密域必须 format:"text"（密文原样落盘），json 会二次编码读不了旧数据。
+- **登录闭环**：token 必须被门控使用（前端渲染门控 + 启动 /me 校验）。
+- 其他：session TTL、无 PG_URL 不建 Pool、时间侧信道 dummy scrypt、register 区分 23505、表名标识符校验、密钥变量统一 CONFIG_KEY、namespace 拒绝 `:`。
+- 测试：新增 backend 契约测试（31 个全过）。
+
+### 下一步
+- 单应用多模块整合（B站/番剧 tab）
+- 主账号平台绑定管理页（查看/解绑已绑平台）
+- 下载历史/配置从「每平台」迁移到「主账号维度」
