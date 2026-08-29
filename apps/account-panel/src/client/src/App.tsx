@@ -792,6 +792,16 @@ export default function App() {
     [showToast],
   );
 
+  const dismissLast = useCallback(() => {
+    setLastTrack(null);
+    try {
+      localStorage.removeItem("last-track");
+      localStorage.removeItem("last-position");
+    } catch {
+      // 忽略。
+    }
+  }, []);
+
   const reorderQueue = useCallback((from: number, to: number) => {
     setQueue((prev) => {
       if (from < 0 || from >= prev.length || to < 0 || to >= prev.length || from === to) return prev;
@@ -958,6 +968,7 @@ export default function App() {
             onShowHistory={() => setShowHistory(true)}
             onDownloadLocal={(t) => downloadToLocal(t)}
             onLogout={() => void logout()}
+            onDismissLast={dismissLast}
           />
         ) : (
           <LoginView login={login} onLogin={() => void startLogin()} onCancel={() => setLogin(null)} />
@@ -1642,8 +1653,9 @@ function HomeView(props: {
   onShowHistory: () => void;
   onDownloadLocal: (track: Track) => void;
   onLogout: () => void;
+  onDismissLast: () => void;
 }) {
-  const { account, recentTracks, lastTrack, playCounts, onResume, avatarError, onAvatarError, onOpenPlaylist, onPlayPlaylist, onPlaySong, onRefresh, onShowHistory, onDownloadLocal, onLogout } =
+  const { account, recentTracks, lastTrack, playCounts, onResume, avatarError, onAvatarError, onOpenPlaylist, onPlayPlaylist, onPlaySong, onRefresh, onShowHistory, onDownloadLocal, onLogout, onDismissLast } =
     props;
   const [search, setSearch] = useState("");
   const [songQuery, setSongQuery] = useState("");
@@ -1748,28 +1760,37 @@ function HomeView(props: {
         </div>
 
         {lastTrack !== null ? (
-          <button
-            onClick={onResume}
-            className="group mb-6 flex w-full items-center gap-4 rounded-2xl bg-gradient-to-r from-primary/15 to-transparent p-4 text-left transition-shadow hover:shadow-md sm:gap-5 sm:p-5"
-          >
-            <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-muted shadow-sm">
-              {lastTrack.coverUrl ? (
-                <img src={lastTrack.coverUrl} alt="" className="h-full w-full object-cover" />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center">
-                  <ListMusic className="h-8 w-8 text-muted-foreground" />
-                </div>
-              )}
-            </div>
-            <div className="min-w-0">
-              <p className="flex items-center gap-1.5 text-sm font-medium text-primary">
-                <Play className="h-4 w-4 fill-primary" />
-                继续播放
-              </p>
-              <p className="mt-1 truncate text-xl font-bold">{lastTrack.title}</p>
-              <p className="truncate text-sm text-muted-foreground">{lastTrack.artists?.join(" / ")}</p>
-            </div>
-          </button>
+          <div className="group relative mb-6">
+            <button
+              onClick={onResume}
+              className="flex w-full items-center gap-4 rounded-2xl bg-gradient-to-r from-primary/15 to-transparent p-4 text-left transition-shadow hover:shadow-md sm:gap-5 sm:p-5"
+            >
+              <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-muted shadow-sm">
+                {lastTrack.coverUrl ? (
+                  <img src={lastTrack.coverUrl} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center">
+                    <ListMusic className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                )}
+              </div>
+              <div className="min-w-0">
+                <p className="flex items-center gap-1.5 text-sm font-medium text-primary">
+                  <Play className="h-4 w-4 fill-primary" />
+                  继续播放
+                </p>
+                <p className="mt-1 truncate text-xl font-bold">{lastTrack.title}</p>
+                <p className="truncate text-sm text-muted-foreground">{lastTrack.artists?.join(" / ")}</p>
+              </div>
+            </button>
+            <button
+              onClick={onDismissLast}
+              className="absolute right-3 top-3 rounded-full p-1.5 text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover:opacity-100"
+              title="关闭"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         ) : null}
 
         {recentTracks.length > 0 ? (
@@ -2013,10 +2034,20 @@ function HomeView(props: {
                         e.stopPropagation();
                         onPlayPlaylist(p.id);
                       }}
-                      className="absolute inset-0 hidden items-center justify-center bg-black/30 group-hover:flex"
+                      className="absolute inset-0 hidden items-center justify-center gap-3 bg-black/30 group-hover:flex"
                     >
                       <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/90 text-primary shadow-lg">
                         <Play className="ml-0.5 h-5 w-5" />
+                      </span>
+                      <span
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenPlaylist(p.id);
+                        }}
+                        className="flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-foreground shadow-lg"
+                        title="查看详情 / 下载"
+                      >
+                        <Download className="h-4 w-4" />
                       </span>
                     </span>
                   </Tilt>
