@@ -326,7 +326,12 @@ export default function App() {
     const audio = audioRef.current;
     if (audio !== null) audio.volume = muted ? 0 : volume;
     try {
-      localStorage.setItem("volume", String(volume));
+      // 音量调到 0 时不持久化，刷新后恢复默认 1，避免「默认音量总是 0」。
+      if (volume > 0) {
+        localStorage.setItem("volume", String(volume));
+      } else {
+        localStorage.removeItem("volume");
+      }
     } catch {
       // 忽略。
     }
@@ -1958,6 +1963,26 @@ function PlayerBar(props: {
                     {sleepMinutes !== null ? `${sleepMinutes} 分` : "关"}
                   </span>
                 </button>
+                <div className="my-1 h-px bg-border" />
+                <div className="flex items-center gap-2 px-3 py-2">
+                  <button
+                    onClick={onToggleMute}
+                    className="shrink-0 rounded-full p-1 text-muted-foreground transition-colors hover:text-foreground"
+                    title={muted ? "取消静音" : "静音"}
+                  >
+                    {muted || volume === 0 ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                  </button>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={muted ? 0 : volume}
+                    onChange={(e) => onVolumeChange(Number(e.target.value))}
+                    className="min-w-0 flex-1 accent-primary"
+                    aria-label="音量"
+                  />
+                </div>
               </div>
             </>
           ) : null}
