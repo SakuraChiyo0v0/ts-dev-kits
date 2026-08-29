@@ -109,6 +109,31 @@ function coverGradient(seed: string): string {
   return `linear-gradient(135deg, hsl(${h1} 75% 45%), hsl(${h2} 75% 35%))`;
 }
 
+/** 复制文本到剪贴板；http 非安全上下文下回退到 execCommand。 */
+async function copyText(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard !== undefined && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // 忽略，走 fallback。
+  }
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
 /** 歌词开头的元信息关键词（作词/作曲/编曲等，非演唱内容）。 */
 const META_KEYWORDS = [
   "作词",
@@ -254,7 +279,9 @@ export default function App() {
   const [likedCurrent, setLikedCurrent] = useState(false);
   const [volume, setVolume] = useState<number>(() => {
     try {
-      const v = Number(localStorage.getItem("volume"));
+      const raw = localStorage.getItem("volume");
+      if (raw === null) return 1;
+      const v = Number(raw);
       return Number.isFinite(v) && v >= 0 && v <= 1 ? v : 1;
     } catch {
       return 1;
@@ -454,9 +481,10 @@ export default function App() {
         audio.muted = false;
         await audio.play();
       }
-    } catch {
+    } catch (error) {
       // 取流失败：保持播放栏显示，但不出声。
-      showToast("播放失败：该歌曲可能无播放权限或网络异常");
+      const detail = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+      showToast(`播放失败 ${detail}`);
     }
   }, [showToast]);
 
@@ -571,24 +599,16 @@ export default function App() {
 
   const shareTrack = useCallback(
     async (track: Track) => {
-      try {
-        await navigator.clipboard.writeText(`https://music.163.com/song?id=${track.id}`);
-        showToast("已复制歌曲链接");
-      } catch {
-        showToast("复制失败");
-      }
+      const ok = await copyText(`https://music.163.com/song?id=${track.id}`);
+      showToast(ok ? "已复制歌曲链接" : "复制失败");
     },
     [showToast],
   );
 
   const sharePlaylist = useCallback(
     async (id: string) => {
-      try {
-        await navigator.clipboard.writeText(`https://music.163.com/playlist?id=${id}`);
-        showToast("已复制歌单链接");
-      } catch {
-        showToast("复制失败");
-      }
+      const ok = await copyText(`https://music.163.com/playlist?id=${id}`);
+      showToast(ok ? "已复制歌单链接" : "复制失败");
     },
     [showToast],
   );
