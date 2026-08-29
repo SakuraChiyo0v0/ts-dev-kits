@@ -982,6 +982,8 @@ export default function App() {
             onDownloadLocal={(t) => downloadToLocal(t)}
             onLogout={() => void logout()}
             onDismissLast={dismissLast}
+            onToggleLike={toggleLike}
+            likedIds={likedIds}
           />
         ) : (
           <LoginView login={login} onLogin={() => void startLogin()} onCancel={() => setLogin(null)} />
@@ -1692,8 +1694,10 @@ function HomeView(props: {
   onDownloadLocal: (track: Track) => void;
   onLogout: () => void;
   onDismissLast: () => void;
+  onToggleLike: (track: Track, liked: boolean) => void;
+  likedIds: Set<string>;
 }) {
-  const { account, recentTracks, lastTrack, playCounts, onResume, avatarError, onAvatarError, onOpenPlaylist, onPlayPlaylist, onPlaySong, onRefresh, onShowHistory, onDownloadLocal, onLogout, onDismissLast } =
+  const { account, recentTracks, lastTrack, playCounts, onResume, avatarError, onAvatarError, onOpenPlaylist, onPlayPlaylist, onPlaySong, onRefresh, onShowHistory, onDownloadLocal, onLogout, onDismissLast, onToggleLike, likedIds } =
     props;
   const [search, setSearch] = useState("");
   const [songQuery, setSongQuery] = useState("");
@@ -1993,6 +1997,16 @@ function HomeView(props: {
                     <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
                       {formatDuration(t.durationMs)}
                     </span>
+                  </button>
+                  <button
+                    onClick={() => onToggleLike(t, likedIds.has(t.id))}
+                    className={cn(
+                      "shrink-0 rounded-full p-2 transition-colors",
+                      likedIds.has(t.id) ? "text-primary" : "text-muted-foreground hover:text-foreground",
+                    )}
+                    title={likedIds.has(t.id) ? "取消红心" : "红心收藏"}
+                  >
+                    <Heart className={cn("h-4 w-4", likedIds.has(t.id) && "fill-primary")} />
                   </button>
                   <button
                     onClick={() => onDownloadLocal(t)}
