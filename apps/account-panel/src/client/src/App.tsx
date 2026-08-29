@@ -1161,6 +1161,14 @@ export default function App() {
     <div className="flex h-screen flex-col bg-background">
       <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border/60 bg-background/70 px-4 py-3 backdrop-blur-xl sm:px-6 sm:py-4">
         <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => setActiveModule(null)}
+            className="flex items-center gap-1 rounded-full px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            title="返回服务列表"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            服务列表
+          </button>
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
             <Music2 className="h-4 w-4" />
           </div>
@@ -1186,17 +1194,6 @@ export default function App() {
       ) : null}
 
       <div className={cn("flex min-h-0 flex-1 flex-col", currentTrack !== null && "pb-24")}>
-        {activeModule !== null ? (
-          <div className="flex items-center gap-2 border-b bg-background/80 px-4 py-2 backdrop-blur">
-            <button
-              onClick={() => setActiveModule(null)}
-              className="flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              服务列表
-            </button>
-          </div>
-        ) : null}
         {detailLoading ? (
           <PlaylistSkeleton />
         ) : detail !== null ? (
