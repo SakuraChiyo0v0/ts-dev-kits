@@ -671,11 +671,12 @@ export default function App() {
   );
 
   const downloadBatch = useCallback(
-    async (tracks: Track[], path?: string) => {
+    async (tracks: Track[], path?: string, level?: string) => {
       try {
         const res = await rpc.api["download-batch"].$post({
           json: {
             ids: tracks.map((t) => t.id),
+            level: level ?? "exhigh",
             ...(path !== undefined && path.trim() !== "" ? { path: path.trim() } : {}),
           },
         });
@@ -846,7 +847,7 @@ export default function App() {
             onSharePlaylist={(id) => void sharePlaylist(id)}
             onShowDetail={setSongDetail}
             onDownloadLocal={(t) => downloadToLocal(t)}
-            onDownloadAll={() => void downloadBatch(detail.tracks)}
+            onDownloadAll={(path, level) => void downloadBatch(detail.tracks, path, level)}
           />
         ) : account === null ? (
           <HomeSkeleton />
@@ -1851,12 +1852,15 @@ function PlaylistView(props: {
   onSharePlaylist: (id: string) => void;
   onShowDetail: (track: Track) => void;
   onDownloadLocal: (track: Track) => void;
-  onDownloadAll: () => void;
+  onDownloadAll: (path: string, level: string) => void;
 }) {
   const { detail, currentTrackId, onBack, onPlay, onPlayAll, onToggleLike, onSharePlaylist, onShowDetail, onDownloadLocal, onDownloadAll } =
     props;
   const [hearted, setHearted] = useState<Set<string>>(new Set());
   const [downloaded, setDownloaded] = useState<Set<string>>(new Set());
+  const [batchOpen, setBatchOpen] = useState(false);
+  const [batchPath, setBatchPath] = useState("");
+  const [batchLevel, setBatchLevel] = useState("exhigh");
 
   // 加载时查询哪些歌已下载。
   useEffect(() => {
@@ -1921,15 +1925,49 @@ function PlaylistView(props: {
               </button>
             </div>
             <p className="mt-2 text-sm text-muted-foreground">{detail.tracks.length} 首歌曲</p>
-            <div className="mt-4 flex gap-2">
+            <div className="mt-4 flex flex-wrap gap-2">
               <Button size="sm" className="rounded-full" onClick={onPlayAll}>
                 <Play className="mr-1 h-4 w-4" />
                 播放全部
               </Button>
-              <Button size="sm" variant="outline" className="rounded-full" onClick={onDownloadAll}>
-                <HardDriveDownload className="mr-1 h-4 w-4" />
-                下载全部
-              </Button>
+              {batchOpen ? (
+                <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
+                  <button
+                    onClick={() =>
+                      setBatchLevel((l) => {
+                        const levels = ["exhigh", "lossless", "higher", "standard"];
+                        const idx = levels.indexOf(l);
+                        return levels[(idx + 1) % levels.length] ?? l;
+                      })
+                    }
+                    className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium"
+                    title="切换品质"
+                  >
+                    品质：{batchLevel}
+                  </button>
+                  <Input
+                    value={batchPath}
+                    onChange={(e) => setBatchPath(e.target.value)}
+                    placeholder="NAS 子目录（留空=根目录）"
+                    className="rounded-full text-xs"
+                  />
+                  <Button
+                    size="sm"
+                    className="shrink-0 rounded-full"
+                    onClick={() => {
+                      onDownloadAll(batchPath, batchLevel);
+                      setBatchOpen(false);
+                    }}
+                  >
+                    确认
+                  </Button>
+                </div>
+              ) : (
+                <Button size="sm" variant="outline" className="rounded-full" onClick={() => setBatchOpen(true)}>
+                  <HardDriveDownload className="mr-1 h-4 w-4" />
+                  下载全部
+                </Button>
+              )}
             </div>
           </div>
         </div>
