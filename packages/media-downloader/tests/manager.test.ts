@@ -94,4 +94,16 @@ describe("DownloadManager", () => {
     const m = new DownloadManager({ root });
     await expect(m.download({ url: "", filename: "x.txt" })).rejects.toThrow("url and filename are required");
   });
+
+  it("路径穿越被拦截", () => {
+    const root = tempDir();
+    mkdirSync(join(root, "safe"));
+    const m = new DownloadManager({ root });
+    // listDirs 对 ../ 免疫（返回空，不报错）。
+    expect(m.listDirs("../")).toEqual([]);
+    // createDir 拒绝越界。
+    expect(() => m.createDir("../..", "evil")).toThrow("path escapes root");
+    // download 的 dir 越界会被清洗到根目录内。
+    expect(() => m.createDir("a/../../b", "x")).toThrow("path escapes root");
+  });
 });

@@ -4,7 +4,7 @@ import { randomBytes } from "node:crypto";
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, extname, join } from "node:path";
-import { createDir, listDirs } from "./dirs.js";
+import { createDir, listDirs, sanitizeSubdir } from "./dirs.js";
 import { downloadToFile } from "./download.js";
 import { DownloaderError } from "./errors.js";
 import type {
@@ -69,7 +69,7 @@ export class DownloadManager {
     if (target.url.trim() === "" || filename === "") {
       throw new DownloaderError("INVALID_TARGET", "url and filename are required");
     }
-    const safeSub = target.dir !== undefined ? target.dir.trim().replace(/^\/+|\/+$/gu, "") : "";
+    const safeSub = target.dir !== undefined ? sanitizeSubdir(target.dir.trim()) : "";
     const baseDir = safeSub === "" ? this.#root : join(this.#root, safeSub);
     const filePath = join(baseDir, filename);
 
