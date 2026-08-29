@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  AppWindow,
   Check,
   ChevronDown,
   ChevronLeft,
@@ -1257,9 +1258,8 @@ export default function App() {
               onRefresh={() => void refresh()}
               onShowHistory={() => setShowHistory(true)}
               onDownloadLocal={(t) => setDownloadTarget(t)}
-              onLogout={() => {
-                setActiveModule(null);
-              }}
+              onLogout={() => void logout()}
+              onBackToLauncher={() => setActiveModule(null)}
               onDismissLast={dismissLast}
               onToggleLike={toggleLike}
               likedIds={likedIds}
@@ -2380,10 +2380,10 @@ function Launcher(props: {
             className="group flex aspect-square flex-col items-center justify-center gap-3 rounded-2xl border bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg"
           >
             <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <Music2 className="h-7 w-7" />
+              <AppWindow className="h-7 w-7" />
             </span>
-            <span className="text-sm font-medium">网易云音乐</span>
-            <span className="text-xs text-muted-foreground">歌单 / 播放 / 下载</span>
+            <span className="text-sm font-medium">服务 1</span>
+            <span className="text-xs text-muted-foreground">已接入</span>
           </button>
           <div className="flex aspect-square flex-col items-center justify-center gap-3 rounded-2xl border border-dashed bg-card/50 text-muted-foreground">
             <span className="text-3xl">+</span>
@@ -2410,6 +2410,7 @@ function HomeView(props: {
   onShowHistory: () => void;
   onDownloadLocal: (track: Track) => void;
   onLogout: () => void;
+  onBackToLauncher: () => void;
   onDismissLast: () => void;
   onToggleLike: (track: Track, liked: boolean) => void;
   likedIds: Set<string>;
@@ -2419,7 +2420,7 @@ function HomeView(props: {
   onOpenDownloadHistory: () => void;
   onOpenLogs: () => void;
 }) {
-  const { account, recentTracks, lastTrack, playCounts, onResume, avatarError, onAvatarError, onOpenPlaylist, onPlayPlaylist, onPlaySong, onRefresh, onShowHistory, onDownloadLocal, onLogout, onDismissLast, onToggleLike, likedIds, recommend, recommendPlaylists, onPlayPersonalFm, onOpenDownloadHistory, onOpenLogs } =
+  const { account, recentTracks, lastTrack, playCounts, onResume, avatarError, onAvatarError, onOpenPlaylist, onPlayPlaylist, onPlaySong, onRefresh, onShowHistory, onDownloadLocal, onLogout, onBackToLauncher, onDismissLast, onToggleLike, likedIds, recommend, recommendPlaylists, onPlayPersonalFm, onOpenDownloadHistory, onOpenLogs } =
     props;
   const [search, setSearch] = useState("");
   const [songQuery, setSongQuery] = useState("");
@@ -2522,8 +2523,16 @@ function HomeView(props: {
             <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{nickname}</h1>
             {vip?.isVip ? <Badge variant="vip">VIP {vip.level}</Badge> : null}
             <button
+              onClick={onBackToLauncher}
+              className="ml-2 flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              title="返回服务列表"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+              服务列表
+            </button>
+            <button
               onClick={onLogout}
-              className="ml-2 rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               title="退出登录"
             >
               退出登录
