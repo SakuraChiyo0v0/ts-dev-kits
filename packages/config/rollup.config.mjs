@@ -5,6 +5,7 @@ export default {
     id === "@sakurachiyo0v0/webdav" ||
     id === "@sakurachiyo0v0/cli-utils" ||
     id === "@sakurachiyo0v0/logger" ||
+    id === "pg" ||
     id.startsWith("node:"),
   output: [
     {

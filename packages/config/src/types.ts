@@ -19,6 +19,8 @@ export interface ConfigCenterOptions {
   configPath?: string;
   /** 显式传入全局配置(不读文件) */
   global?: GlobalConfig;
+  /** 显式传入存储后端(如 PgBackend);不传则读全局配置走 WebDAV(兼容既有部署) */
+  backend?: import("./backend.js").ConfigBackend;
 }
 
 /** 命名空间选项 */
@@ -43,8 +45,8 @@ export interface ConfigNamespace {
 
 /** 配置中心:全局配置一次,按命名空间存取各平台配置 */
 export interface ConfigCenter {
-  /** WebDAV 根地址 */
-  readonly url: string;
+  /** WebDAV 根地址(仅 WebDAV 后端时存在) */
+  readonly url?: string;
   /** 创建/获取命名空间(encrypt:true 走加密存储) */
   namespace(name: string, options?: NamespaceOptions): ConfigNamespace;
 }

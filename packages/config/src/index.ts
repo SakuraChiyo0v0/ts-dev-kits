@@ -6,6 +6,9 @@ export {
   resolveConfigPath,
   resolveConfigRoot,
 } from "./global-config.js";
+export { PrefixBackend, prefixBackend, type ConfigBackend } from "./backend.js";
+export { EncryptedBackend, encryptedBackend, deriveKey } from "./encrypt.js";
+export { PgBackend } from "./pg-backend.js";
 export type {
   ConfigCenter,
   ConfigCenterOptions,

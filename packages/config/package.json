@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/config",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Config center: one-time WebDAV+key setup, per-namespace config storage with optional encryption",
   "license": "UNLICENSED",
   "publishConfig": {
@@ -37,10 +37,12 @@
   "dependencies": {
     "@sakurachiyo0v0/cli-utils": "workspace:*",
     "@sakurachiyo0v0/logger": "workspace:*",
-    "@sakurachiyo0v0/webdav": "workspace:*"
+    "@sakurachiyo0v0/webdav": "workspace:*",
+    "pg": "^8.16.0"
   },
   "devDependencies": {
     "@types/node": "^26.1.2",
+    "@types/pg": "^8.15.0",
     "rollup": "^4.62.4",
     "tslib": "^2.8.1",
     "typescript": "^7.0.2",
