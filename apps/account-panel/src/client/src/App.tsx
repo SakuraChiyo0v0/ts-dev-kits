@@ -294,6 +294,7 @@ export default function App() {
     status: string;
   } | null>(null);
   const [downloadedVersion, setDownloadedVersion] = useState(0);
+  const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const [fetching, setFetching] = useState(0);
   const [likedCurrent, setLikedCurrent] = useState(false);
   const [volume, setVolume] = useState<number>(() => {
@@ -387,6 +388,15 @@ export default function App() {
     } finally {
       setFetching((n) => n - 1);
     }
+    void (async () => {
+      try {
+        const res = await rpc.api.liked.$get();
+        const data = (await res.json()) as { ids?: string[] };
+        if (data.ids !== undefined) setLikedIds(new Set(data.ids));
+      } catch {
+        // 忽略。
+      }
+    })();
   }, []);
 
   useEffect(() => {
@@ -1112,7 +1122,17 @@ export default function App() {
             void playAt([songDetail], 0);
             setSongDetail(null);
           }}
-          onLike={() => void toggleLike(songDetail, false)}
+          liked={likedIds.has(songDetail.id)}
+          onToggleLike={() => {
+            const liked = likedIds.has(songDetail.id);
+            void toggleLike(songDetail, liked);
+            setLikedIds((prev) => {
+              const next = new Set(prev);
+              if (liked) next.delete(songDetail.id);
+              else next.add(songDetail.id);
+              return next;
+            });
+          }}
           onShare={() => void shareTrack(songDetail)}
           onLyrics={() => {
             void openLyrics(songDetail);
@@ -1280,7 +1300,8 @@ function HistoryPanel(props: {
 function SongDetailModal(props: {
   track: Track;
   onPlay: () => void;
-  onLike: () => void;
+  liked: boolean;
+  onToggleLike: () => void;
   onShare: () => void;
   onLyrics: () => void;
   onDownloadLocal: (level: string) => void;
@@ -1289,7 +1310,7 @@ function SongDetailModal(props: {
   onAddToPlaylist: (playlistId: string) => void;
   onClose: () => void;
 }) {
-  const { track, onPlay, onLike, onShare, onLyrics, onDownloadLocal, onDownloadNas, playlists, onAddToPlaylist, onClose } =
+  const { track, onPlay, liked, onToggleLike, onShare, onLyrics, onDownloadLocal, onDownloadNas, playlists, onAddToPlaylist, onClose } =
     props;
   const [downloadOpen, setDownloadOpen] = useState(false);
   const [nasPathOpen, setNasPathOpen] = useState(false);
@@ -1337,9 +1358,14 @@ function SongDetailModal(props: {
               <Play />
               播放
             </Button>
-            <Button size="sm" variant="outline" className="rounded-full" onClick={onLike}>
-              <Heart />
-              红心
+            <Button
+              size="sm"
+              variant="outline"
+              className="rounded-full"
+              onClick={onToggleLike}
+            >
+              <Heart className={cn("h-4 w-4", liked && "fill-primary text-primary")} />
+              {liked ? "取消红心" : "红心"}
             </Button>
             <Button size="sm" variant="outline" className="rounded-full" onClick={onShare}>
               <Share />
