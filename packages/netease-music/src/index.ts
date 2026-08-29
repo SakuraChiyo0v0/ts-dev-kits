@@ -19,6 +19,7 @@ export {
 } from "./api/session.js";
 export { SongApi, extractAvailableLevels } from "./api/song.js";
 export { PlaylistApi, LyricApi } from "./api/playlist.js";
+export { RecommendApi } from "./api/recommend.js";
 export {
   UserApi,
   type AccountInfo,
@@ -50,6 +51,7 @@ export {
   type MediaType,
   type NeteaseClientOptions,
   type QualityLevel,
+  type RecommendPlaylist,
   type SongInfo,
   type SongPrivilege,
   type StreamInfo,

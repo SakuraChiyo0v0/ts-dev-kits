@@ -14,12 +14,14 @@ import type {
   MediaType,
   NeteaseClientOptions,
   QualityLevel,
+  RecommendPlaylist,
   SongInfo,
   VipInfo,
 } from "./types.js";
 import { WeapiSession, type NeteaseCredentials } from "./api/session.js";
 import { SongApi } from "./api/song.js";
 import { PlaylistApi, LyricApi } from "./api/playlist.js";
+import { RecommendApi } from "./api/recommend.js";
 import { UserApi, type AccountInfo, type UserPlaylistSummary } from "./api/user.js";
 import { SongDownloader } from "./download/stream.js";
 import { parseNeteaseUrl, isNeteaseUrl } from "./parsers/url.js";
@@ -52,6 +54,7 @@ export class NeteaseMusicClient {
   readonly #songs: SongApi;
   readonly #playlists: PlaylistApi;
   readonly #lyrics: LyricApi;
+  readonly #recommend: RecommendApi;
   readonly #user: UserApi;
   readonly #downloader: SongDownloader;
   readonly #authPath: string | undefined;
@@ -85,6 +88,7 @@ export class NeteaseMusicClient {
     this.#songs = new SongApi(this.#session);
     this.#playlists = new PlaylistApi(this.#session);
     this.#lyrics = new LyricApi(this.#session);
+    this.#recommend = new RecommendApi(this.#session);
     this.#user = new UserApi(this.#session);
     this.#downloader = new SongDownloader(
       this.#songs,
@@ -157,6 +161,16 @@ export class NeteaseMusicClient {
   /** 获取每日推荐歌曲（需登录）。 */
   async getRecommendSongs(): Promise<SongInfo[]> {
     return this.#songs.getRecommendSongs();
+  }
+
+  /** 获取每日推荐歌单。 */
+  async getRecommendPlaylists(): Promise<RecommendPlaylist[]> {
+    return this.#recommend.getRecommendPlaylists();
+  }
+
+  /** 获取私人 FM（每日电台）歌曲列表。 */
+  async getPersonalFm(): Promise<SongInfo[]> {
+    return this.#recommend.getPersonalFm();
   }
 
   /** 批量检查歌曲是否已红心。 */

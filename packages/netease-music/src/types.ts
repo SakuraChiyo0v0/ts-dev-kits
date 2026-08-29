@@ -55,6 +55,14 @@ export interface LyricInfo {
   translated?: string;
 }
 
+/** 推荐歌单（每日推荐歌单）。 */
+export interface RecommendPlaylist {
+  id: string;
+  name: string;
+  coverUrl?: string;
+  playCount: number;
+}
+
 /** 单曲权限(基于 song detail 的 fee/st + 账号 VIP 状态,不依赖已废弃的 privilege 接口)。 */
 export interface SongPrivilege {
   id: string;
