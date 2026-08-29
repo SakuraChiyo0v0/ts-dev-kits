@@ -1838,6 +1838,20 @@ function HomeView(props: {
                     {h}
                   </button>
                 ))}
+                <div className="my-1 h-px bg-border" />
+                <button
+                  onMouseDown={() => {
+                    setHistory([]);
+                    try {
+                      localStorage.removeItem("search-history");
+                    } catch {
+                      // 忽略。
+                    }
+                  }}
+                  className="block w-full rounded-lg px-3 py-2 text-left text-xs text-muted-foreground hover:bg-muted"
+                >
+                  清除搜索历史
+                </button>
               </div>
             ) : null}
           </div>
@@ -2000,7 +2014,7 @@ function PlaylistView(props: {
   const [batchPath, setBatchPath] = useState("");
   const [batchLevel, setBatchLevel] = useState("exhigh");
 
-  // 加载时查询哪些歌已下载。
+  // 加载时查询哪些歌已下载、哪些已红心。
   useEffect(() => {
     const ids = detail.tracks.map((t) => t.id);
     if (ids.length === 0) return;
@@ -2011,6 +2025,15 @@ function PlaylistView(props: {
         const data = (await res.json()) as { downloaded?: string[] };
         if (!cancelled && data.downloaded !== undefined) {
           setDownloaded(new Set(data.downloaded));
+        }
+      } catch {
+        // 忽略。
+      }
+      try {
+        const res = await rpc.api.liked.$get();
+        const data = (await res.json()) as { ids?: string[] };
+        if (!cancelled && data.ids !== undefined) {
+          setHearted(new Set(data.ids));
         }
       } catch {
         // 忽略。

@@ -440,6 +440,17 @@ export const accountRoutes = new Hono()
     const downloaded = ids.filter((id) => downloadedIds.has(id));
     return c.json({ downloaded });
   })
+  /** GET /api/liked —— 红心歌曲 id 列表。 */
+  .get("/liked", async (c) => {
+    await warmupAuth("netease-music");
+    const client = createClient();
+    try {
+      const ids = await client.getLikeList();
+      return c.json({ ids });
+    } catch {
+      return c.json({ error: "获取失败" }, 500);
+    }
+  })
   /** POST /api/logout —— 退出登录（清除本地 + 远程 WebDAV 登录态）。 */
   .post("/logout", async (c) => {
     try {
