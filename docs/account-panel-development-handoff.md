@@ -241,36 +241,57 @@ sshpass -e ssh ... "echo '${P1}${P2}' | sudo -S docker load -i /tmp/account-pane
 
 ---
 
-## 十一、架构演进：PG 统一存储 + 主账号（2026-08 追加）
+## 十一、架构演进：统一大应用 + PG 存储 + 管理员 Cookie 认证（2026-08 最终版）
 
-### 新架构目标（已落地第一阶段）
-- **统一大应用**：单容器多模块（网易云当前，B站/番剧后续并入），一个入口。
-- **PostgreSQL 统一存储**：配置/登录态/用户数据全存 NAS 的 postgres 容器，**WebDAV 彻底移除**。
-- **主账号登录**：用户名/密码（scrypt）统一登录，登录后扫码绑定各平台，token 存 PG。
+### 最终架构
+- **统一大应用**：单容器多模块（网易云当前，B站/番剧后续并入），一个登录入口 + 路由分发。
+- **PostgreSQL 统一存储**：配置/登录态/会话存 NAS postgres 容器，**WebDAV 彻底移除**。
+- **管理员登录**：账号密码来自 **Docker 环境变量**（`ADMIN_USERNAME` / `ADMIN_PASSWORD`），**不开放注册**（公网防滥用）。
+- **Cookie 认证**：登录下发 **httpOnly 持久 Cookie**（7 天），浏览器自动携带；**session 存 PG**（sessions 表），**容器重启不丢、免重新登录**。
 
 ### 已实现
-1. `@sakurachiyo0v0/config`（0.6.0）后端可插拔：
+1. `@sakurachiyo0v0/config`（0.6.x）后端可插拔：
    - `ConfigBackend` 接口 + `PrefixBackend`（前缀分域）+ `JsonBackend`（明文 JSON 包装）+ `EncryptedBackend`（AES-256-GCM）+ `PgBackend`（node-postgres 键值，懒建表）。
    - **序列化契约**：底层后端「字符串透明」，JSON/加密统一在上层包装——PG 与 WebDAV 一致。
    - `createConfigCenter({ backend })`：传 PgBackend 走 PG；不传走 WebDAV（兼容既有）。
 2. `bootstrap.ts`：`PG_URL` 优先（PgBackend **单例**，连接池不泄漏），否则 WebDAV；加密密钥统一 `CONFIG_KEY`。
-3. 主账号（`/api/users`）：注册/登录（scrypt + timingSafeEqual + 时间侧信道防护）、带 TTL 的 session token（7天）、`/me` 校验、`/logout`。仅当 PG_URL 配置时启用。
-4. 前端：LoginView「账号登录 / 扫码绑定」双 tab；主账号登录后未绑平台显示「绑定网易云」；启动时校验本地 token 无效即清。
+3. 登录认证（`/api/users`，`routes/users.ts`）：
+   - **管理员登录**：校验 `ADMIN_USERNAME` / `ADMIN_PASSWORD`（环境变量，启动时 scrypt 哈希 + timingSafeEqual + 时间侧信道防护）。
+   - **httpOnly Cookie**：登录成功 `Set-Cookie: app_session=<token>; HttpOnly; SameSite=Lax; Path=/; Max-Age=604800`。
+   - **session 持久化 PG**：sessions 表（token/user_id/expires_at），无 PG_URL 回落内存。
+   - `/me`（校验 Cookie）、`/logout`（作废 session + 清 Cookie）。
+   - **无注册端点**（公网安全）。
+4. 前端登录流程（`App.tsx`）：
+   - **登录页纯账号**（无任何平台元素），登录/注册已合并且注册已移除。
+   - **启动时调 `/me`（Cookie 自动带）** 恢复登录态（刷新/重启免登录）。
+   - **Launcher 路由分发**：登录后进服务列表（中性卡片「服务 1 / 服务 2…」，无平台品牌元素），选模块进入。
+   - **音乐顶栏**：进入模块后，顶栏左侧显示「← 服务列表」返回入口（登录页/路由页不显示）。
+   - **绑定网易云**：进入网易云模块后未绑定才显示（扫码，平台元素只出现在模块内）。
 
 ### NAS 部署（PG）
-- postgres 容器：`docker run -d --name postgres --network app-net -e POSTGRES_USER=app -e POSTGRES_DB=app -v /home/AmeChan/pgdata:/var/lib/postgresql/data postgres:16-alpine`（密码见 NAS /tmp/account-panel.env 的 PG_URL）。
-- account-panel 容器：`--network app-net --env-file /tmp/account-panel.env`（含 PG_URL + CONFIG_KEY）。
-- 表：`users`（主账号）、`config_kv`（配置/登录态键值）。
+- postgres 容器：`docker run -d --name postgres --network app-net -e POSTGRES_USER=app -e POSTGRES_DB=app -v /home/AmeChan/pgdata:/var/lib/postgresql/data postgres:16-alpine`。
+- account-panel 容器：`--network app-net --env-file /tmp/account-panel.env`。
+- `/tmp/account-panel.env` 关键环境变量：
+  - `PG_URL=postgres://app:<pw>@postgres:5432/app`（PG 连接）
+  - `CONFIG_KEY=<hex>`（配置加密密钥）
+  - `ADMIN_USERNAME=AmeChan` + `ADMIN_PASSWORD=<你的密码>`（管理员账号）
+  - `DOWNLOAD_DIR=/downloads`、`PORT=8787`
+- 表：`config_kv`（配置/登录态键值）、`sessions`（会话）、`users`（遗留，未用可清）。
+
+### 权限管理现状
+- **单一管理员**：登录后所有模块/操作可用，**无多用户/RBAC/操作审计**（用户明确暂不做，后续按需加）。
 
 ### 子代理审查修复记录（重要教训）
-- **PG 加密往返断裂**：PgBackend save/load 序列化不对称（string 短路 vs 无条件 parse）→ 加密命名空间每次 load 500。修复：底层字符串透明 + 上层 Json/Encrypted 包装统一。
+- **PG 加密往返断裂**：PgBackend save/load 序列化不对称 → 加密命名空间每次 load 500。修复：底层字符串透明 + 上层 Json/Encrypted 包装统一。
 - **连接池泄漏**：createAuthNamespace 每请求 new Pool 永不 close → 单例化。
 - **WebDAV 旧密文兼容**：加密域必须 format:"text"（密文原样落盘），json 会二次编码读不了旧数据。
-- **登录闭环**：token 必须被门控使用（前端渲染门控 + 启动 /me 校验）。
-- 其他：session TTL、无 PG_URL 不建 Pool、时间侧信道 dummy scrypt、register 区分 23505、表名标识符校验、密钥变量统一 CONFIG_KEY、namespace 拒绝 `:`。
-- 测试：新增 backend 契约测试（31 个全过）。
+- **登录闭环**：凭证必须被门控使用（前端渲染门控 + 启动 /me 校验）。
+- **凭证持久化**：session 存内存 → 容器重启全失效 → 改 PG sessions 表 + httpOnly Cookie。
+- 其他：session TTL 7 天、无 PG_URL 不建 Pool、时间侧信道 dummy scrypt、表名标识符校验、密钥变量统一 CONFIG_KEY、namespace 拒绝 `:`。
+- 测试：backend 契约测试 31 个全过。
 
 ### 下一步
 - 单应用多模块整合（B站/番剧 tab）
-- 主账号平台绑定管理页（查看/解绑已绑平台）
-- 下载历史/配置从「每平台」迁移到「主账号维度」
+- 平台绑定管理页（查看/解绑已绑平台）
+- 权限管理（多管理员/RBAC/操作审计，用户暂缓）
+- 下载历史/配置按管理员维度组织
