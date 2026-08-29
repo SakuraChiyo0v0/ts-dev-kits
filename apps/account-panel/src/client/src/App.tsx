@@ -357,6 +357,10 @@ export default function App() {
   const pendingSeek = useRef<number | null>(null);
   const lastPosSave = useRef(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  // 播放竞态 token：每次 playAt/changeLevel 递增，settle 后比对丢弃旧请求。
+  const playTokenRef = useRef(0);
+  const batchTimerRef = useRef<number | null>(null);
+  const loginEsRef = useRef<EventSource | null>(null);
   const { theme, toggle } = useTheme();
 
   useEffect(() => {
@@ -440,13 +444,26 @@ export default function App() {
     void refresh();
   }, [refresh]);
 
+  // 卸载时清理批量下载轮询 timer 与登录 EventSource。
+  useEffect(() => {
+    return () => {
+      if (batchTimerRef.current !== null) window.clearTimeout(batchTimerRef.current);
+      loginEsRef.current?.close();
+    };
+  }, []);
+
   const startLogin = useCallback(async () => {
     try {
       const res = await rpc.api.auth.start.$post({ json: { platform: "netease-music" } });
       const { sessionId } = (await res.json()) as { sessionId: string };
       setLogin({ sessionId, state: "waiting", message: "正在生成二维码…" });
 
+      // 关闭旧的 EventSource（重新登录/取消时）。
+      loginEsRef.current?.close();
+      loginEsRef.current = null;
+
       const es = new EventSource(`/api/auth/stream?id=${encodeURIComponent(sessionId)}`);
+      loginEsRef.current = es;
       es.addEventListener("qr", (e) => {
         const data = JSON.parse((e as MessageEvent).data as string) as { qrDataUrl: string };
         setLogin((prev) => (prev ? { ...prev, qrDataUrl: data.qrDataUrl } : prev));
@@ -456,11 +473,13 @@ export default function App() {
         setLogin((prev) => (prev ? { ...prev, state: data.state, message: data.message } : prev));
         if (data.state === "success" || data.state === "failed" || data.state === "timeout") {
           es.close();
+          loginEsRef.current = null;
           if (data.state === "success") void refresh();
         }
       });
       es.onerror = () => {
         es.close();
+        loginEsRef.current = null;
         setLogin((prev) => (prev ? { ...prev, message: "连接中断，请重试" } : prev));
       };
     } catch {
@@ -487,6 +506,7 @@ export default function App() {
   const playAt = useCallback(async (tracks: Track[], index: number) => {
     const track = tracks[index];
     if (track === undefined) return;
+    const token = ++playTokenRef.current;
     // iOS Safari 自动播放解锁：在用户手势同步上下文里先静音触发一次 play()。
     const audioEl = audioRef.current;
     if (audioEl !== null) {
@@ -547,9 +567,12 @@ export default function App() {
       const data = (await res.json()) as { url?: string; level?: string; error?: string };
       const audio = audioRef.current;
       if (audio !== null && data.url !== undefined) {
+        if (token !== playTokenRef.current) return; // 已有更新的播放请求，丢弃本次。
         audio.src = data.url;
         if (data.level !== undefined) setLevel(data.level);
         audio.muted = false;
+        // 恢复音量：遵循 React 的 muted/volume 状态，避免静音后切歌被强制出声。
+        audio.volume = muted ? 0 : volume;
         await audio.play();
       }
     } catch (error) {
@@ -557,7 +580,7 @@ export default function App() {
       const detail = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
       showToast(`播放失败 ${detail}`);
     }
-  }, [showToast, likedIds]);
+  }, [showToast, likedIds, muted, volume]);
 
   const playPlaylist = useCallback(
     async (id: string) => {
@@ -687,6 +710,7 @@ export default function App() {
 
   const changeLevel = useCallback(async () => {
     if (currentTrack === null) return;
+    const token = ++playTokenRef.current;
     const levels = ["exhigh", "higher", "standard"];
     const idx = levels.indexOf(level);
     const next = levels[(idx + 1) % levels.length] ?? "exhigh";
@@ -695,6 +719,7 @@ export default function App() {
       const res = await rpc.api.stream.$get({ query: { id: currentTrack.id, level: next } });
       const data = (await res.json()) as { url?: string; level?: string };
       if (audioRef.current !== null && data.url !== undefined) {
+        if (token !== playTokenRef.current) return;
         audioRef.current.src = data.url;
         if (data.level !== undefined) setLevel(data.level);
         audioRef.current.currentTime = pos;
@@ -765,29 +790,32 @@ export default function App() {
         }
         const taskId = data.taskId;
         setBatchProgress({ total: tracks.length, done: 0, status: "running" });
-        const timer = window.setInterval(async () => {
+        // 递归 setTimeout 轮询，避免重叠；timer 存 ref 供卸载清理。
+        const poll = async () => {
           try {
             const pr = await rpc.api["download-batch"].$get({ query: { id: taskId } });
             const p = (await pr.json()) as { total?: number; done?: number; status?: string };
             if (p.status === "done") {
-              window.clearInterval(timer);
+              batchTimerRef.current = null;
               setBatchProgress({ total: p.total ?? tracks.length, done: p.done ?? tracks.length, status: "done" });
               setDownloadedVersion((v) => v + 1);
               showToast(`已下载 ${p.total ?? 0} 首到 NAS`);
               window.setTimeout(() => setBatchProgress(null), 3000);
             } else if (p.status === "error") {
-              window.clearInterval(timer);
+              batchTimerRef.current = null;
               setBatchProgress(null);
               showToast("批量下载失败");
             } else {
               setBatchProgress({ total: p.total ?? tracks.length, done: p.done ?? 0, status: "running" });
+              batchTimerRef.current = window.setTimeout(poll, 1500);
             }
           } catch {
-            window.clearInterval(timer);
+            batchTimerRef.current = null;
             setBatchProgress(null);
             showToast("下载进度查询失败");
           }
-        }, 1500);
+        };
+        batchTimerRef.current = window.setTimeout(poll, 1500);
       } catch {
         showToast("批量下载失败");
       }
@@ -896,14 +924,32 @@ export default function App() {
 
   const removeFromQueue = useCallback(
     (index: number) => {
-      setQueue((prev) => prev.filter((_, i) => i !== index));
-      setQueueIndex((idx) => {
-        if (index === idx) return Math.min(idx, Math.max(0, queue.length - 2));
-        if (index < idx) return idx - 1;
-        return idx;
-      });
+      const newQueue = queue.filter((_, i) => i !== index);
+      let newIndex = queueIndex;
+      if (index === queueIndex) {
+        newIndex = Math.min(index, Math.max(0, newQueue.length - 1));
+      } else if (index < queueIndex) {
+        newIndex = queueIndex - 1;
+      }
+      setQueue(newQueue);
+      setQueueIndex(newIndex);
+
+      // 移除的是当前播放项：同步 currentTrack 并续播新当前项（或停止）。
+      if (index === queueIndex) {
+        const nextTrack = newQueue[newIndex] ?? null;
+        if (nextTrack !== null) {
+          void playAt(newQueue, newIndex);
+        } else {
+          setCurrentTrack(null);
+          const audio = audioRef.current;
+          if (audio !== null) {
+            audio.pause();
+            audio.removeAttribute("src");
+          }
+        }
+      }
     },
-    [queue.length],
+    [queue, queueIndex, playAt],
   );
 
   const toggleLike = useCallback(
@@ -2029,10 +2075,12 @@ function HomeView(props: {
       setSongResults([]);
       return;
     }
+    let cancelled = false;
     const timer = setTimeout(async () => {
       try {
         const res = await rpc.api.search.$get({ query: { q: songQuery } });
         const data = (await res.json()) as { songs?: Track[] };
+        if (cancelled) return;
         setSongResults(data.songs ?? []);
         setHistory((prev) => {
           const q = songQuery.trim();
@@ -2045,10 +2093,13 @@ function HomeView(props: {
           return next;
         });
       } catch {
-        setSongResults([]);
+        if (!cancelled) setSongResults([]);
       }
     }, 300);
-    return () => clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [songQuery]);
 
   const doCreate = async () => {
