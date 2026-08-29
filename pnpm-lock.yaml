@@ -44,6 +44,9 @@ importers:
       '@sakurachiyo0v0/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@sakurachiyo0v0/logger':
+        specifier: workspace:*
+        version: link:../../packages/logger
       '@sakurachiyo0v0/media-downloader':
         specifier: workspace:*
         version: link:../../packages/media-downloader
