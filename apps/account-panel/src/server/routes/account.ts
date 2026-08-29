@@ -271,6 +271,20 @@ export const accountRoutes = new Hono()
       return c.json({ error: "创建失败" }, 500);
     }
   })
+  /** POST /api/playlist/delete —— 删除歌单。 */
+  .post("/playlist/delete", async (c) => {
+    const body = await c.req.json<{ id?: unknown }>().catch(() => ({ id: undefined }));
+    const id = typeof body.id === "string" ? body.id : undefined;
+    if (id === undefined) return c.json({ error: "missing id" }, 400);
+    await warmupAuth("netease-music");
+    const client = createClient();
+    try {
+      await client.deletePlaylist(id);
+      return c.json({ ok: true });
+    } catch {
+      return c.json({ error: "删除失败" }, 500);
+    }
+  })
   /** POST /api/download —— 下载到 NAS 本地目录（服务器端落盘，支持子路径）。 */
   .post("/download", async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as {
@@ -412,6 +426,12 @@ export const accountRoutes = new Hono()
   /** GET /api/download-history —— 下载历史（内存，倒序）。 */
   .get("/download-history", (c) => {
     return c.json({ records: downloadHistory });
+  })
+  /** POST /api/download-history/clear —— 清空下载历史。 */
+  .post("/download-history/clear", (c) => {
+    downloadHistory.length = 0;
+    saveState();
+    return c.json({ ok: true });
   })
   /** GET /api/downloaded?ids=a,b,c —— 查询哪些歌曲已下载。 */
   .get("/downloaded", (c) => {

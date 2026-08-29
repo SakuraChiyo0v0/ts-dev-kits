@@ -26,6 +26,7 @@ import {
   SkipForward,
   Sun,
   TextQuote,
+  Trash2,
   Volume2,
   VolumeX,
   X,
@@ -754,6 +755,30 @@ export default function App() {
     }
   }, [refresh, showToast]);
 
+  const deletePlaylist = useCallback(
+    async (id: string) => {
+      try {
+        await rpc.api.playlist.delete.$post({ json: { id } });
+        showToast("已删除歌单");
+        setDetail(null);
+        await refresh();
+      } catch {
+        showToast("删除失败");
+      }
+    },
+    [refresh, showToast],
+  );
+
+  const clearDownloadHistory = useCallback(async () => {
+    try {
+      await rpc.api["download-history"].clear.$post();
+      setDownloadRecords([]);
+      showToast("已清空下载历史");
+    } catch {
+      showToast("清空失败");
+    }
+  }, [showToast]);
+
   const reorderQueue = useCallback((from: number, to: number) => {
     setQueue((prev) => {
       if (from < 0 || from >= prev.length || to < 0 || to >= prev.length || from === to) return prev;
@@ -900,6 +925,7 @@ export default function App() {
             onShowDetail={setSongDetail}
             onDownloadLocal={(t) => downloadToLocal(t)}
             onDownloadAll={(path, level) => void downloadBatch(detail.tracks, path, level)}
+            onDeletePlaylist={(id) => void deletePlaylist(id)}
           />
         ) : account === null ? (
           <HomeSkeleton />
@@ -1084,7 +1110,11 @@ export default function App() {
       ) : null}
 
       {showDownloadHistory ? (
-        <DownloadHistoryPanel records={downloadRecords} onClose={() => setShowDownloadHistory(false)} />
+        <DownloadHistoryPanel
+          records={downloadRecords}
+          onClear={() => void clearDownloadHistory()}
+          onClose={() => setShowDownloadHistory(false)}
+        />
       ) : null}
     </div>
   );
@@ -1092,21 +1122,30 @@ export default function App() {
 
 function DownloadHistoryPanel(props: {
   records: Array<{ id: string; title: string; filePath: string; level: string; status: string; time: string }>;
+  onClear: () => void;
   onClose: () => void;
 }) {
-  const { records, onClose } = props;
+  const { records, onClear, onClose } = props;
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative w-full max-w-lg animate-slide-up rounded-t-2xl bg-card p-6">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-bold">下载历史（{records.length}）</h2>
-          <button
-            onClick={onClose}
-            className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          >
-            <ChevronDown className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={onClear}
+              className="rounded-full px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              清空
+            </button>
+            <button
+              onClick={onClose}
+              className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <ChevronDown className="h-5 w-5" />
+            </button>
+          </div>
         </div>
         <ul className="max-h-[60vh] divide-y divide-border/60 overflow-y-auto">
           {records.map((r) => (
@@ -1951,8 +1990,9 @@ function PlaylistView(props: {
   onShowDetail: (track: Track) => void;
   onDownloadLocal: (track: Track) => void;
   onDownloadAll: (path: string, level: string) => void;
+  onDeletePlaylist: (id: string) => void;
 }) {
-  const { detail, currentTrackId, onBack, onPlay, onPlayAll, onToggleLike, onSharePlaylist, onShowDetail, onDownloadLocal, onDownloadAll } =
+  const { detail, currentTrackId, onBack, onPlay, onPlayAll, onToggleLike, onSharePlaylist, onShowDetail, onDownloadLocal, onDownloadAll, onDeletePlaylist } =
     props;
   const [hearted, setHearted] = useState<Set<string>>(new Set());
   const [downloaded, setDownloaded] = useState<Set<string>>(new Set());
@@ -2020,6 +2060,17 @@ function PlaylistView(props: {
                 title="分享歌单"
               >
                 <Share className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => {
+                  if (window.confirm(`确定删除歌单「${detail.title}」？`)) {
+                    onDeletePlaylist(detail.id);
+                  }
+                }}
+                className="rounded-full p-1.5 text-muted-foreground transition-colors hover:text-destructive"
+                title="删除歌单"
+              >
+                <Trash2 className="h-4 w-4" />
               </button>
             </div>
             <p className="mt-2 text-sm text-muted-foreground">
