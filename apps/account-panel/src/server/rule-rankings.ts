@@ -223,7 +223,8 @@ export async function listRuleRankings(): Promise<RuleRanking[]> {
       const downloadSuccesses = Number(row.download_successes) || 0;
       const speedSum = Number(row.speed_sum) || 0;
       const downloadSuccessRate = downloads > 0 ? downloadSuccesses / downloads : 0;
-      const avgSpeed = downloads > 0 ? speedSum / downloads : 0;
+      // 平均下载速率 = 累计码率 / 下载成功次数（speed_sum 只在成功时累加）。
+      const avgSpeed = downloadSuccesses > 0 ? speedSum / downloadSuccesses : 0;
       // 码率档：0~8Mbps 线性映射到 0~1（>8Mbps 记满）。
       const bandwidthScore = Math.min(1, avgBandwidth / 8_000_000);
       // 下载速率档：0~10Mbps 线性映射到 0~1（>10Mbps 记满，用下载实测码率）。
