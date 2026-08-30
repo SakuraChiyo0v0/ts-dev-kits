@@ -1357,7 +1357,7 @@ function KazumiDownloadDialog(props: {
   );
 }
 
-/** 源排行页：雷达图展示各源六维能力 + 综合分 + 个人评分。 */
+/** 源排行页：雷达图展示各源六维能力 + 综合分 + 用户标签。 */
 function RankingsView(props: { onBack: () => void; onToast: (m: string, type?: "success" | "error" | "info") => void }) {
   const { onBack, onToast } = props;
   const [rankings, setRankings] = useState<Array<{
@@ -1416,21 +1416,27 @@ function RankingsView(props: { onBack: () => void; onToast: (m: string, type?: "
   const fmtPct = (rate: number): string => `${Math.round(rate * 100)}%`;
   const fmtSpeed = (ms: number): string => (ms > 0 ? `${(ms / 1000).toFixed(0)}s` : "—");
 
-  // 六维雷达数据（0~100 归一）：搜索成功率 / 下载成功率 / 画质码率 / 下载速率 / 响应速度 / 个人评分。
+  // 六维雷达数据（0~100 归一）：搜索成功率 / 下载成功率 / 画质码率 / 下载速率 / 响应速度 / 标签倾向。
   const radarData = (() => {
     const r = rankings.find((x) => x.rule === selectedRule);
     if (r === undefined) return [];
-    const bandwidthScore = Math.min(100, (r.avgBandwidth / 8_000_000) * 100);
-    const speedScore = Math.min(100, (r.avgSpeed / 10_000_000) * 100);
+    // 上限校准：实测源码率/速率多在 1~3.5M，4M 上限能拉开差距（原 8M/10M 导致图瘪）。
+    const bandwidthScore = Math.min(100, (r.avgBandwidth / 4_000_000) * 100);
+    const speedScore = Math.min(100, (r.avgSpeed / 4_000_000) * 100);
     const latencyScore = Math.max(0, Math.min(100, (1 - (r.avgLatencyMs - 1000) / 4000) * 100));
-    const userScoreNorm = ((r.userScore + 5) / 10) * 100;
+    // 标签倾向：正向标签加分、负向标签减分，无标签 50 中性（替代原「个人评分」加减分轴）。
+    const POS = ["画质好", "无水印", "无广告", "加载快", "高清", "字幕好"];
+    const NEG = ["有水印", "字幕差", "加载慢", "广告多", "卡顿", "音画不同步"];
+    const posCount = r.tags.filter((t) => POS.includes(t)).length;
+    const negCount = r.tags.filter((t) => NEG.includes(t)).length;
+    const tagScore = Math.max(0, Math.min(100, 50 + (posCount - negCount) * 12));
     return [
       { axis: "搜索成功率", value: Math.round(r.successRate * 100) },
       { axis: "下载成功率", value: Math.round(r.downloadSuccessRate * 100) },
       { axis: "画质码率", value: Math.round(bandwidthScore) },
       { axis: "下载速率", value: Math.round(speedScore) },
       { axis: "响应速度", value: Math.round(latencyScore) },
-      { axis: "个人评分", value: Math.round(userScoreNorm) },
+      { axis: "标签倾向", value: Math.round(tagScore) },
     ];
   })();
 
@@ -1449,7 +1455,7 @@ function RankingsView(props: { onBack: () => void; onToast: (m: string, type?: "
           {/* 真数据说明 */}
           <div className="mb-4 rounded-2xl border bg-card p-3 text-xs text-muted-foreground">
             📊 数据来自真实搜索与下载测试：搜索成功率/响应速度由每次搜索记录，码率/下载速率由 ffprobe 实测，
-            下载成功率为实际下载成败统计。个人评分可手动调整（水印/字幕等主观体验）。
+            下载成功率为实际下载成败统计。标签倾向由用户打的水印/字幕/画质等标签自动推导。
           </div>
 
           <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
@@ -1520,9 +1526,10 @@ function RankingsView(props: { onBack: () => void; onToast: (m: string, type?: "
                   <h2 className="mb-1 text-base font-bold">{selectedRule}</h2>
                   <p className="mb-3 text-xs text-muted-foreground">
                     综合 {rankings.find((r) => r.rule === selectedRule)?.score ?? 0} 分
-                    {rankings.find((r) => r.rule === selectedRule)?.userScore !== 0
-                      ? `（含个人评分 ${rankings.find((r) => r.rule === selectedRule)?.userScore ?? 0}）`
-                      : ""}
+                    {(() => {
+                      const tags = rankings.find((r) => r.rule === selectedRule)?.tags ?? [];
+                      return tags.length > 0 ? `（${tags.length} 个用户标签）` : "";
+                    })()}
                   </p>
                   {(() => {
                     const tags = rankings.find((r) => r.rule === selectedRule)?.tags ?? [];
