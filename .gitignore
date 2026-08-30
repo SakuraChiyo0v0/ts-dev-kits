@@ -1,6 +1,7 @@
 node_modules/
 dist/
-lib/
+# 仅忽略 dsh-sdk-tools 的构建产物 lib/（此前无锚点的 lib/ 误伤了 apps/account-panel/src/client/src/lib/ 源码）
+packages/dsh-sdk-tools/lib/
 # 仅 @sakurachiyo0v0/cli-utils 与 @sakurachiyo0v0/chat-platforms 提交 dist（git 依赖安装需要构建产物）
 !packages/cli-utils/dist/
 !packages/cli-utils/dist/**

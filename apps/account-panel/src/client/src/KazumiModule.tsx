@@ -23,6 +23,7 @@ import { rpc } from "./lib/rpc";
 import DownloadHistoryPanel from "./DownloadHistoryPanel";
 import { cn } from "@/lib/utils";
 import { useTheme } from "./lib/use-theme";
+import { parseSseEvent, splitSseChunks } from "./lib/kazumi-sse";
 import { useToast } from "@/components/ui/toast";
 import { useEscToClose } from "@/lib/use-esc";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -90,6 +91,7 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [results, setResults] = useState<SearchItem[]>([]);
   const [selected, setSelected] = useState<SearchItem | null>(null);
   const [roads, setRoads] = useState<Road[]>([]);
@@ -178,6 +180,7 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
       recordSearch(keyword);
       setSearching(true);
       setHasSearched(true);
+      setSearchError(null);
       setResults([]);
       setView("result");
       const controller = new AbortController();
@@ -192,41 +195,33 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
-        // SSE 按事件解析：event: batch / done / error。
-        const emit = (data: string) => {
-          if (data.startsWith("event: batch\n")) {
-            // 逐行解析：取 `data: <json>` 行（避免残留 event 行导致 JSON.parse 失败）。
-            const dataLine = data
-              .split("\n")
-              .find((line) => line.startsWith("data: "));
-            const jsonStr = dataLine?.slice("data: ".length) ?? "";
-            if (jsonStr === "") return;
-            try {
-              const parsed = JSON.parse(jsonStr) as { items?: SearchItem[] };
-              const items = parsed.items ?? [];
-              setResults((prev) => {
-                const seen = new Set(prev.map((i) => `${i.src}:${i.rule}`));
-                const fresh = items.filter((i) => !seen.has(`${i.src}:${i.rule}`));
-                return [...prev, ...fresh];
-              });
-            } catch {
-              // 忽略单批解析失败。
-            }
-          }
-        };
+        // SSE 事件解析收口到纯函数 parseSseEvent（batch/done/error 全覆盖，可单测）。
         for (;;) {
           const { done, value } = await reader.read();
           if (done) break;
           buffer += decoder.decode(value, { stream: true });
-          const parts = buffer.split("\n\n");
-          buffer = parts.pop() ?? "";
+          const { parts, rest } = splitSseChunks(buffer);
+          buffer = rest;
           for (const part of parts) {
-            if (part.trim() !== "") emit(part);
+            const ev = parseSseEvent(part);
+            if (ev.type === "batch") {
+              setResults((prev) => {
+                const seen = new Set(prev.map((i) => `${i.src}:${i.rule}`));
+                const fresh = ev.items.filter((i) => !seen.has(`${i.src}:${i.rule}`));
+                return [...prev, ...fresh];
+              });
+            } else if (ev.type === "error") {
+              // 验证码/全源失败：明确提示，而不是落入「没有找到」。
+              setSearchError(ev.message);
+              showToast(ev.message, "error");
+            }
+            // done：无动作，循环结束后 setSearching(false) 收尾。
           }
         }
       } catch (error) {
         // 主动取消不提示；网络失败提示。
         if ((error as Error)?.name !== "AbortError") {
+          setSearchError("搜索失败（可能被验证码拦截）");
           showToast("搜索失败（可能被验证码拦截）", "error");
         }
       } finally {
@@ -428,6 +423,14 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
                     ))}
                   </ul>
                 </>
+              ) : searchError !== null ? (
+                <EmptyState
+                  icon={<RefreshCw className="h-6 w-6" />}
+                  title="搜索失败"
+                  description={searchError}
+                  actionLabel="重试"
+                  onAction={() => void doSearch(query)}
+                />
               ) : hasSearched ? (
                 <EmptyState
                   icon={<Search className="h-6 w-6" />}
