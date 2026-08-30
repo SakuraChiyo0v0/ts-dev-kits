@@ -120,8 +120,16 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
   const [loadingRoads, setLoadingRoads] = useState(false);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [downloadTarget, setDownloadTarget] = useState<Episode | null>(null);
-  // 整部番批量下载进度。
-  const [batchDownload, setBatchDownload] = useState<{ done: number; total: number; failed: number } | null>(null);
+  // 整部番批量下载进度（SSE 流式实时更新）。
+  const [batchDownload, setBatchDownload] = useState<{
+    done: number;
+    total: number;
+    failed: number;
+    current?: string;
+    failedEpisodes: Array<{ name: string; error: string }>;
+  } | null>(null);
+  // 整部下载的目标（弹路径选择对话框）。
+  const [batchTarget, setBatchTarget] = useState<{ rule: string; title: string; episodes: Episode[] } | null>(null);
   const [showDownloadHistory, setShowDownloadHistory] = useState(false);
   const [playingEpisode, setPlayingEpisode] = useState<Episode | null>(null);
   const [m3u8Url, setM3u8Url] = useState<string | null>(null);
@@ -300,31 +308,81 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
     if (road !== undefined) void loadEpisodes(road);
   }, [roads, roadIndex, loadEpisodes]);
 
-  const downloadAllEpisodes = useCallback(async () => {
-    if (selected === null || episodes.length === 0) return;
-    const title = selected.name.replace(/^\[[^\]]+\]\s*/, "").slice(0, 60);
-    setBatchDownload({ done: 0, total: episodes.length, failed: 0 });
-    showToast(`开始下载整部《${title}》（${episodes.length} 集）…`, "info");
+  const downloadAllEpisodes = useCallback(async (path: string) => {
+    if (batchTarget === null) return;
+    const { rule, title, episodes: eps } = batchTarget;
+    setBatchDownload({ done: 0, total: eps.length, failed: 0, failedEpisodes: [] });
+    setBatchTarget(null);
+    showToast(`开始下载整部《${title}》（${eps.length} 集）…`, "info");
     try {
-      const res = await rpc.api.kazumi["download-all"].$post({
-        json: {
-          rule: selected.rule,
+      // SSE 流式下载：每集开始/完成/失败实时推送，前端即时更新进度。
+      const res = await fetch("/api/kazumi/download-all", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          rule,
           title,
-          episodes: episodes.map((ep) => ({ name: ep.name, url: ep.url })),
-        },
+          episodes: eps.map((ep) => ({ name: ep.name, url: ep.url })),
+          ...(path.trim() !== "" ? { path: path.trim() } : {}),
+        }),
       });
-      const data = (await res.json()) as { done?: number; failed?: number; error?: string };
-      if (data.error !== undefined) {
-        showToast(`批量下载失败：${data.error}`, "error");
-      } else {
-        showToast(`整部下载完成：成功 ${data.done ?? 0} 集${(data.failed ?? 0) > 0 ? `，失败 ${data.failed} 集` : ""}`, data.failed ?? 0 > 0 ? "error" : "success");
+      if (!res.ok || res.body === null) throw new Error("download-all failed");
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop() ?? "";
+        for (const part of parts) {
+          const evLine = part.match(/^event: (\w+)/m)?.[1];
+          const dataLine = part.match(/^data: (\{.*\})/ms)?.[1];
+          if (evLine === undefined || dataLine === undefined) continue;
+          try {
+            const data = JSON.parse(dataLine) as {
+              index?: number;
+              total?: number;
+              name?: string;
+              filePath?: string;
+              error?: string;
+              done?: number;
+              failed?: number;
+              failedEpisodes?: Array<{ name: string; error: string }>;
+              message?: string;
+            };
+            if (evLine === "episode-start") {
+              const name = data.name ?? "";
+              setBatchDownload((prev) => (prev === null ? null : { ...prev, current: name, total: data.total ?? prev.total }));
+            } else if (evLine === "episode-done") {
+              // exactOptionalPropertyTypes：不显式赋 undefined，直接展开覆盖。
+              setBatchDownload((prev) => {
+                if (prev === null) return null;
+                const { current: _c, ...rest } = prev;
+                return { ...rest, done: prev.done + 1 };
+              });
+            } else if (evLine === "episode-fail") {
+              setBatchDownload((prev) => prev === null ? null : { ...prev, failed: prev.failed + 1, failedEpisodes: [...prev.failedEpisodes, { name: data.name ?? "", error: data.error ?? "" }] });
+            } else if (evLine === "done") {
+              showToast(
+                `整部下载完成：成功 ${data.done ?? 0} 集${(data.failed ?? 0) > 0 ? `，失败 ${data.failed} 集` : ""}`,
+                (data.failed ?? 0) > 0 ? "error" : "success",
+              );
+            } else if (evLine === "error") {
+              showToast(`批量下载失败：${data.message ?? "未知错误"}`, "error");
+            }
+          } catch {
+            // 忽略单条解析失败。
+          }
+        }
       }
     } catch {
       showToast("批量下载失败", "error");
     } finally {
       setBatchDownload(null);
     }
-  }, [selected, episodes, showToast]);
+  }, [batchTarget, showToast]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -602,7 +660,12 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
                         <span className="text-sm font-medium">共 {episodes.length} 集</span>
                         {batchDownload !== null ? (
                           <span className="text-xs text-muted-foreground">
-                            已下载 {batchDownload.done}/{batchDownload.total}
+                            {batchDownload.current !== undefined ? (
+                              <>
+                                正在下载 <span className="text-primary">{batchDownload.current}</span> ·{" "}
+                              </>
+                            ) : null}
+                            已完成 {batchDownload.done}/{batchDownload.total}
                             {batchDownload.failed > 0 ? `，失败 ${batchDownload.failed}` : ""}
                           </span>
                         ) : null}
@@ -611,7 +674,14 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
                         size="sm"
                         className="rounded-full"
                         disabled={batchDownload !== null}
-                        onClick={() => void downloadAllEpisodes()}
+                        onClick={() => {
+                          if (selected === null || episodes.length === 0) return;
+                          setBatchTarget({
+                            rule: selected.rule,
+                            title: selected.name.replace(/^\[[^\]]+\]\s*/, "").slice(0, 60),
+                            episodes: [...episodes],
+                          });
+                        }}
                       >
                         <Download />
                         {batchDownload !== null ? "下载中…" : "下载全部"}
@@ -619,11 +689,22 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
                     </div>
                   ) : null}
                   {batchDownload !== null ? (
-                    <div className="mb-4 h-1 w-full overflow-hidden rounded-full bg-muted">
-                      <div
-                        className="h-full rounded-full bg-primary transition-all duration-300"
-                        style={{ width: `${batchDownload.total > 0 ? (batchDownload.done / batchDownload.total) * 100 : 0}%` }}
-                      />
+                    <div className="mb-4">
+                      <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
+                        <div
+                          className="h-full rounded-full bg-primary transition-all duration-300"
+                          style={{ width: `${batchDownload.total > 0 ? (batchDownload.done / batchDownload.total) * 100 : 0}%` }}
+                        />
+                      </div>
+                      {batchDownload.failedEpisodes.length > 0 ? (
+                        <div className="mt-2 max-h-24 overflow-y-auto rounded-lg border bg-card p-2">
+                          {batchDownload.failedEpisodes.map((f, i) => (
+                            <p key={i} className="truncate text-[11px] text-destructive">
+                              ✗ {f.name}：{f.error.slice(0, 60)}
+                            </p>
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
                   ) : null}
 
@@ -688,6 +769,16 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
             }
           }}
           onClose={() => setDownloadTarget(null)}
+        />
+      ) : null}
+
+      {batchTarget !== null ? (
+        <KazumiDownloadDialog
+          rule={batchTarget.rule}
+          title={batchTarget.title}
+          batchCount={batchTarget.episodes.length}
+          onDownload={(path) => void downloadAllEpisodes(path)}
+          onClose={() => setBatchTarget(null)}
         />
       ) : null}
 
@@ -1047,8 +1138,16 @@ function RuleRankingsPanel(props: { onToast: (m: string, type?: "success" | "err
 
 // ---------- 下载对话框 ----------
 
-function KazumiDownloadDialog(props: { episode: Episode; rule: string; onDownload: (path: string) => void; onClose: () => void }) {
-  const { episode, rule, onDownload, onClose } = props;
+function KazumiDownloadDialog(props: {
+  episode?: Episode;
+  rule: string;
+  /** 整部下载时传：显示「N 集」并确认整部下载。 */
+  batchCount?: number;
+  title?: string;
+  onDownload: (path: string) => void;
+  onClose: () => void;
+}) {
+  const { episode, rule, batchCount, title, onDownload, onClose } = props;
   const [path, setPath] = useState("");
   useEscToClose(onClose);
   const [dirs, setDirs] = useState<string[]>([]);
@@ -1075,14 +1174,17 @@ function KazumiDownloadDialog(props: { episode: Episode; rule: string; onDownloa
       // 忽略。
     }
   };
+  const isBatch = batchCount !== undefined && batchCount > 0;
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50" onClick={onClose}>
       <div className="w-full max-w-sm animate-fade-in rounded-2xl bg-card p-5 shadow-lg" onClick={(e) => e.stopPropagation()}>
         <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-base font-bold">下载到 NAS</h3>
+          <h3 className="text-base font-bold">{isBatch ? "整部下载到 NAS" : "下载到 NAS"}</h3>
           <button onClick={onClose} className="rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"><X className="h-4 w-4" /></button>
         </div>
-        <p className="mb-3 truncate text-sm text-muted-foreground">{episode.name} · {rule}</p>
+        <p className="mb-3 truncate text-sm text-muted-foreground">
+          {isBatch ? `${title ?? ""} · ${batchCount} 集 · ${rule}` : `${episode?.name ?? ""} · ${rule}`}
+        </p>
         <div className="mb-3 flex items-center gap-2 rounded-lg bg-muted px-2 py-1.5">
           <button onClick={() => setPath(path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "")} className="rounded-full p-1 text-muted-foreground hover:text-foreground" disabled={path === ""}>
             <ChevronLeft className="h-4 w-4" />
@@ -1110,7 +1212,7 @@ function KazumiDownloadDialog(props: { episode: Episode; rule: string; onDownloa
         <div className="flex gap-2">
           <Button variant="ghost" size="sm" className="flex-1 rounded-full" onClick={onClose}>取消</Button>
           <Button size="sm" className="flex-1 rounded-full" onClick={() => { onDownload(path); onClose(); }}>
-            <Download />下载
+            <Download />{isBatch ? "下载全部" : "下载"}
           </Button>
         </div>
       </div>

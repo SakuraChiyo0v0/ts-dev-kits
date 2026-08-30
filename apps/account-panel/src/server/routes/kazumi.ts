@@ -438,35 +438,78 @@ export const kazumiRoutes = new Hono()
     // 整部番默认放进 kazumi/<剧名>/ 文件夹（文件名已含剧名，目录也按剧名归类便于导入）。
     const baseDir = safeSub === "" ? join(downloadRoot(), "kazumi", title) : join(downloadRoot(), safeSub, title);
     const client = createClient();
-    try {
-      const files = await client.downloadAll(episodes, {
-        outputDir: baseDir,
-        rule,
-        title,
-        adFilter: true,
-        concurrency: 2,
-      });
-      // 每集下载成功后 ffprobe 分析分辨率/码率，记录进下载历史。
-      const results: Array<{ filePath: string; resolution?: string; bitrate?: number }> = [];
-      for (const { filePath } of files) {
-        const probe = await probeFile(filePath);
-        results.push({ filePath, ...(probe?.resolution !== undefined ? { resolution: probe.resolution } : {}), ...(probe?.bitrate !== undefined ? { bitrate: probe.bitrate } : {}) });
-        getDownloadManager("kazumi").record({
-          filename: basename(filePath),
-          filePath,
-          status: "done",
-          ...(probe?.resolution !== undefined ? { resolution: probe.resolution } : {}),
-          ...(probe?.bitrate !== undefined ? { bitrate: probe.bitrate } : {}),
-        });
-      }
-      appLogger.info("kazumi download-all ok", { rule, title, count: files.length, dir: safeSub });
-      return c.json({ done: files.length, failed: episodes.length - files.length, files: results });
-    } catch (error) {
-      appLogger.error("kazumi download-all failed", { rule, title, dir: safeSub, error });
-      const message =
-        error instanceof Error && error.message !== "" ? error.message : "批量下载失败";
-      return c.json({ error: message }, 500);
-    }
+    // SSE 流式进度：每集开始/完成/失败实时推送，前端可展示「正在下载第 x/N 集」「成功/失败」。
+    const stream = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        const enc = new TextEncoder();
+        const send = (event: string, data: unknown) => {
+          try {
+            controller.enqueue(enc.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+          } catch {
+            // 客户端断开。
+          }
+        };
+        let doneCount = 0;
+        let failCount = 0;
+        const failedEpisodes: Array<{ name: string; error: string }> = [];
+        try {
+          await client.downloadAll(episodes, {
+            outputDir: baseDir,
+            rule,
+            title,
+            adFilter: true,
+            concurrency: 2,
+            onEpisodeStart: (index, total, episode) => {
+              send("episode-start", { index, total, name: episode.name });
+            },
+            onEpisodeDone: async (index, total, episode, filePath) => {
+              doneCount += 1;
+              // ffprobe 分析分辨率/码率，记录下载历史。
+              const probe = await probeFile(filePath);
+              getDownloadManager("kazumi").record({
+                filename: basename(filePath),
+                filePath,
+                status: "done",
+                ...(probe?.resolution !== undefined ? { resolution: probe.resolution } : {}),
+                ...(probe?.bitrate !== undefined ? { bitrate: probe.bitrate } : {}),
+              });
+              send("episode-done", {
+                index,
+                total,
+                name: episode.name,
+                filePath,
+                ...(probe?.resolution !== undefined ? { resolution: probe.resolution } : {}),
+                ...(probe?.bitrate !== undefined ? { bitrate: probe.bitrate } : {}),
+              });
+            },
+            onEpisodeError: (index, total, episode, error) => {
+              failCount += 1;
+              failedEpisodes.push({ name: episode.name, error: error.message });
+              send("episode-fail", { index, total, name: episode.name, error: error.message });
+            },
+          });
+          send("done", { done: doneCount, failed: failCount, failedEpisodes });
+        } catch (error) {
+          appLogger.error("kazumi download-all failed", { rule, title, dir: safeSub, error });
+          send("error", {
+            message: error instanceof Error && error.message !== "" ? error.message : "批量下载失败",
+          });
+        } finally {
+          try {
+            controller.close();
+          } catch {
+            // 已关闭则忽略。
+          }
+        }
+      },
+    });
+    return new Response(stream, {
+      headers: {
+        "content-type": "text/event-stream",
+        "cache-control": "no-cache",
+        "x-accel-buffering": "no",
+      },
+    });
   })
   /** GET /api/kazumi/stream?url=xxx&rule=xxx —— 解析播放页 → 可播的代理 m3u8 URL。 */
   .get("/stream", async (c) => {
