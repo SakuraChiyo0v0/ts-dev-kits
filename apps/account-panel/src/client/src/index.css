@@ -106,6 +106,130 @@
   }
 }
 
+/* ---------- 动效体系 ---------- */
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes float-y {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(250, 35, 59, 0.18);
+  }
+  50% {
+    box-shadow: 0 0 24px 4px rgba(250, 35, 59, 0.22);
+  }
+}
+
+@keyframes border-shine {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes gradient-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* 容器入场：scale + 淡入（比纯 fade 更有质感）。 */
+.animate-scale-in {
+  animation: scale-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* 轻微上下浮动（图标/徽标呼吸感）。 */
+.animate-float {
+  animation: float-y 3s ease-in-out infinite;
+}
+
+/* 主色光晕脉动（重点卡片/正在下载）。 */
+.animate-glow {
+  animation: glow-pulse 2.4s ease-in-out infinite;
+}
+
+/* 渐变背景流动（header/hero 用）。 */
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient-flow 8s ease infinite;
+}
+
+/* 入场交错：子元素依次浮现（父容器加 stagger，子元素加 fade-up 即可）。 */
+.stagger > * {
+  animation: slide-up 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.stagger > *:nth-child(1) { animation-delay: 0ms; }
+.stagger > *:nth-child(2) { animation-delay: 40ms; }
+.stagger > *:nth-child(3) { animation-delay: 80ms; }
+.stagger > *:nth-child(4) { animation-delay: 120ms; }
+.stagger > *:nth-child(5) { animation-delay: 160ms; }
+.stagger > *:nth-child(6) { animation-delay: 200ms; }
+.stagger > *:nth-child(7) { animation-delay: 240ms; }
+.stagger > *:nth-child(8) { animation-delay: 280ms; }
+.stagger > *:nth-child(9) { animation-delay: 320ms; }
+.stagger > *:nth-child(10) { animation-delay: 360ms; }
+.stagger > *:nth-child(n + 11) { animation-delay: 400ms; }
+
+/* 卡片悬浮：抬升 + 主色光晕 + 轻微缩放（覆盖原有 hover:-translate-y）。 */
+.card-lift {
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease, border-color 0.25s ease;
+}
+.card-lift:hover {
+  transform: translateY(-4px) scale(1.015);
+  box-shadow: 0 10px 32px -8px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(250, 35, 59, 0.08);
+}
+
+/* 图标微动：hover 时轻微上浮旋转。 */
+.icon-nudge {
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.group:hover .icon-nudge {
+  transform: translateY(-2px) rotate(-4deg) scale(1.08);
+}
+
+/* 覆盖层渐变流动（卡片封面 hover 扫光）。 */
+.shine-overlay {
+  position: relative;
+  overflow: hidden;
+}
+.shine-overlay::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, 0.25) 50%, transparent 60%);
+  background-size: 200% 100%;
+  background-position: -200% 0;
+  transition: background-position 0.6s ease;
+  pointer-events: none;
+}
+.shine-overlay:hover::after {
+  background-position: 200% 0;
+}
+
 /* 无障碍：用户开启「减少动态效果」时关闭大幅动画，只保留短淡入。 */
 @media (prefers-reduced-motion: reduce) {
   *,

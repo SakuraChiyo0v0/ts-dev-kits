@@ -606,20 +606,30 @@ function EntryButton(props: { icon: React.ReactNode; label: string; onClick: () 
 
 function VideoGrid(props: { videos: BiliVideo[]; onOpen: (bvid: string) => void }) {
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+    <div className="stagger grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
       {props.videos.map((v) => (
-        <button key={v.bvid} onClick={() => props.onOpen(v.bvid)} className="group text-left">
-          <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-muted">
+        <button
+          key={v.bvid}
+          onClick={() => props.onOpen(v.bvid)}
+          className="card-lift group text-left"
+        >
+          <div className="shine-overlay relative aspect-video w-full overflow-hidden rounded-xl bg-muted">
             {v.cover ? (
-              <img src={v.cover} alt="" className="h-full w-full object-cover transition-transform group-hover:scale-105" loading="lazy" />
+              <img src={v.cover} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" />
             ) : (
               <div className="flex h-full w-full items-center justify-center" style={{ background: coverGradient(v.title) }}>
-                <ListVideo className="h-6 w-6 text-white/70" />
+                <ListVideo className="icon-nudge h-6 w-6 text-white/70" />
               </div>
             )}
             <span className="absolute bottom-1 right-1 rounded bg-black/70 px-1 py-0.5 text-xs text-white">{fmtDuration(v.duration)}</span>
+            {/* hover 浮现的播放按钮 */}
+            <span className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-black/60 backdrop-blur-sm">
+                <Play className="icon-nudge h-6 w-6 fill-white text-white" />
+              </span>
+            </span>
           </div>
-          <p className="mt-2 line-clamp-2 text-sm font-medium">{v.title}</p>
+          <p className="mt-2 line-clamp-2 text-sm font-medium transition-colors group-hover:text-primary">{v.title}</p>
           <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
             {v.author}
             {v.play !== undefined ? <span>· {fmtCount(v.play)}播放</span> : null}
@@ -1217,12 +1227,12 @@ function FavView(props: { onBack: () => void; onToast: (m: string, type?: "succe
           <h1 className="text-lg font-bold">{currentFolder ? currentFolder.title : `收藏夹（${folders.length}）`}</h1>
         </div>
         {currentFolder === null ? (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+          <div className="stagger grid grid-cols-2 gap-4 sm:grid-cols-3">
             {folders.map((f) => (
               <button
                 key={f.id}
                 onClick={() => void openFolder(f)}
-                className="group overflow-hidden rounded-2xl border bg-card text-left transition-all hover:-translate-y-0.5 hover:shadow-lg"
+                className="card-lift group overflow-hidden rounded-2xl border bg-card text-left"
               >
                 <div className="relative aspect-video w-full bg-muted">
                   {f.cover ? (
@@ -1249,12 +1259,12 @@ function FavView(props: { onBack: () => void; onToast: (m: string, type?: "succe
         ) : content === null ? (
           <p className="py-16 text-center text-sm text-muted-foreground">加载中…</p>
         ) : (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+          <div className="stagger grid grid-cols-2 gap-4 sm:grid-cols-3">
             {content.map((it) => (
               <button
                 key={it.aid}
                 onClick={() => onOpenVideo(it.bvid)}
-                className="group overflow-hidden rounded-2xl border bg-card text-left transition-all hover:-translate-y-0.5 hover:shadow-lg"
+                className="card-lift group overflow-hidden rounded-2xl border bg-card text-left"
               >
                 <div className="relative aspect-video w-full bg-muted">
                   {it.cover ? (
@@ -1324,7 +1334,7 @@ function BangumiView(props: { onBack: () => void; onToast: (m: string, type?: "s
               href={s.url ?? "#"}
               target="_blank"
               rel="noreferrer"
-              className="group overflow-hidden rounded-xl border bg-card transition-all hover:-translate-y-0.5 hover:shadow-md"
+              className="card-lift group overflow-hidden rounded-xl border bg-card"
               onClick={(e) => { if (s.url === undefined) e.preventDefault(); }}
             >
               <div className="aspect-[3/4] w-full bg-muted">
@@ -1756,7 +1766,7 @@ function LiveFeed(props: { onToast: (m: string, type?: "success" | "error" | "in
       ) : rooms.length === 0 ? (
         <EmptyState icon={<Radio className="h-6 w-6" />} title="暂无关注直播" description="去关注一些主播后，这里会显示他们的直播间" />
       ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="stagger grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {rooms.map((r) => (
             <a
               key={r.roomid}

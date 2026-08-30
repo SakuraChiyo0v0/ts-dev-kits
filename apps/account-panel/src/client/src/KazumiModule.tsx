@@ -579,7 +579,7 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
                   {searchProgress !== null && searchProgress.total > 0 ? (
                     <div className="mx-auto mt-3 h-1.5 w-56 overflow-hidden rounded-full bg-muted">
                       <div
-                        className="h-full rounded-full bg-primary transition-all duration-300"
+                        className="animate-glow h-full rounded-full bg-primary transition-all duration-300"
                         style={{ width: `${Math.min(100, (searchProgress.done / searchProgress.total) * 100)}%` }}
                       />
                     </div>
@@ -614,12 +614,12 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
                   {searching && searchProgress !== null && searchProgress.total > 0 ? (
                     <div className="mb-3 h-1 w-full overflow-hidden rounded-full bg-muted">
                       <div
-                        className="h-full rounded-full bg-primary transition-all duration-300"
+                        className="animate-glow h-full rounded-full bg-primary transition-all duration-300"
                         style={{ width: `${Math.min(100, (searchProgress.done / searchProgress.total) * 100)}%` }}
                       />
                     </div>
                   ) : null}
-                  <ul className="divide-y divide-border/60 rounded-2xl border bg-card">
+                  <ul className="stagger divide-y divide-border/60 rounded-2xl border bg-card">
                     {[...results]
                       // 按源排名排序：有排名分的源排前（分数降序），无排名的保持相对顺序。
                       .sort((a, b) => {
@@ -631,7 +631,7 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
                         const rank = ruleRankings.get(it.rule);
                         return (
                           <li key={`${it.src}-${it.rule}-${i}`}>
-                            <button onClick={() => void openItem(it)} className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted">
+                            <button onClick={() => void openItem(it)} className="flex w-full items-center gap-3 px-4 py-3 text-left transition-all duration-200 hover:bg-muted hover:pl-5">
                               <Play className="h-4 w-4 shrink-0 text-primary" />
                               <div className="min-w-0 flex-1">
                                 <p className="truncate text-sm font-medium">{it.name}</p>
@@ -783,7 +783,7 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
                     <div className="mb-4">
                       <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
                         <div
-                          className="h-full rounded-full bg-primary transition-all duration-300"
+                          className="animate-glow h-full rounded-full bg-primary transition-all duration-300"
                           style={{ width: `${batchDownload.total > 0 ? (batchDownload.done / batchDownload.total) * 100 : 0}%` }}
                         />
                       </div>
@@ -800,7 +800,7 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
                   ) : null}
 
                   {/* 集数列表 */}
-                  <ul className="divide-y divide-border/60 rounded-2xl border bg-card">
+                  <ul className="stagger divide-y divide-border/60 rounded-2xl border bg-card">
                     {episodes.map((ep, i) => (
                       <li key={`${ep.url}-${i}`} className="flex items-center gap-3 px-4 py-3">
                         <button onClick={() => void playEpisode(ep)} className="min-w-0 flex-1 text-left">
@@ -1145,7 +1145,7 @@ function RulesView(props: { onBack: () => void; onToast: (m: string, type?: "suc
         {/* 源质量动态排名（来自历史搜索/探测统计） */}
         <RuleRankingsPanel onToast={onToast} />
 
-        <ul className="divide-y divide-border/60 rounded-2xl border bg-card">
+        <ul className="stagger divide-y divide-border/60 rounded-2xl border bg-card">
           {rules.map((r) => (
             <li key={r.name} className="flex items-center gap-3 px-4 py-3">
               <div className="min-w-0 flex-1">

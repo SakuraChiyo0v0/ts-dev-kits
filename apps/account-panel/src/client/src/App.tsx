@@ -1205,7 +1205,7 @@ export default function App() {
               </div>
 
               {/* 网易云模块（保持挂载，切走不销毁播放状态） */}
-              <div className={cn("module-netease h-full", activeModule !== "netease" && "hidden")}>
+              <div className={cn("module-netease animate-scale-in h-full", activeModule !== "netease" && "hidden")}>
                 <div className="flex min-h-0 flex-1 flex-col">
                   <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border/60 bg-background/70 px-4 py-3 backdrop-blur-xl sm:px-6">
                     <div className="flex items-center gap-2.5">
@@ -1281,14 +1281,14 @@ export default function App() {
               </div>
 
               {/* B站模块 */}
-              <div className={cn("module-bilibili h-full", activeModule !== "bilibili" && "hidden")}>
+              <div className={cn("module-bilibili animate-scale-in h-full", activeModule !== "bilibili" && "hidden")}>
                 <Suspense fallback={<HomeSkeleton />}>
                   <BilibiliModule active={activeModule === "bilibili"} onBack={() => setActiveModule("home")} />
                 </Suspense>
               </div>
 
               {/* 番剧模块 */}
-              <div className={cn("module-kazumi h-full", activeModule !== "kazumi" && "hidden")}>
+              <div className={cn("module-kazumi animate-scale-in h-full", activeModule !== "kazumi" && "hidden")}>
                 <Suspense fallback={<HomeSkeleton />}>
                   <KazumiModule active={activeModule === "kazumi"} onBack={() => setActiveModule("home")} />
                 </Suspense>
@@ -2237,7 +2237,7 @@ function HomeSkeleton() {
         <div className="mb-5 h-20 w-20 rounded-2xl bg-muted" />
         <div className="mb-2 h-8 w-48 rounded bg-muted" />
         <div className="h-4 w-32 rounded bg-muted" />
-        <div className="mt-12 grid grid-cols-2 gap-4 sm:gap-x-5 sm:gap-y-7 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
+        <div className="stagger mt-12 grid grid-cols-2 gap-4 sm:gap-x-5 sm:gap-y-7 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
           {Array.from({ length: 14 }).map((_, i) => (
             <div key={i}>
               <div className="aspect-square w-full rounded-xl bg-muted" />
@@ -2481,14 +2481,14 @@ function Launcher(props: {
             退出登录
           </button>
         </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="stagger grid grid-cols-1 gap-4 sm:grid-cols-3">
           {entries.map((e) => (
             <button
               key={e.id}
               onClick={() => onSelect(e.id)}
-              className="group flex flex-col items-center gap-3 rounded-2xl border bg-card p-6 text-center shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg"
+              className="card-lift group flex flex-col items-center gap-3 rounded-2xl border bg-card p-6 text-center shadow-sm"
             >
-              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <span className="animate-float flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
                 {e.icon}
               </span>
               <span className="text-base font-medium">{e.title}</span>
@@ -2980,7 +2980,7 @@ function HomeView(props: {
               </div>
             ) : null}
 
-            <div className="grid grid-cols-2 gap-x-4 gap-y-5 sm:gap-x-5 sm:gap-y-7 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
+            <div className="stagger grid grid-cols-2 gap-x-4 gap-y-5 sm:gap-x-5 sm:gap-y-7 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
               {filtered.map((p) => (
                 <button key={p.id} onClick={() => onOpenPlaylist(p.id)} className="group text-left">
                   <Tilt className="relative aspect-square w-full overflow-hidden rounded-xl bg-muted shadow-sm transition-shadow duration-300 group-hover:shadow-xl">
