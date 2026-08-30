@@ -1,19 +1,22 @@
 /**
- * 番剧规则动态排名：把每个规则源的历史搜索成败、耗时、线路码率统计进 PG，
- * 按综合质量分降序排列，供搜索时优先使用高质量源。
+ * 番剧规则动态排名：把每个规则源的历史搜索成败、耗时、线路码率、下载成败与下载速率
+ * 统计进 PG，按综合质量分降序排列，供搜索时优先使用高质量源。
  *
  * 表 rule_rankings：
- *   rule          TEXT PRIMARY KEY —— 规则名（如 7sefun / MXdm）
- *   searches      INTEGER —— 搜索尝试次数
- *   successes     INTEGER —— 搜索成功次数（有结果）
- *   latency_sum   BIGINT  —— 累计耗时 ms（算平均响应时长）
- *   bandwidth_sum BIGINT  —— 累计最高码率 bps（线路探测）
- *   probes        INTEGER —— 码率探测次数
- *   last_seen     TIMESTAMPTZ —— 最近一次活动
+ *   rule                TEXT PRIMARY KEY —— 规则名（如 7sefun / MXdm）
+ *   searches            INTEGER —— 搜索尝试次数
+ *   successes           INTEGER —— 搜索成功次数（有结果）
+ *   latency_sum         BIGINT  —— 搜索累计耗时 ms（算平均响应时长）
+ *   bandwidth_sum       BIGINT  —— 线路探测累计最高码率 bps
+ *   probes              INTEGER —— 码率探测次数
+ *   downloads           INTEGER —— 下载尝试次数
+ *   download_successes  INTEGER —— 下载成功次数
+ *   speed_sum           BIGINT  —— 下载累计速率 bps（ffprobe 实测视频码率）
+ *   last_seen           TIMESTAMPTZ —— 最近一次活动
  *
- * 综合分 score（查询时计算，不落库）：
- *   success_rate(0~1) * 60 + 码率档(0~1) * 30 + 速度档(0~1) * 10
- *   —— 成功率为主，码率次之，响应速度加分。
+ * 综合分 score（查询时计算，不落库，满分 100）：
+ *   搜索成功率*50 + 下载成功率*20 + 平均码率档*20 + 下载速率档*5 + 搜索速度档*5
+ *   —— 搜索可用性为主，下载稳定性与画质次之，速度加分。
  */
 import { Pool } from "pg";
 import { appLogger } from "./logger.js";
@@ -33,8 +36,15 @@ if (pool !== null) {
         latency_sum BIGINT NOT NULL DEFAULT 0,
         bandwidth_sum BIGINT NOT NULL DEFAULT 0,
         probes INTEGER NOT NULL DEFAULT 0,
+        downloads INTEGER NOT NULL DEFAULT 0,
+        download_successes INTEGER NOT NULL DEFAULT 0,
+        speed_sum BIGINT NOT NULL DEFAULT 0,
         last_seen TIMESTAMPTZ NOT NULL DEFAULT now()
       )`);
+      // 老表缺新字段时补列（幂等）。
+      await pool.query(`ALTER TABLE rule_rankings ADD COLUMN IF NOT EXISTS downloads INTEGER NOT NULL DEFAULT 0`);
+      await pool.query(`ALTER TABLE rule_rankings ADD COLUMN IF NOT EXISTS download_successes INTEGER NOT NULL DEFAULT 0`);
+      await pool.query(`ALTER TABLE rule_rankings ADD COLUMN IF NOT EXISTS speed_sum BIGINT NOT NULL DEFAULT 0`);
     } catch (error) {
       appLogger.error("rule_rankings 建表失败", { error });
     }
@@ -82,6 +92,33 @@ export async function recordRuleBandwidth(rule: string, bandwidth: number): Prom
   }
 }
 
+/**
+ * 记录一次下载成败与下载速率（bps，ffprobe 实测视频码率）。
+ * 用于排名中「下载成功率」与「下载速率」两个维度。
+ */
+export async function recordRuleDownload(
+  rule: string,
+  ok: boolean,
+  speedBps: number,
+): Promise<void> {
+  if (pool === null) return;
+  const speed = Number.isFinite(speedBps) && speedBps > 0 ? Math.round(speedBps) : 0;
+  try {
+    await pool.query(
+      `INSERT INTO rule_rankings (rule, downloads, download_successes, speed_sum, last_seen)
+       VALUES ($1, 1, $2, $3, now())
+       ON CONFLICT (rule) DO UPDATE SET
+         downloads = rule_rankings.downloads + 1,
+         download_successes = rule_rankings.download_successes + EXCLUDED.download_successes,
+         speed_sum = rule_rankings.speed_sum + EXCLUDED.speed_sum,
+         last_seen = now()`,
+      [rule, ok ? 1 : 0, speed],
+    );
+  } catch (error) {
+    appLogger.error("recordRuleDownload 失败", { rule, error });
+  }
+}
+
 /** 一条规则的排名统计。 */
 export interface RuleRanking {
   rule: string;
@@ -90,13 +127,19 @@ export interface RuleRanking {
   successRate: number;
   avgLatencyMs: number;
   avgBandwidth: number;
+  /** 下载次数 / 成功次数 / 下载成功率。 */
+  downloads: number;
+  downloadSuccesses: number;
+  downloadSuccessRate: number;
+  /** 平均下载速率 bps（ffprobe 实测）。 */
+  avgSpeed: number;
   /** 综合质量分 0~100。 */
   score: number;
 }
 
 /**
  * 查询全部规则的排名（按综合分降序）。无数据时返回空数组。
- * 综合分 = 成功率*60 + 码率档*30 + 速度档*10。
+ * 综合分 = 搜索成功率*50 + 下载成功率*20 + 平均码率档*20 + 下载速率档*5 + 搜索速度档*5。
  */
 export async function listRuleRankings(): Promise<RuleRanking[]> {
   if (pool === null) return [];
@@ -108,9 +151,13 @@ export async function listRuleRankings(): Promise<RuleRanking[]> {
       latency_sum: string;
       bandwidth_sum: string;
       probes: number;
-    }>(`SELECT rule, searches, successes, latency_sum, bandwidth_sum, probes
+      downloads: number;
+      download_successes: number;
+      speed_sum: string;
+    }>(`SELECT rule, searches, successes, latency_sum, bandwidth_sum, probes,
+              downloads, download_successes, speed_sum
         FROM rule_rankings
-        WHERE searches > 0 OR probes > 0`);
+        WHERE searches > 0 OR probes > 0 OR downloads > 0`);
     const ranked = rows.map((row) => {
       const searches = Number(row.searches) || 0;
       const successes = Number(row.successes) || 0;
@@ -120,11 +167,25 @@ export async function listRuleRankings(): Promise<RuleRanking[]> {
       const successRate = searches > 0 ? successes / searches : 0;
       const avgLatencyMs = searches > 0 ? latencySum / searches : 0;
       const avgBandwidth = probes > 0 ? bandwidthSum / probes : 0;
+      const downloads = Number(row.downloads) || 0;
+      const downloadSuccesses = Number(row.download_successes) || 0;
+      const speedSum = Number(row.speed_sum) || 0;
+      const downloadSuccessRate = downloads > 0 ? downloadSuccesses / downloads : 0;
+      const avgSpeed = downloads > 0 ? speedSum / downloads : 0;
       // 码率档：0~8Mbps 线性映射到 0~1（>8Mbps 记满）。
       const bandwidthScore = Math.min(1, avgBandwidth / 8_000_000);
-      // 速度档：>5s 记 0，<1s 记 1。
+      // 下载速率档：0~10Mbps 线性映射到 0~1（>10Mbps 记满，用下载实测码率）。
+      const speedScore = Math.min(1, avgSpeed / 10_000_000);
+      // 搜索速度档：>5s 记 0，<1s 记 1。
       const latencyScore = Math.max(0, Math.min(1, 1 - (avgLatencyMs - 1000) / 4000));
-      const score = Math.round(successRate * 60 + bandwidthScore * 30 + latencyScore * 10);
+      // 综合分：搜索成功率为主(50)，下载成功率(20)、画质码率(20)次之，下载速率(5)、搜索速度(5)加分。
+      const score = Math.round(
+        successRate * 50 +
+        downloadSuccessRate * 20 +
+        bandwidthScore * 20 +
+        speedScore * 5 +
+        latencyScore * 5,
+      );
       return {
         rule: row.rule,
         searches,
@@ -132,6 +193,10 @@ export async function listRuleRankings(): Promise<RuleRanking[]> {
         successRate: Math.round(successRate * 100) / 100,
         avgLatencyMs: Math.round(avgLatencyMs),
         avgBandwidth: Math.round(avgBandwidth),
+        downloads,
+        downloadSuccesses,
+        downloadSuccessRate: Math.round(downloadSuccessRate * 100) / 100,
+        avgSpeed: Math.round(avgSpeed),
         score,
       };
     });

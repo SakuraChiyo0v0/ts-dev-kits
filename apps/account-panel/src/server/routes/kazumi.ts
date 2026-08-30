@@ -16,7 +16,7 @@ import { promisify } from "node:util";
 import { basename, join } from "node:path";
 import { getDownloadManager, downloadRoot } from "../downloads.js";
 import { appLogger } from "../logger.js";
-import { recordRuleSearch, recordRuleBandwidth, rankedRuleNames, listRuleRankings } from "../rule-rankings.js";
+import { recordRuleSearch, recordRuleBandwidth, recordRuleDownload, rankedRuleNames, listRuleRankings } from "../rule-rankings.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -386,8 +386,9 @@ export const kazumiRoutes = new Hono()
         { name, url },
         { outputDir, rule, adFilter: true },
       );
-      // ffprobe 分析真实分辨率/码率，记录进下载历史并返回。
+      // ffprobe 分析真实分辨率/码率，记录进下载历史并返回；同时回写规则排名（下载成功率/速率）。
       const probe = await probeFile(filePath);
+      void recordRuleDownload(rule, true, probe?.bitrate ?? 0);
       getDownloadManager("kazumi").record({
         filename: basename(filePath),
         filePath,
@@ -398,6 +399,7 @@ export const kazumiRoutes = new Hono()
       appLogger.info("kazumi download ok", { rule, name, dir: safeSub, filePath, probe });
       return c.json({ filePath, ...(probe !== undefined ? { probe } : {}) });
     } catch (error) {
+      void recordRuleDownload(rule, false, 0);
       getDownloadManager("kazumi").record({ filename: name || rule, filePath: "", status: "error" });
       appLogger.error("kazumi download failed", { rule, name, dir: safeSub, error });
       // 透传具体原因（如 STREAM_PARSE_FAILED = 加密源无法静态取流），前端据此提示。
@@ -464,8 +466,9 @@ export const kazumiRoutes = new Hono()
             },
             onEpisodeDone: async (index, total, episode, filePath) => {
               doneCount += 1;
-              // ffprobe 分析分辨率/码率，记录下载历史。
+              // ffprobe 分析分辨率/码率，记录下载历史；回写规则排名（下载成功 + 速率）。
               const probe = await probeFile(filePath);
+              void recordRuleDownload(rule, true, probe?.bitrate ?? 0);
               getDownloadManager("kazumi").record({
                 filename: basename(filePath),
                 filePath,
@@ -484,6 +487,8 @@ export const kazumiRoutes = new Hono()
             },
             onEpisodeError: (index, total, episode, error) => {
               failCount += 1;
+              // 回写规则排名（下载失败）。
+              void recordRuleDownload(rule, false, 0);
               failedEpisodes.push({ name: episode.name, error: error.message });
               send("episode-fail", { index, total, name: episode.name, error: error.message });
             },

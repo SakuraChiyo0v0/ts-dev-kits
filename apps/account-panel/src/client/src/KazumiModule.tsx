@@ -1071,7 +1071,18 @@ function RulesView(props: { onBack: () => void; onToast: (m: string, type?: "suc
 /** 源质量动态排名（来自历史搜索/线路探测统计，数据库持久化）。 */
 function RuleRankingsPanel(props: { onToast: (m: string, type?: "success" | "error" | "info") => void }) {
   const { onToast } = props;
-  const [rankings, setRankings] = useState<Array<{ rule: string; searches: number; successes: number; successRate: number; avgLatencyMs: number; avgBandwidth: number; score: number }>>([]);
+  const [rankings, setRankings] = useState<Array<{
+    rule: string;
+    searches: number;
+    successes: number;
+    successRate: number;
+    avgLatencyMs: number;
+    avgBandwidth: number;
+    downloads: number;
+    downloadSuccessRate: number;
+    avgSpeed: number;
+    score: number;
+  }>>([]);
   const [expanded, setExpanded] = useState(false);
 
   const load = useCallback(async () => {
@@ -1098,7 +1109,7 @@ function RuleRankingsPanel(props: { onToast: (m: string, type?: "success" | "err
           <Trophy className="h-4 w-4 text-primary" />
           源质量排名
           <span className="ml-auto flex items-center gap-2 text-xs font-normal text-muted-foreground">
-            按成功率 · 码率 · 速度综合排序
+            按搜索 · 下载成功率 · 码率 · 速率综合排序
             <ChevronLeft className={`h-4 w-4 transition-transform ${expanded ? "rotate-90" : "-rotate-90"}`} />
           </span>
         </CardTitle>
@@ -1112,7 +1123,7 @@ function RuleRankingsPanel(props: { onToast: (m: string, type?: "success" | "err
         <CardContent>
           {rankings.length === 0 ? (
             <p className="py-6 text-center text-xs text-muted-foreground">
-              暂无排名数据——搜索过番剧或探测过线路后，这里会显示各源的质量分
+              暂无排名数据——搜索过番剧、下载过或探测过线路后，这里会显示各源的质量分
             </p>
           ) : (
             <ol className="space-y-1">
@@ -1123,7 +1134,8 @@ function RuleRankingsPanel(props: { onToast: (m: string, type?: "success" | "err
                   </span>
                   <span className="min-w-0 flex-1 truncate font-medium">{r.rule}</span>
                   <span className="hidden text-muted-foreground sm:block">
-                    成功率 {fmtPct(r.successRate)} · 码率 {fmtBitrate(r.avgBandwidth)} · 平均 {fmtLatency(r.avgLatencyMs)}
+                    搜索 {fmtPct(r.successRate)} · 下载 {r.downloads > 0 ? fmtPct(r.downloadSuccessRate) : "—"} · 码率 {fmtBitrate(r.avgBandwidth)}
+                    {r.downloads > 0 ? ` · 速率 ${fmtBitrate(r.avgSpeed)}` : ""}
                   </span>
                   <span className="rounded-full bg-primary/10 px-2 py-0.5 font-semibold text-primary">{r.score} 分</span>
                 </li>
