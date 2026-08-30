@@ -19,6 +19,7 @@ import {
   Sun,
   Trash2,
   Trophy,
+  Tag,
   X,
 } from "lucide-react";
 import { rpc } from "./lib/rpc";
@@ -128,6 +129,7 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
     downloadSuccessRate: number;
     avgBandwidth: number;
     avgSpeed: number;
+    tags: string[];
   }>>(new Map());
   const [results, setResults] = useState<SearchItem[]>([]);
   const [selected, setSelected] = useState<SearchItem | null>(null);
@@ -213,9 +215,10 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
           downloadSuccessRate: number;
           avgBandwidth: number;
           avgSpeed: number;
+          tags: string[];
         }> };
         if (cancelled) return;
-        const map = new Map<string, { score: number; successRate: number; downloadSuccessRate: number; avgBandwidth: number; avgSpeed: number }>();
+        const map = new Map<string, { score: number; successRate: number; downloadSuccessRate: number; avgBandwidth: number; avgSpeed: number; tags: string[] }>();
         for (const r of data.rankings ?? []) {
           map.set(r.rule, {
             score: r.score,
@@ -223,6 +226,7 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
             downloadSuccessRate: r.downloadSuccessRate,
             avgBandwidth: r.avgBandwidth,
             avgSpeed: r.avgSpeed,
+            tags: r.tags ?? [],
           });
         }
         setRuleRankings(map);
@@ -646,6 +650,22 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
                                       {rank.downloadSuccessRate > 0 ? (
                                         <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px]">下载{Math.round(rank.downloadSuccessRate * 100)}%</span>
                                       ) : null}
+                                    </span>
+                                  ) : null}
+                                  {/* 用户标签（有水印/字幕差等主观标记） */}
+                                  {rank !== undefined && rank.tags.length > 0 ? (
+                                    <span className="flex shrink-0 items-center gap-1">
+                                      {rank.tags.slice(0, 3).map((t) => {
+                                        const positive = !/水印|字幕差|加载慢|广告多|卡顿|音画不同步/.test(t);
+                                        return (
+                                          <span
+                                            key={t}
+                                            className={`rounded-full px-1.5 py-0.5 text-[10px] ${positive ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-amber-500/10 text-amber-600 dark:text-amber-400"}`}
+                                          >
+                                            {t}
+                                          </span>
+                                        );
+                                      })}
                                     </span>
                                   ) : null}
                                 </p>
@@ -1352,9 +1372,12 @@ function RankingsView(props: { onBack: () => void; onToast: (m: string, type?: "
     downloadSuccessRate: number;
     avgSpeed: number;
     userScore: number;
+    tags: string[];
     score: number;
   }>>([]);
   const [selectedRule, setSelectedRule] = useState<string | null>(null);
+  // 标签面板：当前在给哪个源打标签。
+  const [tagTarget, setTagTarget] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -1370,15 +1393,23 @@ function RankingsView(props: { onBack: () => void; onToast: (m: string, type?: "
 
   useEffect(() => { void load(); }, [load]);
 
-  const setScore = async (rule: string, score: number) => {
+  const setTags = async (rule: string, tags: string[]) => {
     try {
-      await rpc.api.kazumi["rule-rankings"].score.$post({ json: { rule, score } });
-      onToast(`已更新 ${rule} 个人评分 ${score > 0 ? "+" : ""}${score}`, "success");
+      await rpc.api.kazumi["rule-rankings"].tags.$post({ json: { rule, tags } });
+      onToast(`已更新 ${rule} 标签`, "success");
       await load();
     } catch {
-      onToast("评分失败", "error");
+      onToast("设置标签失败", "error");
     }
   };
+
+  const toggleTag = (rule: string, current: string[], tag: string) => {
+    const next = current.includes(tag) ? current.filter((t) => t !== tag) : [...current, tag];
+    void setTags(rule, next);
+  };
+
+  // 预设标签（与后端 RULE_TAGS 一致）。
+  const TAGS = ["画质好", "无水印", "无广告", "加载快", "高清", "字幕好", "有水印", "字幕差", "加载慢", "广告多", "卡顿", "音画不同步"];
 
   const fmtBitrate = (bps: number): string =>
     bps > 0 ? `${(bps / 1_000_000).toFixed(1)} Mbps` : "—";
@@ -1438,26 +1469,41 @@ function RankingsView(props: { onBack: () => void; onToast: (m: string, type?: "
                     <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">{r.score} 分</span>
                   </div>
                   <div className="mt-1.5 flex items-center justify-between pl-8">
-                    <span className="text-[11px] text-muted-foreground">
+                    <span className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground">
                       搜索 {fmtPct(r.successRate)} · 下载 {r.downloads > 0 ? fmtPct(r.downloadSuccessRate) : "—"} · 码率 {fmtBitrate(r.avgBandwidth)}
                     </span>
-                    {/* 个人评分 */}
-                    <span className="flex items-center gap-0.5">
+                    {/* 用户标签 + 打标签按钮 */}
+                    <span className="flex shrink-0 items-center gap-1">
+                      {r.tags.slice(0, 2).map((t) => (
+                        <span key={t} className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{t}</span>
+                      ))}
                       <button
-                        onClick={(e) => { e.stopPropagation(); void setScore(r.rule, r.userScore - 1); }}
-                        className="rounded-full px-1.5 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                        title="扣分（水印/字幕差）"
-                      >−</button>
-                      <span className={`min-w-6 text-center text-xs font-semibold ${r.userScore > 0 ? "text-emerald-500" : r.userScore < 0 ? "text-destructive" : "text-muted-foreground"}`}>
-                        {r.userScore > 0 ? `+${r.userScore}` : r.userScore}
-                      </span>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); void setScore(r.rule, r.userScore + 1); }}
-                        className="rounded-full px-1.5 text-xs text-muted-foreground hover:bg-primary/10 hover:text-primary"
-                        title="加分"
-                      >+</button>
+                        onClick={(e) => { e.stopPropagation(); setTagTarget(tagTarget === r.rule ? null : r.rule); }}
+                        className={`rounded-full px-2 py-0.5 text-[10px] transition-colors ${tagTarget === r.rule ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
+                        title="打标签（水印/字幕等主观体验）"
+                      >
+                        <Tag className="h-3 w-3" />
+                      </button>
                     </span>
                   </div>
+                  {/* 标签选择面板 */}
+                  {tagTarget === r.rule ? (
+                    <div className="mt-2 flex flex-wrap gap-1 pl-8" onClick={(e) => e.stopPropagation()}>
+                      {TAGS.map((t) => (
+                        <button
+                          key={t}
+                          onClick={() => toggleTag(r.rule, r.tags, t)}
+                          className={`rounded-full border px-2 py-0.5 text-[10px] transition-all duration-150 active:scale-95 ${
+                            r.tags.includes(t)
+                              ? "border-primary bg-primary/10 font-medium text-primary"
+                              : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                          }`}
+                        >
+                          {t}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               ))}
               {rankings.length === 0 ? (
@@ -1478,6 +1524,17 @@ function RankingsView(props: { onBack: () => void; onToast: (m: string, type?: "
                       ? `（含个人评分 ${rankings.find((r) => r.rule === selectedRule)?.userScore ?? 0}）`
                       : ""}
                   </p>
+                  {(() => {
+                    const tags = rankings.find((r) => r.rule === selectedRule)?.tags ?? [];
+                    if (tags.length === 0) return null;
+                    return (
+                      <div className="mb-3 flex flex-wrap gap-1">
+                        {tags.map((t) => (
+                          <span key={t} className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">{t}</span>
+                        ))}
+                      </div>
+                    );
+                  })()}
                   <div className="h-72 w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <RadarChart data={radarData} outerRadius="70%">

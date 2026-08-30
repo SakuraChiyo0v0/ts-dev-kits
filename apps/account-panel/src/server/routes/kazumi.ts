@@ -17,7 +17,7 @@ import { basename, join } from "node:path";
 import { getDownloadManager, downloadRoot } from "../downloads.js";
 import { appLogger } from "../logger.js";
 import { resolveWithBrowser } from "../browser-resolver.js";
-import { recordRuleSearch, recordRuleBandwidth, recordRuleDownload, recordRuleProbeFailure, rankedRuleNames, listRuleRankings, setUserScore } from "../rule-rankings.js";
+import { recordRuleSearch, recordRuleBandwidth, recordRuleDownload, recordRuleProbeFailure, rankedRuleNames, listRuleRankings, setUserScore, setRuleTags } from "../rule-rankings.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -249,6 +249,15 @@ export const kazumiRoutes = new Hono()
     await setUserScore(rule, score);
     return c.json({ ok: true, score: Math.max(-5, Math.min(5, Math.round(score))) });
   })
+  /** POST /api/kazumi/rule-rankings/tags —— 设置源的用户标签（覆盖式）。body: { rule, tags: string[] } */
+  .post("/rule-rankings/tags", async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as { rule?: unknown; tags?: unknown };
+    const rule = typeof body.rule === "string" ? body.rule.trim() : "";
+    const tags = Array.isArray(body.tags) ? body.tags.filter((t): t is string => typeof t === "string") : [];
+    if (rule === "") return c.json({ error: "参数错误" }, 400);
+    await setRuleTags(rule, tags);
+    return c.json({ ok: true, tags });
+  })
   /** GET /api/kazumi/rules —— 规则列表。 */
   .get("/rules", (c) => {
     try {
@@ -340,12 +349,13 @@ export const kazumiRoutes = new Hono()
         };
         signal.addEventListener("abort", abort);
         try {
-          // 按历史排名排列规则：高分源优先搜索（无排名数据时保持默认顺序）。
-          const rankedRules = await rankedRuleNames();
+          // 全部规则按排名排序（高分在前），保证所有源都被搜索、高分源优先。
+          const allRules = client.rules.list();
+          const orderedRules = await rankedRuleNames(allRules);
           await client.searchStream(q.trim(), {
             signal,
-            // 传排名后的规则顺序；空数组 = 全规则默认顺序。
-            ...(rankedRules.length > 0 ? { rules: rankedRules } : {}),
+            // 始终传完整规则列表（排序后），否则只搜有排名记录的源会漏掉其他源。
+            rules: orderedRules,
             onBatch: (items) => {
               if (done) return;
               send("batch", {

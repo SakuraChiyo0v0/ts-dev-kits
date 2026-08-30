@@ -44,6 +44,7 @@ if (pool !== null) {
         speed_sum BIGINT NOT NULL DEFAULT 0,
         probe_failures INTEGER NOT NULL DEFAULT 0,
         user_score INTEGER NOT NULL DEFAULT 0,
+        tags TEXT[] NOT NULL DEFAULT '{}',
         last_seen TIMESTAMPTZ NOT NULL DEFAULT now()
       )`);
       // 老表缺新字段时补列（幂等）。
@@ -52,6 +53,7 @@ if (pool !== null) {
       await pool.query(`ALTER TABLE rule_rankings ADD COLUMN IF NOT EXISTS speed_sum BIGINT NOT NULL DEFAULT 0`);
       await pool.query(`ALTER TABLE rule_rankings ADD COLUMN IF NOT EXISTS probe_failures INTEGER NOT NULL DEFAULT 0`);
       await pool.query(`ALTER TABLE rule_rankings ADD COLUMN IF NOT EXISTS user_score INTEGER NOT NULL DEFAULT 0`);
+      await pool.query(`ALTER TABLE rule_rankings ADD COLUMN IF NOT EXISTS tags TEXT[] NOT NULL DEFAULT '{}'`);
     } catch (error) {
       appLogger.error("rule_rankings 建表失败", { error });
     }
@@ -167,6 +169,43 @@ export async function setUserScore(rule: string, score: number): Promise<void> {
   }
 }
 
+/** 预设标签（用户对源的主观体验标记，替代单纯加减分）。 */
+export const RULE_TAGS = [
+  "画质好",
+  "无水印",
+  "无广告",
+  "加载快",
+  "高清",
+  "字幕好",
+  "有水印",
+  "字幕差",
+  "加载慢",
+  "广告多",
+  "卡顿",
+  "音画不同步",
+] as const;
+
+/** 设置源的用户标签（整体覆盖）。 */
+export async function setRuleTags(rule: string, tags: string[]): Promise<void> {
+  if (pool === null) return;
+  const clean = tags
+    .map((t) => t.trim())
+    .filter((t) => t !== "")
+    .slice(0, 6);
+  try {
+    await pool.query(
+      `INSERT INTO rule_rankings (rule, tags, last_seen)
+       VALUES ($1, $2, now())
+       ON CONFLICT (rule) DO UPDATE SET
+         tags = EXCLUDED.tags,
+         last_seen = now()`,
+      [rule, clean],
+    );
+  } catch (error) {
+    appLogger.error("setRuleTags 失败", { rule, error });
+  }
+}
+
 /** 一条规则的排名统计。 */
 export interface RuleRanking {
   rule: string;
@@ -183,6 +222,8 @@ export interface RuleRanking {
   avgSpeed: number;
   /** 用户个人评分（-5 ~ +5，0 中性）。 */
   userScore: number;
+  /** 用户标签（主观体验，如「有水印」「画质好」）。 */
+  tags: string[];
   /** 综合质量分 0~100。 */
   score: number;
 }
@@ -206,10 +247,11 @@ export async function listRuleRankings(): Promise<RuleRanking[]> {
       speed_sum: string;
       probe_failures: number;
       user_score: number;
+      tags: string[];
     }>(`SELECT rule, searches, successes, latency_sum, bandwidth_sum, probes,
-              downloads, download_successes, speed_sum, probe_failures, user_score
+              downloads, download_successes, speed_sum, probe_failures, user_score, tags
         FROM rule_rankings
-        WHERE searches > 0 OR probes > 0 OR downloads > 0 OR probe_failures > 0 OR user_score != 0`);
+        WHERE searches > 0 OR probes > 0 OR downloads > 0 OR probe_failures > 0 OR user_score != 0 OR cardinality(tags) > 0`);
     const ranked = rows.map((row) => {
       const searches = Number(row.searches) || 0;
       const successes = Number(row.successes) || 0;
@@ -256,6 +298,7 @@ export async function listRuleRankings(): Promise<RuleRanking[]> {
         downloads,
         downloadSuccesses,
         userScore,
+        tags: row.tags ?? [],
         downloadSuccessRate: Math.round(downloadSuccessRate * 100) / 100,
         avgSpeed: Math.round(avgSpeed),
         score,
@@ -268,8 +311,12 @@ export async function listRuleRankings(): Promise<RuleRanking[]> {
   }
 }
 
-/** 按排名返回规则名数组（分数高的在前）；无排名数据时返回空数组。 */
-export async function rankedRuleNames(): Promise<string[]> {
+/**
+ * 返回全部规则名，按排名降序排列（高分在前，无排名数据排后面）。
+ * @param allRules 全部规则名（客户端规则清单）
+ */
+export async function rankedRuleNames(allRules: string[]): Promise<string[]> {
   const rankings = await listRuleRankings();
-  return rankings.map((r) => r.rule);
+  const rankMap = new Map(rankings.map((r) => [r.rule, r.score] as const));
+  return [...allRules].sort((a, b) => (rankMap.get(b) ?? -1) - (rankMap.get(a) ?? -1));
 }

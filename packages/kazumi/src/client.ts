@@ -183,7 +183,11 @@ export function createAnimeClient(options: AnimeClientOptions = {}): AnimeClient
     if (opts?.rules && opts.rules.length > 0) {
       const rulesList: AnimeRule[] = [];
       for (const name of opts.rules) {
-        rulesList.push(await loader.load(name));
+        try {
+          rulesList.push(await loader.load(name));
+        } catch {
+          // 单个规则损坏/失效：跳过，不拖垮整体搜索（与默认清单路径一致）。
+        }
       }
       return rulesList;
     }
