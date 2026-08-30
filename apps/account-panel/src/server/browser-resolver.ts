@@ -28,6 +28,25 @@ async function getBrowser(): Promise<Browser> {
   return browserPromise;
 }
 
+/**
+ * 解析结果缓存：同一集（播放页 URL）解析一次后 30 分钟内直接复用，
+ * 避免重复播放/下载同一集每次都重新开页面等取流（解析慢的主因）。
+ */
+const resolveCache = new Map<string, { url: string; expiresAt: number }>();
+const RESOLVE_CACHE_TTL_MS = 30 * 60 * 1000;
+
+/** 命中缓存返回直链，未命中返回 null。 */
+function cacheGet(key: string): string | null {
+  const hit = resolveCache.get(key);
+  if (hit !== undefined && hit.expiresAt > Date.now()) return hit.url;
+  return null;
+}
+
+/** 写入缓存。 */
+function cacheSet(key: string, url: string): void {
+  resolveCache.set(key, { url, expiresAt: Date.now() + RESOLVE_CACHE_TTL_MS });
+}
+
 /** 注入页面的拦截脚本（与 Kazumi 相同的思路：篡改 Response/XHR 拦截视频响应）。 */
 const SNIFF_SCRIPT = `
   window.__kazumiVideo = null;
@@ -104,6 +123,9 @@ export async function resolveWithBrowser(
   options: { userAgent?: string; referer?: string; timeoutMs?: number } = {},
 ): Promise<string | null> {
   const { userAgent, timeoutMs = 25_000 } = options;
+  // 命中缓存直接返回（重复播放/下载同一集秒回）。
+  const cached = cacheGet(url);
+  if (cached !== null) return cached;
   const browser = await getBrowser();
   const context = await browser.newContext({
     userAgent: userAgent ?? "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -124,17 +146,17 @@ export async function resolveWithBrowser(
     page.on("request", (req) => { if (!found) grab(req.url()); });
     page.on("response", (res) => { if (!found) grab(res.url()); });
 
-    // 打开播放页让 JS 取流；goto 失败不阻断（页面可能仍发起视频请求）。
-    await page.goto(url, { waitUntil: "load", timeout: Math.min(timeoutMs, 35_000) }).catch(() => {});
-    // 等待信号出现（网络层 + 注入变量双通道轮询）。
+    // 打开播放页让 JS 取流；用 domcontentloaded（不等资源加载完，更快进入取流阶段）。
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: Math.min(timeoutMs, 20_000) }).catch(() => {});
+    // 高频轮询信号（网络层 + 注入变量双通道），捕获即返回。
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline && found === null) {
-      await page.waitForTimeout(400);
+      await page.waitForTimeout(150);
       if (found) break;
       const sniffed = await page.evaluate(() => (window as unknown as { __kazumiVideo?: string }).__kazumiVideo ?? null).catch(() => null);
       if (sniffed) { found = sniffed; break; }
-      // 网络层捕获的可能是 blob 或相对 URL，尽量收绝对地址。
     }
+    if (found !== null) cacheSet(url, found);
     return found;
   } catch {
     return null;
