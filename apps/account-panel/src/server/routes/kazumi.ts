@@ -16,6 +16,7 @@ import { promisify } from "node:util";
 import { basename, join } from "node:path";
 import { getDownloadManager, downloadRoot } from "../downloads.js";
 import { appLogger } from "../logger.js";
+import { recordRuleSearch, recordRuleBandwidth, rankedRuleNames, listRuleRankings } from "../rule-rankings.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -121,6 +122,8 @@ async function probeRoadQuality(
       ...(best.resolution !== undefined ? { resolution: best.resolution } : {}),
     };
     roadQualityCache.set(cacheKey, { quality, expiresAt: Date.now() + ROAD_QUALITY_TTL_MS });
+    // 回写码率到规则排名统计（异步不阻塞探测）。
+    if (best.bandwidth > 0) void recordRuleBandwidth(ruleName, best.bandwidth);
     return quality;
   } catch {
     roadQualityCache.set(cacheKey, { quality: null, expiresAt: Date.now() + ROAD_QUALITY_TTL_MS });
@@ -157,6 +160,15 @@ function rewriteM3u8(
 }
 
 export const kazumiRoutes = new Hono()
+  /** GET /api/kazumi/rule-rankings —— 规则动态排名（成功率/码率/综合分，降序）。 */
+  .get("/rule-rankings", async (c) => {
+    try {
+      const rankings = await listRuleRankings();
+      return c.json({ rankings });
+    } catch {
+      return c.json({ error: "读取排名失败" }, 500);
+    }
+  })
   /** GET /api/kazumi/rules —— 规则列表。 */
   .get("/rules", (c) => {
     try {
@@ -248,8 +260,12 @@ export const kazumiRoutes = new Hono()
         };
         signal.addEventListener("abort", abort);
         try {
+          // 按历史排名排列规则：高分源优先搜索（无排名数据时保持默认顺序）。
+          const rankedRules = await rankedRuleNames();
           await client.searchStream(q.trim(), {
             signal,
+            // 传排名后的规则顺序；空数组 = 全规则默认顺序。
+            ...(rankedRules.length > 0 ? { rules: rankedRules } : {}),
             onBatch: (items) => {
               if (done) return;
               send("batch", {
@@ -264,6 +280,10 @@ export const kazumiRoutes = new Hono()
               if (done) return;
               // 单独发 progress 事件：无结果源也推进进度，前端可展示「已搜 n/m 源」。
               send("progress", { done: doneCount, total });
+            },
+            onRuleResult: (ruleName, ok, latencyMs) => {
+              // 回写规则排名统计（异步不阻塞流）。
+              void recordRuleSearch(ruleName, ok, latencyMs);
             },
           });
           if (!done) send("done", {});

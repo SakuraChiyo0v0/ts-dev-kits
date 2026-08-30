@@ -18,6 +18,7 @@ import {
   Search,
   Sun,
   Trash2,
+  Trophy,
   X,
 } from "lucide-react";
 import { rpc } from "./lib/rpc";
@@ -945,6 +946,9 @@ function RulesView(props: { onBack: () => void; onToast: (m: string, type?: "suc
           </Card>
         ) : null}
 
+        {/* 源质量动态排名（来自历史搜索/探测统计） */}
+        <RuleRankingsPanel onToast={onToast} />
+
         <ul className="divide-y divide-border/60 rounded-2xl border bg-card">
           {rules.map((r) => (
             <li key={r.name} className="flex items-center gap-3 px-4 py-3">
@@ -970,6 +974,74 @@ function RulesView(props: { onBack: () => void; onToast: (m: string, type?: "suc
         ) : null}
       </div>
     </div>
+  );
+}
+
+/** 源质量动态排名（来自历史搜索/线路探测统计，数据库持久化）。 */
+function RuleRankingsPanel(props: { onToast: (m: string, type?: "success" | "error" | "info") => void }) {
+  const { onToast } = props;
+  const [rankings, setRankings] = useState<Array<{ rule: string; searches: number; successes: number; successRate: number; avgLatencyMs: number; avgBandwidth: number; score: number }>>([]);
+  const [expanded, setExpanded] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      const res = await rpc.api.kazumi["rule-rankings"].$get();
+      const data = (await res.json()) as { rankings?: typeof rankings };
+      setRankings(data.rankings ?? []);
+    } catch {
+      onToast("读取源排名失败", "error");
+    }
+  }, [onToast]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const fmtBitrate = (bps: number): string =>
+    bps > 0 ? `${(bps / 1_000_000).toFixed(1)} Mbps` : "—";
+  const fmtPct = (rate: number): string => `${Math.round(rate * 100)}%`;
+  const fmtLatency = (ms: number): string => (ms > 0 ? `${ms}ms` : "—");
+
+  return (
+    <Card className="mb-4">
+      <CardHeader className="cursor-pointer select-none" onClick={() => setExpanded((v) => !v)}>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Trophy className="h-4 w-4 text-primary" />
+          源质量排名
+          <span className="ml-auto flex items-center gap-2 text-xs font-normal text-muted-foreground">
+            按成功率 · 码率 · 速度综合排序
+            <ChevronLeft className={`h-4 w-4 transition-transform ${expanded ? "rotate-90" : "-rotate-90"}`} />
+          </span>
+        </CardTitle>
+        {!expanded && rankings.length > 0 ? (
+          <CardDescription>
+            Top {Math.min(3, rankings.length)}：{rankings.slice(0, 3).map((r) => `${r.rule}(${r.score})`).join(" · ")}
+          </CardDescription>
+        ) : null}
+      </CardHeader>
+      {expanded ? (
+        <CardContent>
+          {rankings.length === 0 ? (
+            <p className="py-6 text-center text-xs text-muted-foreground">
+              暂无排名数据——搜索过番剧或探测过线路后，这里会显示各源的质量分
+            </p>
+          ) : (
+            <ol className="space-y-1">
+              {rankings.map((r, i) => (
+                <li key={r.rule} className="flex items-center gap-3 rounded-lg px-2 py-1.5 text-xs hover:bg-muted">
+                  <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${i < 3 ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+                    {i + 1}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate font-medium">{r.rule}</span>
+                  <span className="hidden text-muted-foreground sm:block">
+                    成功率 {fmtPct(r.successRate)} · 码率 {fmtBitrate(r.avgBandwidth)} · 平均 {fmtLatency(r.avgLatencyMs)}
+                  </span>
+                  <span className="rounded-full bg-primary/10 px-2 py-0.5 font-semibold text-primary">{r.score} 分</span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </CardContent>
+      ) : null}
+    </Card>
   );
 }
 

@@ -55,6 +55,8 @@ export interface AnimeClient {
       rules?: string[];
       /** 进度回调:每完成一个源调用一次(done 已尝试数 / total 规则总数),用于 UI 展示「已搜 n/m 源」。 */
       onProgress?: (done: number, total: number) => void;
+      /** 每源结果回调:搜索完成(成功/失败)后上报,供上层做规则质量统计。 */
+      onRuleResult?: (ruleName: string, ok: boolean, latencyMs: number) => void;
     },
   ): Promise<SearchItem[]>;
   /** 按搜索结果查线路。 */
@@ -227,6 +229,8 @@ export function createAnimeClient(options: AnimeClientOptions = {}): AnimeClient
         rules?: string[];
         /** 进度回调：每完成一个源调用一次（含被黑名单跳过的），用于前端展示「已搜 n/m 源」。 */
         onProgress?: (done: number, total: number) => void;
+        /** 每源结果回调：搜索完成（成功/失败）后上报，供上层做规则质量统计。 */
+        onRuleResult?: (ruleName: string, ok: boolean, latencyMs: number) => void;
       },
     ): Promise<SearchItem[]> {
       const ruleList = await resolveRules(opts);
@@ -264,6 +268,8 @@ export function createAnimeClient(options: AnimeClientOptions = {}): AnimeClient
             reportProgress();
             continue;
           }
+          const ruleStart = Date.now();
+          let ruleOk = false;
           try {
             const trace = await engine.search(rule, keyword);
             if (stopped || checkAbort()) return;
@@ -272,6 +278,7 @@ export function createAnimeClient(options: AnimeClientOptions = {}): AnimeClient
               src: item.src,
             }));
             results.push(...batch);
+            ruleOk = true;
             // 搜到一个源就立刻推给调用方（前端实时渲染）。
             opts.onBatch(batch);
             if (results.length >= EARLY_STOP_COUNT) {
@@ -292,6 +299,8 @@ export function createAnimeClient(options: AnimeClientOptions = {}): AnimeClient
               doneCount += 1;
               reportProgress();
             }
+            // 上报单源结果（成功/失败 + 耗时），供上层做规则质量统计。
+            opts.onRuleResult?.(rule.name, ruleOk, Date.now() - ruleStart);
           }
         }
       }
