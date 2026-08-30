@@ -106,7 +106,14 @@ describe("CreativeApi season follow", () => {
 describe("CreativeApi list followed seasons", () => {
   it("lists followed seasons", async () => {
     await startMock({
-      "/pgc/web/follow/list": () => ({
+      // get() 走 WBI 签名，需要 nav 提供 img/sub key（外层会再包一层 data）。
+      "/x/web-interface/nav": () => ({
+        wbi_img: {
+          img_url: "https://example.com/bfs/wbi/abc123.png",
+          sub_url: "https://example.com/bfs/wbi/def456.png",
+        },
+      }),
+      "/x/space/bangumi/follow/list": () => ({
         list: [
           {
             season_id: 41410,
@@ -124,7 +131,10 @@ describe("CreativeApi list followed seasons", () => {
       }),
     });
     const { client } = await makeClient();
-    const { list, total } = await client.creative.listFollowedSeasons({ ps: 50 });
+    const { list, total } = await client.creative.listFollowedSeasons({
+      vmid: 12345,
+      ps: 30,
+    });
 
     expect(total).toBe(1);
     expect(list).toHaveLength(1);

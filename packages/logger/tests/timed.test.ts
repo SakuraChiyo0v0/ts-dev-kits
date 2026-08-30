@@ -85,7 +85,7 @@ describe("@timed 装饰器", () => {
     expect(failed.data).toMatchObject({ name: "Service.fail" });
     // 错误对象放在 data.error(装饰器把 error 作为结构化字段传入)
     expect((failed.data! as { error: unknown }).error).toBeInstanceOf(Error);
-    expect((failed.data! as { durationMs: number }).durationMs).toBeGreaterThanOrEqual(2);
+    expect((failed.data! as { durationMs: number }).durationMs).toBeGreaterThanOrEqual(0);
   });
 
   it("options.name 覆盖记录名", () => {

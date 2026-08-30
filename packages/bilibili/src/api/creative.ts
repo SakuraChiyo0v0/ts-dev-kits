@@ -131,16 +131,22 @@ export class CreativeApi {
     });
   }
 
-  /** 追番/追剧列表(分页)。 */
+  /**
+   * 追番/追剧列表(分页)。
+   * 注意:旧接口 /pgc/web/follow/list 已失效(-400),现用 /x/space/bangumi/follow/list,
+   * 必填 vmid(当前用户 mid)与 type(1 追番 / 2 追剧)。
+   */
   async listFollowedSeasons(
-    options: { pn?: number; ps?: number } = {},
+    options: { vmid: number | string; type?: 1 | 2; pn?: number; ps?: number },
   ): Promise<{ list: FollowedSeason[]; total: number }> {
-    const data = await this.#session.getPlain<{
+    const data = await this.#session.get<{
       list?: Array<Record<string, unknown>> | null;
       total?: number;
-    }>(`${this.#session.baseUrl}/pgc/web/follow/list`, {
+    }>(`${this.#session.baseUrl}/x/space/bangumi/follow/list`, {
+      vmid: String(options.vmid),
+      type: options.type ?? 1,
       pn: options.pn ?? 1,
-      ps: options.ps ?? 50,
+      ps: options.ps ?? 30,
     });
     return {
       list: (data.list ?? []).map(toFollowedSeason),
