@@ -1371,6 +1371,8 @@ function RankingsView(props: { onBack: () => void; onToast: (m: string, type?: "
     downloadSuccesses: number;
     downloadSuccessRate: number;
     avgSpeed: number;
+    plays: number;
+    playSuccessRate: number;
     userScore: number;
     tags: string[];
     score: number;
@@ -1558,10 +1560,10 @@ function RankingsView(props: { onBack: () => void; onToast: (m: string, type?: "
                     if (r === undefined) return null;
                     return (
                       <div className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
-                        <div className="rounded-xl bg-muted p-2"><p className="text-muted-foreground">搜索次数</p><p className="font-semibold">{r.searches}</p></div>
-                        <div className="rounded-xl bg-muted p-2"><p className="text-muted-foreground">搜索成功率</p><p className="font-semibold">{fmtPct(r.successRate)}</p></div>
+                        <div className="rounded-xl bg-muted p-2"><p className="text-muted-foreground">搜索成功率（{r.searches} 次）</p><p className="font-semibold">{fmtPct(r.successRate)}</p></div>
                         <div className="rounded-xl bg-muted p-2"><p className="text-muted-foreground">平均响应</p><p className="font-semibold">{fmtSpeed(r.avgLatencyMs)}</p></div>
                         <div className="rounded-xl bg-muted p-2"><p className="text-muted-foreground">平均码率</p><p className="font-semibold">{fmtBitrate(r.avgBandwidth)}</p></div>
+                        <div className="rounded-xl bg-muted p-2"><p className="text-muted-foreground">播放成功率</p><p className="font-semibold">{r.plays > 0 ? fmtPct(r.playSuccessRate) : "—"}</p></div>
                         <div className="rounded-xl bg-muted p-2"><p className="text-muted-foreground">下载成功率</p><p className="font-semibold">{r.downloads > 0 ? fmtPct(r.downloadSuccessRate) : "—"}</p></div>
                         <div className="rounded-xl bg-muted p-2"><p className="text-muted-foreground">实测下载速率</p><p className="font-semibold">{fmtBitrate(r.avgSpeed)}</p></div>
                       </div>

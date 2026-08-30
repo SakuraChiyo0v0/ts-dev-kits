@@ -43,6 +43,8 @@ if (pool !== null) {
         download_successes INTEGER NOT NULL DEFAULT 0,
         speed_sum BIGINT NOT NULL DEFAULT 0,
         probe_failures INTEGER NOT NULL DEFAULT 0,
+        plays INTEGER NOT NULL DEFAULT 0,
+        play_successes INTEGER NOT NULL DEFAULT 0,
         user_score INTEGER NOT NULL DEFAULT 0,
         tags TEXT[] NOT NULL DEFAULT '{}',
         last_seen TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -52,6 +54,8 @@ if (pool !== null) {
       await pool.query(`ALTER TABLE rule_rankings ADD COLUMN IF NOT EXISTS download_successes INTEGER NOT NULL DEFAULT 0`);
       await pool.query(`ALTER TABLE rule_rankings ADD COLUMN IF NOT EXISTS speed_sum BIGINT NOT NULL DEFAULT 0`);
       await pool.query(`ALTER TABLE rule_rankings ADD COLUMN IF NOT EXISTS probe_failures INTEGER NOT NULL DEFAULT 0`);
+      await pool.query(`ALTER TABLE rule_rankings ADD COLUMN IF NOT EXISTS plays INTEGER NOT NULL DEFAULT 0`);
+      await pool.query(`ALTER TABLE rule_rankings ADD COLUMN IF NOT EXISTS play_successes INTEGER NOT NULL DEFAULT 0`);
       await pool.query(`ALTER TABLE rule_rankings ADD COLUMN IF NOT EXISTS user_score INTEGER NOT NULL DEFAULT 0`);
       await pool.query(`ALTER TABLE rule_rankings ADD COLUMN IF NOT EXISTS tags TEXT[] NOT NULL DEFAULT '{}'`);
     } catch (error) {
@@ -148,6 +152,24 @@ export async function recordRuleProbeFailure(rule: string): Promise<void> {
   }
 }
 
+/** 记录一次实际播放成败（stream 解析成功/失败），用于「播放成功率」维度。 */
+export async function recordRulePlay(rule: string, ok: boolean): Promise<void> {
+  if (pool === null) return;
+  try {
+    await pool.query(
+      `INSERT INTO rule_rankings (rule, plays, play_successes, last_seen)
+       VALUES ($1, 1, $2, now())
+       ON CONFLICT (rule) DO UPDATE SET
+         plays = rule_rankings.plays + 1,
+         play_successes = rule_rankings.play_successes + EXCLUDED.play_successes,
+         last_seen = now()`,
+      [rule, ok ? 1 : 0],
+    );
+  } catch (error) {
+    appLogger.error("recordRulePlay 失败", { rule, error });
+  }
+}
+
 /**
  * 设置用户个人评分（-5 ~ +5，0 表示中性）。
  * 用于水印/字幕/画质等主观体验的手动加减，直接影响综合排名。
@@ -220,6 +242,9 @@ export interface RuleRanking {
   downloadSuccessRate: number;
   /** 平均下载速率 bps（ffprobe 实测）。 */
   avgSpeed: number;
+  /** 播放次数 / 播放成功率。 */
+  plays: number;
+  playSuccessRate: number;
   /** 用户个人评分（-5 ~ +5，0 中性）。 */
   userScore: number;
   /** 用户标签（主观体验，如「有水印」「画质好」）。 */
@@ -246,12 +271,14 @@ export async function listRuleRankings(): Promise<RuleRanking[]> {
       download_successes: number;
       speed_sum: string;
       probe_failures: number;
+      plays: number;
+      play_successes: number;
       user_score: number;
       tags: string[];
     }>(`SELECT rule, searches, successes, latency_sum, bandwidth_sum, probes,
-              downloads, download_successes, speed_sum, probe_failures, user_score, tags
+              downloads, download_successes, speed_sum, probe_failures, plays, play_successes, user_score, tags
         FROM rule_rankings
-        WHERE searches > 0 OR probes > 0 OR downloads > 0 OR probe_failures > 0 OR user_score != 0 OR cardinality(tags) > 0`);
+        WHERE searches > 0 OR probes > 0 OR downloads > 0 OR probe_failures > 0 OR plays > 0 OR user_score != 0 OR cardinality(tags) > 0`);
     const ranked = rows.map((row) => {
       const searches = Number(row.searches) || 0;
       const successes = Number(row.successes) || 0;
@@ -275,13 +302,17 @@ export async function listRuleRankings(): Promise<RuleRanking[]> {
       const speedScore = Math.min(1, avgSpeed / 4_000_000);
       // 搜索速度档：>5s 记 0，<1s 记 1。
       const latencyScore = Math.max(0, Math.min(1, 1 - (avgLatencyMs - 1000) / 4000));
-      // 综合分：搜索成功率为主(50)，下载成功率(20)、画质码率(20)次之，下载速率(5)、搜索速度(5)加分。
+      // 播放成功率：实际点播放时 stream 解析成败。
+      const plays = Number(row.plays) || 0;
+      const playSuccesses = Number(row.play_successes) || 0;
+      const playSuccessRate = plays > 0 ? playSuccesses / plays : 0;
+      // 综合分：搜索成功率为主(45)，播放成功率(15)、下载成功率(15)、画质码率(20)次之，速率(5)加分。
       let score = Math.round(
-        successRate * 50 +
-        downloadSuccessRate * 20 +
+        successRate * 45 +
+        playSuccessRate * 15 +
+        downloadSuccessRate * 15 +
         bandwidthScore * 20 +
-        speedScore * 5 +
-        latencyScore * 5,
+        speedScore * 5,
       );
       // 可播放性惩罚：探测失败（加密源/JS 取流）每 2 次 -5 分，最多 -20，避免排前被优先点到。
       const probeFailures = Number(row.probe_failures) || 0;
@@ -299,6 +330,8 @@ export async function listRuleRankings(): Promise<RuleRanking[]> {
         avgBandwidth: Math.round(avgBandwidth),
         downloads,
         downloadSuccesses,
+        plays,
+        playSuccessRate: Math.round(playSuccessRate * 100) / 100,
         userScore,
         tags: row.tags ?? [],
         downloadSuccessRate: Math.round(downloadSuccessRate * 100) / 100,

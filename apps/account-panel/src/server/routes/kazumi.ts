@@ -17,7 +17,7 @@ import { basename, join } from "node:path";
 import { getDownloadManager, downloadRoot } from "../downloads.js";
 import { appLogger } from "../logger.js";
 import { resolveWithBrowser } from "../browser-resolver.js";
-import { recordRuleSearch, recordRuleBandwidth, recordRuleDownload, recordRuleProbeFailure, rankedRuleNames, listRuleRankings, setUserScore, setRuleTags } from "../rule-rankings.js";
+import { recordRuleSearch, recordRuleBandwidth, recordRuleDownload, recordRuleProbeFailure, recordRulePlay, rankedRuleNames, listRuleRankings, setUserScore, setRuleTags } from "../rule-rankings.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -647,8 +647,12 @@ export const kazumiRoutes = new Hono()
         }
       }
       if (videoUrl === null) {
+        // 播放解析失败：回写播放成功率（自动降权播放不稳定的源）。
+        void recordRulePlay(rule, false);
         return c.json({ error: "无法解析播放地址（加密源且浏览器解析失败）" }, 500);
       }
+      // 播放解析成功：回写播放成功率。
+      void recordRulePlay(rule, true);
       if (viaBrowser) {
         appLogger.info("kazumi stream via browser", { rule, url: videoUrl.slice(0, 120) });
         // 浏览器拿到的是 mp4 直链（加密源多为腾讯 CDN mp4）：走代理给前端播放（补 referer + Range）。
