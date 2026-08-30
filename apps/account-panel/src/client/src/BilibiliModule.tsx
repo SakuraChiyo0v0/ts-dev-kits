@@ -31,12 +31,16 @@ import {
   Volume2,
   VolumeX,
   X,
+  Copy,
+  Link,
+  ExternalLink,
 } from "lucide-react";
 import { rpc } from "./lib/rpc";
 import DownloadHistoryPanel from "./DownloadHistoryPanel";
 import { DanmakuOverlay, type DanmakuItem } from "./DanmakuOverlay";
 import { cn } from "@/lib/utils";
 import { useTheme } from "./lib/use-theme";
+import { useContextMenu } from "./components/ui/context-menu";
 import { useToast } from "@/components/ui/toast";
 import { useEscToClose } from "@/lib/use-esc";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -604,39 +608,72 @@ function EntryButton(props: { icon: React.ReactNode; label: string; onClick: () 
   );
 }
 
+/** 复制文本到剪贴板。 */
+async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}
+
 function VideoGrid(props: { videos: BiliVideo[]; onOpen: (bvid: string) => void }) {
+  const ctxMenu = useContextMenu();
   return (
-    <div className="stagger grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-      {props.videos.map((v) => (
-        <button
-          key={v.bvid}
-          onClick={() => props.onOpen(v.bvid)}
-          className="card-lift group text-left"
-        >
-          <div className="shine-overlay relative aspect-video w-full overflow-hidden rounded-xl bg-muted">
-            {v.cover ? (
-              <img src={v.cover} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center" style={{ background: coverGradient(v.title) }}>
-                <ListVideo className="icon-nudge h-6 w-6 text-white/70" />
-              </div>
-            )}
-            <span className="absolute bottom-1 right-1 rounded bg-black/70 px-1 py-0.5 text-xs text-white">{fmtDuration(v.duration)}</span>
-            {/* hover 浮现的播放按钮 */}
-            <span className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-black/60 backdrop-blur-sm">
-                <Play className="icon-nudge h-6 w-6 fill-white text-white" />
+    <>
+      <div className="stagger grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        {props.videos.map((v) => (
+          <button
+            key={v.bvid}
+            onClick={() => props.onOpen(v.bvid)}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              ctxMenu.openMenu(e.clientX, e.clientY, [
+                { label: "复制标题", icon: <Copy className="h-3.5 w-3.5" />, onClick: () => { void copyText(v.title); } },
+                { label: "复制链接", icon: <Link className="h-3.5 w-3.5" />, onClick: () => { void copyText(`https://www.bilibili.com/video/${v.bvid}`); } },
+                { label: "打开原站", icon: <ExternalLink className="h-3.5 w-3.5" />, onClick: () => { window.open(`https://www.bilibili.com/video/${v.bvid}`, "_blank"); } },
+                { label: "打开详情", icon: <Play className="h-3.5 w-3.5" />, onClick: () => props.onOpen(v.bvid) },
+              ]);
+            }}
+            className="card-lift group text-left"
+          >
+            <div className="shine-overlay relative aspect-video w-full overflow-hidden rounded-xl bg-muted">
+              {v.cover ? (
+                <img src={v.cover} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center" style={{ background: coverGradient(v.title) }}>
+                  <ListVideo className="icon-nudge h-6 w-6 text-white/70" />
+                </div>
+              )}
+              <span className="absolute bottom-1 right-1 rounded bg-black/70 px-1 py-0.5 text-xs text-white">{fmtDuration(v.duration)}</span>
+              {/* hover 浮现的播放按钮 */}
+              <span className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-black/60 backdrop-blur-sm">
+                  <Play className="icon-nudge h-6 w-6 fill-white text-white" />
+                </span>
               </span>
-            </span>
-          </div>
-          <p className="mt-2 line-clamp-2 text-sm font-medium transition-colors group-hover:text-primary">{v.title}</p>
-          <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-            {v.author}
-            {v.play !== undefined ? <span>· {fmtCount(v.play)}播放</span> : null}
-          </p>
-        </button>
-      ))}
-    </div>
+            </div>
+            <p className="mt-2 line-clamp-2 text-sm font-medium transition-colors group-hover:text-primary">{v.title}</p>
+            <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+              {v.author}
+              {v.play !== undefined ? <span>· {fmtCount(v.play)}播放</span> : null}
+            </p>
+          </button>
+        ))}
+      </div>
+      {ctxMenu.renderMenu()}
+    </>
   );
 }
 
@@ -1192,6 +1229,7 @@ function WatchLaterView(props: { onBack: () => void; onToast: (m: string, type?:
 
 function FavView(props: { onBack: () => void; onToast: (m: string, type?: "success" | "error" | "info") => void; onOpenVideo: (bvid: string) => void }) {
   const { onBack, onToast, onOpenVideo } = props;
+  const ctxMenu = useContextMenu();
   const [folders, setFolders] = useState<FavFolderItem[]>([]);
   const [content, setContent] = useState<Array<{ aid: number; bvid: string; title: string; cover?: string; duration?: number; owner?: string }> | null>(null);
   const [currentFolder, setCurrentFolder] = useState<FavFolderItem | null>(null);
@@ -1232,6 +1270,15 @@ function FavView(props: { onBack: () => void; onToast: (m: string, type?: "succe
               <button
                 key={f.id}
                 onClick={() => void openFolder(f)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  const url = `https://www.bilibili.com/medialist/detail/ml${f.id}`;
+                  ctxMenu.openMenu(e.clientX, e.clientY, [
+                    { label: "复制收藏夹名", icon: <Copy className="h-3.5 w-3.5" />, onClick: () => { void copyText(f.title); onToast("已复制收藏夹名", "success"); } },
+                    { label: "复制链接", icon: <Link className="h-3.5 w-3.5" />, onClick: () => { void copyText(url); onToast("已复制链接", "success"); } },
+                    { label: "打开原站", icon: <ExternalLink className="h-3.5 w-3.5" />, onClick: () => { window.open(url, "_blank"); } },
+                  ]);
+                }}
                 className="card-lift group overflow-hidden rounded-2xl border bg-card text-left"
               >
                 <div className="relative aspect-video w-full bg-muted">
@@ -1300,6 +1347,7 @@ function FavView(props: { onBack: () => void; onToast: (m: string, type?: "succe
           </div>
         )}
       </div>
+      {ctxMenu.renderMenu()}
     </div>
   );
 }

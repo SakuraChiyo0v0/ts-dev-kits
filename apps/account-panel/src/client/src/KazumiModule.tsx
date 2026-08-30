@@ -3,7 +3,9 @@ import Hls from "hls.js";
 import {
   ChevronLeft,
   Clapperboard,
+  Copy,
   Download,
+  Link,
   HardDriveDownload,
   FilePlus2,
   Folder,
@@ -25,6 +27,7 @@ import {
 import { rpc } from "./lib/rpc";
 import DownloadHistoryPanel from "./DownloadHistoryPanel";
 import { cn } from "@/lib/utils";
+import { useContextMenu } from "./components/ui/context-menu";
 import { useTheme } from "./lib/use-theme";
 import { parseSseEvent, splitSseChunks } from "./lib/kazumi-sse";
 import {
@@ -98,6 +101,27 @@ const CATEGORIES = [
 ];
 
 /** 从线路名提取清晰度标记（与 SDK ROAD_QUALITY_RANKS 对应，供前端 badge 展示）。 */
+/** 复制文本到剪贴板（返回是否成功）。 */
+async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    // 非安全上下文降级。
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}
+
 function qualityBadge(name: string): string | null {
   if (/(8k|2160p|4k|uhd|超清4k)/i.test(name)) return "4K";
   if (/(1080p|1080|蓝光|bluray|bd|fhd)/i.test(name)) return "1080P";
@@ -116,6 +140,7 @@ function formatBitrate(bps: number): string {
 
 export default function KazumiModule({ onBack, active = true }: { onBack: () => void; active?: boolean }) {
   const { theme, toggle } = useTheme();
+  const ctxMenu = useContextMenu();
   const [view, setView] = useState<"home" | "rules" | "result" | "rankings">("home");
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
@@ -653,7 +678,18 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
                         const rank = ruleRankings.get(it.rule);
                         return (
                           <li key={`${it.src}-${it.rule}-${i}`}>
-                            <button onClick={() => void openItem(it)} className="flex w-full items-center gap-3 px-4 py-3 text-left transition-all duration-200 hover:bg-muted hover:pl-5">
+                            <button
+                              onClick={() => void openItem(it)}
+                              onContextMenu={(e) => {
+                                e.preventDefault();
+                                ctxMenu.openMenu(e.clientX, e.clientY, [
+                                  { label: "复制标题", icon: <Copy className="h-3.5 w-3.5" />, onClick: () => { void copyText(it.name); showToast("已复制标题", "success"); } },
+                                  { label: "复制源名", icon: <Copy className="h-3.5 w-3.5" />, onClick: () => { void copyText(it.rule); showToast("已复制源名", "success"); } },
+                                  { label: "复制标识符", icon: <Copy className="h-3.5 w-3.5" />, onClick: () => { void copyText(it.src); showToast("已复制标识符", "success"); } },
+                                ]);
+                              }}
+                              className="flex w-full items-center gap-3 px-4 py-3 text-left transition-all duration-200 hover:bg-muted hover:pl-5"
+                            >
                               <Play className="h-4 w-4 shrink-0 text-primary" />
                               <div className="min-w-0 flex-1">
                                 <p className="truncate text-sm font-medium">{it.name}</p>
@@ -843,7 +879,18 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
                   {/* 集数列表 */}
                   <ul className="stagger divide-y divide-border/60 rounded-2xl border bg-card">
                     {episodes.map((ep, i) => (
-                      <li key={`${ep.url}-${i}`} className="flex items-center gap-3 px-4 py-3">
+                      <li
+                        key={`${ep.url}-${i}`}
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          ctxMenu.openMenu(e.clientX, e.clientY, [
+                            { label: "复制集名", icon: <Copy className="h-3.5 w-3.5" />, onClick: () => { void copyText(ep.name); showToast("已复制集名", "success"); } },
+                            { label: "复制播放页 URL", icon: <Link className="h-3.5 w-3.5" />, onClick: () => { void copyText(ep.url); showToast("已复制播放页 URL", "success"); } },
+                            { label: "下载该集", icon: <Download className="h-3.5 w-3.5" />, onClick: () => setDownloadTarget(ep) },
+                          ]);
+                        }}
+                        className="flex items-center gap-3 px-4 py-3"
+                      >
                         <button onClick={() => void playEpisode(ep)} className="min-w-0 flex-1 text-left">
                           <p className="truncate text-sm font-medium">{ep.name}</p>
                         </button>
@@ -923,6 +970,8 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
       {showDownloadHistory ? <DownloadHistoryPanel onClose={() => setShowDownloadHistory(false)} platform="kazumi" /> : null}
 
       {showHelp ? <KazumiHelp onClose={() => setShowHelp(false)} /> : null}
+
+      {ctxMenu.renderMenu()}
 
       {playingEpisode !== null ? (
         <KazumiPlayer

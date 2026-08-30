@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { ChevronDown, X } from "lucide-react";
+import { ChevronDown, X, Copy, Trash2 } from "lucide-react";
 import { rpc } from "./lib/rpc";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useContextMenu } from "./components/ui/context-menu";
 
 interface DownloadRecord {
   id: string;
@@ -20,6 +21,7 @@ export default function DownloadHistoryPanel(props: {
   platform: DownloadPlatform;
 }) {
   const { onClose, platform } = props;
+  const ctxMenu = useContextMenu();
   const [records, setRecords] = useState<DownloadRecord[]>([]);
   const [confirmClear, setConfirmClear] = useState(false);
 
@@ -95,7 +97,18 @@ export default function DownloadHistoryPanel(props: {
         ) : null}
         <ul className="max-h-[60vh] divide-y divide-border/60 overflow-y-auto">
           {records.map((r) => (
-            <li key={r.id} className="flex items-center gap-3 py-2.5">
+            <li
+              key={r.id}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                ctxMenu.openMenu(e.clientX, e.clientY, [
+                  { label: "复制文件名", icon: <Copy className="h-3.5 w-3.5" />, onClick: () => { void navigator.clipboard.writeText(r.filename).catch(() => {}); } },
+                  ...(r.filePath !== "" ? [{ label: "复制文件路径", icon: <Copy className="h-3.5 w-3.5" />, onClick: () => { void navigator.clipboard.writeText(r.filePath).catch(() => {}); } }] : []),
+                  { label: "删除记录", icon: <Trash2 className="h-3.5 w-3.5" />, danger: true, onClick: () => void remove(r.id) },
+                ]);
+              }}
+              className="flex items-center gap-3 py-2.5"
+            >
               <span
                 className={cn(
                   "h-2 w-2 shrink-0 rounded-full",
@@ -123,6 +136,7 @@ export default function DownloadHistoryPanel(props: {
           ) : null}
         </ul>
       </div>
+      {ctxMenu.renderMenu()}
     </div>
   );
 }

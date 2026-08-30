@@ -39,12 +39,16 @@ import {
   X,
   Tv,
   Clapperboard,
+  Copy,
+  Link,
+  ExternalLink,
 } from "lucide-react";
 import { rpc } from "./lib/rpc";
 import { cn } from "@/lib/utils";
 import { useTheme } from "./lib/use-theme";
 import { useToast } from "@/components/ui/toast";
 import { useEscToClose } from "@/lib/use-esc";
+import { useContextMenu } from "./components/ui/context-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Sidebar, type ModuleId } from "@/components/layout/Sidebar";
@@ -2529,6 +2533,7 @@ function HomeView(props: {
 }) {
   const { account, recentTracks, lastTrack, playCounts, onResume, avatarError, onAvatarError, onOpenPlaylist, onPlayPlaylist, onPlaySong, onRefresh, onShowHistory, onDownloadLocal, onLogout, onDismissLast, onToggleLike, likedIds, recommend, recommendPlaylists, onPlayPersonalFm, onOpenDownloadHistory, onOpenLogs } =
     props;
+  const ctxMenu = useContextMenu();
   const [search, setSearch] = useState("");
   const [songQuery, setSongQuery] = useState("");
   const [songResults, setSongResults] = useState<Track[]>([]);
@@ -2835,6 +2840,16 @@ function HomeView(props: {
                 <li key={t.id} className="flex items-center">
                   <button
                     onClick={() => onPlaySong(t)}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      const artist = t.artists?.join(" / ") ?? "";
+                      ctxMenu.openMenu(e.clientX, e.clientY, [
+                        { label: "复制歌名", icon: <Copy className="h-3.5 w-3.5" />, onClick: () => { void copyText(t.title); } },
+                        ...(artist !== "" ? [{ label: "复制歌手", icon: <Copy className="h-3.5 w-3.5" />, onClick: () => { void copyText(artist); } }] : []),
+                        { label: "复制网易云链接", icon: <Link className="h-3.5 w-3.5" />, onClick: () => { void copyText(`https://music.163.com/#/song?id=${t.id}`); } },
+                        { label: "打开网易云", icon: <ExternalLink className="h-3.5 w-3.5" />, onClick: () => { window.open(`https://music.163.com/#/song?id=${t.id}`, "_blank"); } },
+                      ]);
+                    }}
                     className="flex flex-1 items-center gap-3 px-3 py-3 text-left transition-all duration-200 hover:bg-muted/60 hover:pl-4 sm:gap-4 sm:px-4"
                   >
                     <span className="w-6 shrink-0 text-right text-sm tabular-nums text-muted-foreground">
@@ -3039,6 +3054,7 @@ function HomeView(props: {
           </>
         )}
       </div>
+      {ctxMenu.renderMenu()}
     </div>
   );
 }
