@@ -22,7 +22,8 @@ FROM docker.m.daocloud.io/library/node:22-alpine AS runtime
 WORKDIR /repo
 ENV NODE_ENV=production
 # ffmpeg/ffprobe：下载时写入 ID3 标签与内嵌封面所需。
-RUN apk add --no-cache ffmpeg
+# chromium：番剧加密源浏览器取流兜底（headless 解析 JS 动态生成的视频地址）。
+RUN apk add --no-cache ffmpeg chromium nss freetype harfbuzz ca-certificates font-noto-cjk
 # 复制整个 workspace（含 node_modules 符号链接、packages dist、app dist），保持 pnpm 目录结构。
 COPY --from=build /repo /repo
 WORKDIR /repo/apps/account-panel

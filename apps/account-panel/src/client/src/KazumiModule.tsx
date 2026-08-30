@@ -150,6 +150,8 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
   const [showDownloadHistory, setShowDownloadHistory] = useState(false);
   const [playingEpisode, setPlayingEpisode] = useState<Episode | null>(null);
   const [m3u8Url, setM3u8Url] = useState<string | null>(null);
+  // 浏览器解析到的直链（mp4 代理 URL），不走 hls.js 直接播放。
+  const [isDirectVideo, setIsDirectVideo] = useState(false);
   const [playError, setPlayError] = useState<string | null>(null);
   const [playLoading, setPlayLoading] = useState(false);
   // 当前播放流的码率/分辨率（服务端从 master playlist 读取）。
@@ -235,17 +237,19 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
     if (selected === null) return;
     setPlayingEpisode(ep);
     setM3u8Url(null);
+    setIsDirectVideo(false);
     setPlayError(null);
     setStreamQuality(null);
     setPlayLoading(true);
     try {
       const res = await rpc.api.kazumi.stream.$get({ query: { url: ep.url, rule: selected.rule } });
-      const data = (await res.json()) as { m3u8Url?: string; error?: string; bandwidth?: number; resolution?: string };
+      const data = (await res.json()) as { m3u8Url?: string; error?: string; bandwidth?: number; resolution?: string; direct?: boolean };
       if (data.error !== undefined) {
         setPlayError(data.error);
         setPlayingEpisode(null);
       } else if (data.m3u8Url !== undefined) {
         setM3u8Url(data.m3u8Url);
+        setIsDirectVideo(data.direct === true);
         if (data.bandwidth !== undefined || data.resolution !== undefined) {
           setStreamQuality({ ...(data.bandwidth !== undefined ? { bandwidth: data.bandwidth } : {}), ...(data.resolution !== undefined ? { resolution: data.resolution } : {}) });
         }
@@ -886,8 +890,9 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
           loading={playLoading}
           error={playError}
           quality={streamQuality}
+          direct={isDirectVideo}
           active={active}
-          onClose={() => { setPlayingEpisode(null); setM3u8Url(null); setPlayError(null); setStreamQuality(null); }}
+          onClose={() => { setPlayingEpisode(null); setM3u8Url(null); setIsDirectVideo(false); setPlayError(null); setStreamQuality(null); }}
           onPlayManual={(url) => {
             // 用户手动填写的 m3u8 直链：直接经 playlist 代理播放。
             setM3u8Url(`/api/kazumi/playlist?url=${encodeURIComponent(url)}&rule=${encodeURIComponent(selected?.rule ?? "")}`);
@@ -951,11 +956,13 @@ function KazumiPlayer(props: {
   loading: boolean;
   error: string | null;
   quality?: { bandwidth?: number; resolution?: string } | null;
+  /** 直链视频（mp4 代理 URL），不走 hls.js。 */
+  direct?: boolean;
   active?: boolean;
   onClose: () => void;
   onPlayManual: (url: string) => void;
 }) {
-  const { episode, m3u8Url, loading, error, quality, active = true, onClose, onPlayManual } = props;
+  const { episode, m3u8Url, loading, error, quality, direct = false, active = true, onClose, onPlayManual } = props;
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [manualUrl, setManualUrl] = useState("");
 
@@ -967,6 +974,11 @@ function KazumiPlayer(props: {
   useEffect(() => {
     const video = videoRef.current;
     if (video === null || m3u8Url === null) return;
+    // 直链视频（mp4 代理 URL）：不走 hls.js，直接给 video。
+    if (direct) {
+      video.src = m3u8Url;
+      return;
+    }
     if (Hls.isSupported()) {
       const hls = new Hls();
       hls.loadSource(m3u8Url);
@@ -976,7 +988,7 @@ function KazumiPlayer(props: {
     if (video.canPlayType("application/vnd.apple.mpegurl")) {
       video.src = m3u8Url;
     }
-  }, [m3u8Url]);
+  }, [m3u8Url, direct]);
 
   // 双击进入/退出全屏（单击交给原生 controls，避免双重触发）。
   const handleVideoDoubleClick = () => {

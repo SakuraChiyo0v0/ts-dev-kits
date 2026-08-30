@@ -16,6 +16,7 @@ import { promisify } from "node:util";
 import { basename, join } from "node:path";
 import { getDownloadManager, downloadRoot } from "../downloads.js";
 import { appLogger } from "../logger.js";
+import { resolveWithBrowser } from "../browser-resolver.js";
 import { recordRuleSearch, recordRuleBandwidth, recordRuleDownload, recordRuleProbeFailure, rankedRuleNames, listRuleRankings, setUserScore } from "../rule-rankings.js";
 
 const execFileAsync = promisify(execFile);
@@ -540,12 +541,38 @@ export const kazumiRoutes = new Hono()
     try {
       const animeRule = await client.rules.load(rule);
       const resolver = new PlaybackResolver();
-      const resolved = await resolver.resolve(url, headersFor(animeRule), 30_000);
+      let videoUrl: string | null = null;
+      let viaBrowser = false;
+      try {
+        const resolved = await resolver.resolve(url, headersFor(animeRule), 15_000);
+        videoUrl = resolved.url;
+      } catch {
+        // 静态解析失败（加密源/JS 动态取流）：回退 headless Chromium 浏览器解析，
+        // 让页面 JS 跑起来后从网络层/注入脚本截获真实视频地址（对齐 Kazumi 方案）。
+        const browserUrl = await resolveWithBrowser(url, { timeoutMs: 25_000 });
+        if (browserUrl !== null) {
+          videoUrl = browserUrl;
+          viaBrowser = true;
+        }
+      }
+      if (videoUrl === null) {
+        return c.json({ error: "无法解析播放地址（加密源且浏览器解析失败）" }, 500);
+      }
+      if (viaBrowser) {
+        appLogger.info("kazumi stream via browser", { rule, url: videoUrl.slice(0, 120) });
+        // 浏览器拿到的是 mp4 直链（加密源多为腾讯 CDN mp4）：走代理给前端播放（补 referer + Range）。
+        if (/\.mp4(\?|$)/i.test(videoUrl)) {
+          return c.json({
+            m3u8Url: `/api/kazumi/proxy-video?url=${encodeURIComponent(videoUrl)}&rule=${encodeURIComponent(rule)}`,
+            direct: true,
+          });
+        }
+      }
       // 读取 m3u8 master playlist 的最高码率变体信息（码率/分辨率），随响应返回供前端展示。
       let bandwidth: number | undefined;
       let resolution: string | undefined;
       try {
-        const content = await fetchText(resolved.url, headersFor(animeRule));
+        const content = await fetchText(videoUrl, headersFor(animeRule));
         const parsed = parseM3u8(content);
         if (parsed.type === "master" && parsed.variants !== undefined && parsed.variants.length > 0) {
           const best = parsed.variants.reduce((a, b) => (b.bandwidth > a.bandwidth ? b : a));
@@ -556,7 +583,7 @@ export const kazumiRoutes = new Hono()
         // 读码率失败不影响播放。
       }
       return c.json({
-        m3u8Url: `/api/kazumi/playlist?url=${encodeURIComponent(resolved.url)}&rule=${encodeURIComponent(rule)}`,
+        m3u8Url: `/api/kazumi/playlist?url=${encodeURIComponent(videoUrl)}&rule=${encodeURIComponent(rule)}`,
         ...(bandwidth !== undefined ? { bandwidth } : {}),
         ...(resolution !== undefined ? { resolution } : {}),
       });
@@ -611,6 +638,39 @@ export const kazumiRoutes = new Hono()
       const len = resp.headers.get("content-length");
       if (len !== null) h["content-length"] = len;
       return new Response(resp.body, { headers: h });
+    } catch {
+      return c.json({ error: "代理失败" }, 500);
+    }
+  })
+  /**
+   * GET /api/kazumi/proxy-video?url=xxx&rule=xxx —— 代理视频直链（mp4/m3u8），
+   * 补 referer/UA + 转发 Range（支持拖动 seek）。供浏览器解析到的加密源直链播放。
+   */
+  .get("/proxy-video", async (c) => {
+    const url = c.req.query("url");
+    const rule = c.req.query("rule");
+    if (url === undefined || rule === undefined) return c.json({ error: "参数错误" }, 400);
+    const range = c.req.header("range");
+    const client = createClient();
+    try {
+      const animeRule = await client.rules.load(rule);
+      const resp = await fetch(url, {
+        headers: {
+          ...headersFor(animeRule),
+          ...(range !== undefined && range !== "" ? { range } : {}),
+        },
+        redirect: "follow",
+      });
+      if (!resp.ok || resp.body === null) return c.json({ error: "代理失败" }, 500);
+      const h: Record<string, string> = {
+        "content-type": resp.headers.get("content-type") ?? "application/octet-stream",
+        "accept-ranges": "bytes",
+      };
+      const len = resp.headers.get("content-length");
+      if (len !== null) h["content-length"] = len;
+      const contentRange = resp.headers.get("content-range");
+      if (contentRange !== null) h["content-range"] = contentRange;
+      return new Response(resp.body, { status: resp.status, headers: h });
     } catch {
       return c.json({ error: "代理失败" }, 500);
     }
