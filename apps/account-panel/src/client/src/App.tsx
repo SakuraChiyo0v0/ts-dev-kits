@@ -1145,6 +1145,8 @@ export default function App() {
 
   return (
     <div className="flex h-screen flex-col bg-background">
+      {/* 微弱主色渐变背景（左上 → 右下），增强层次感 */}
+      <div className="pointer-events-none fixed inset-0 z-0 bg-gradient-to-br from-primary/[0.06] via-transparent to-transparent" />
       {/* 顶部仅在未登录或首页展示；进入具体模块后完全不展示，由各模块自身 header / 侧边栏负责 */}
       {userAuth === null || activeModule === "home" ? (
         <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border/60 bg-background/70 px-4 py-3 backdrop-blur-xl sm:px-6">
@@ -1505,7 +1507,7 @@ function DownloadHistoryPanel(props: {
   const { records, onClear, onRemove, onClose } = props;
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="animate-fade-in absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative w-full max-w-lg animate-slide-up rounded-t-2xl bg-card p-6">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-bold">下载历史（{records.length}）</h2>
@@ -1571,7 +1573,7 @@ function LogsPanel(props: {
   };
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="animate-fade-in absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative w-full max-w-lg animate-slide-up rounded-t-2xl bg-card p-6">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-bold">操作日志（{lines.length}）</h2>
@@ -1618,7 +1620,7 @@ function HistoryPanel(props: {
   const { tracks, onPlay, onDownload, onToggleLike, likedIds, onClear, onClose } = props;
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="animate-fade-in absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative w-full max-w-lg animate-slide-up rounded-t-2xl bg-card p-6">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-bold">播放历史（{tracks.length}）</h2>
@@ -1714,7 +1716,7 @@ function MultiSelectDialog(props: {
       }}
     >
       <div
-        className="w-full max-w-sm animate-fade-in rounded-2xl bg-card p-5 shadow-lg"
+        className="w-full max-w-sm animate-scale-in rounded-2xl bg-card p-5 shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-3 flex items-center justify-between">
@@ -1783,7 +1785,7 @@ function RenamePlaylistDialog(props: {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
       <div
-        className="w-full max-w-sm animate-fade-in rounded-2xl bg-card p-5 shadow-lg"
+        className="w-full max-w-sm animate-scale-in rounded-2xl bg-card p-5 shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-3 flex items-center justify-between">
@@ -1885,7 +1887,7 @@ function FolderPicker(props: {
       }}
     >
       <div
-        className="w-full max-w-sm animate-fade-in rounded-2xl bg-card p-5 shadow-lg"
+        className="w-full max-w-sm animate-scale-in rounded-2xl bg-card p-5 shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-3 flex items-center justify-between">
@@ -1990,7 +1992,7 @@ function DownloadDialog(props: {
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50" onClick={onClose}>
       <div
-        className="w-full max-w-sm animate-fade-in rounded-2xl bg-card p-6 shadow-lg"
+        className="w-full max-w-sm animate-scale-in rounded-2xl bg-card p-6 shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center gap-3">
@@ -2102,7 +2104,7 @@ function SongDetailModal(props: {
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50" onClick={onClose}>
       <div
-        className="w-full max-w-sm animate-fade-in rounded-2xl bg-card p-6 shadow-lg"
+        className="w-full max-w-sm animate-scale-in rounded-2xl bg-card p-6 shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-5 flex flex-col items-center gap-3 text-center">
@@ -2210,7 +2212,7 @@ function HelpPanel(props: { onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50" onClick={onClose}>
       <div
-        className="w-full max-w-sm animate-fade-in rounded-2xl bg-card p-6 shadow-lg"
+        className="w-full max-w-sm animate-scale-in rounded-2xl bg-card p-6 shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="mb-4 text-lg font-bold">键盘快捷键</h2>
@@ -2263,7 +2265,7 @@ function QueuePanel(props: {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   return (
     <div className="fixed inset-0 z-30 flex items-end justify-center">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="animate-fade-in absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative w-full max-w-lg animate-slide-up rounded-t-2xl bg-card p-6">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-bold">播放队列（{queue.length}）</h2>
@@ -2342,7 +2344,7 @@ function BindNeteaseView(props: {
   const { login, error, onLogin, onCancel, onBack } = props;
   return (
     <div className="flex flex-1 items-center justify-center p-6">
-      <Card className="w-full max-w-sm border-0 bg-card/70 shadow-lg backdrop-blur-xl">
+      <Card className="animate-scale-in w-full max-w-sm border-0 bg-card/70 shadow-lg backdrop-blur-xl">
         <CardHeader className="items-center text-center">
           <CardTitle>{error !== undefined ? "连接失败" : "绑定网易云"}</CardTitle>
           <CardDescription>
@@ -2413,7 +2415,7 @@ function LoginView(props: {
 
   return (
     <div className="flex flex-1 items-center justify-center p-6">
-      <Card className="w-full max-w-sm border-0 bg-card/70 shadow-lg backdrop-blur-xl">
+      <Card className="animate-scale-in w-full max-w-sm border-0 bg-card/70 shadow-lg backdrop-blur-xl">
         <CardHeader className="items-center text-center">
           <CardTitle>登录</CardTitle>
           <CardDescription>统一账号，一个登录入口管理所有服务</CardDescription>
@@ -2660,11 +2662,11 @@ function HomeView(props: {
           <div className="group relative mb-6">
             <button
               onClick={onResume}
-              className="flex w-full items-center gap-4 rounded-2xl bg-gradient-to-r from-primary/15 to-transparent p-4 text-left transition-shadow hover:shadow-md sm:gap-5 sm:p-5"
+              className="card-lift flex w-full items-center gap-4 rounded-2xl bg-gradient-to-r from-primary/15 to-transparent p-4 text-left transition-shadow hover:shadow-md sm:gap-5 sm:p-5"
             >
               <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-muted shadow-sm">
                 {lastTrack.coverUrl ? (
-                  <img src={lastTrack.coverUrl} alt="" className="h-full w-full object-cover" />
+                  <img src={lastTrack.coverUrl} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center">
                     <ListMusic className="h-8 w-8 text-muted-foreground" />
@@ -2701,12 +2703,12 @@ function HomeView(props: {
                 查看全部
               </button>
             </div>
-            <div className="flex gap-4 no-scrollbar overflow-x-auto pb-2">
+            <div className="stagger flex gap-4 no-scrollbar overflow-x-auto pb-2">
               {recentTracks.map((t) => (
-                <button key={t.id} onClick={() => onPlaySong(t)} className="w-36 shrink-0 text-left">
+                <button key={t.id} onClick={() => onPlaySong(t)} className="card-lift w-36 shrink-0 text-left">
                   <div className="aspect-square w-full overflow-hidden rounded-xl bg-muted shadow-sm">
                     {t.coverUrl ? (
-                      <img src={t.coverUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
+                      <img src={t.coverUrl} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center">
                         <ListMusic className="h-8 w-8 text-muted-foreground" />
@@ -2729,7 +2731,7 @@ function HomeView(props: {
                 <button key={t.id} onClick={() => onPlaySong(t)} className="w-36 shrink-0 text-left">
                   <div className="aspect-square w-full overflow-hidden rounded-xl bg-muted shadow-sm">
                     {t.coverUrl ? (
-                      <img src={t.coverUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
+                      <img src={t.coverUrl} alt="" loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
                     ) : (
                       <div
                         className="flex h-full w-full items-center justify-center"
@@ -2833,7 +2835,7 @@ function HomeView(props: {
                 <li key={t.id} className="flex items-center">
                   <button
                     onClick={() => onPlaySong(t)}
-                    className="flex flex-1 items-center gap-3 px-3 py-3 text-left transition-colors hover:bg-muted/60 sm:gap-4 sm:px-4"
+                    className="flex flex-1 items-center gap-3 px-3 py-3 text-left transition-all duration-200 hover:bg-muted/60 hover:pl-4 sm:gap-4 sm:px-4"
                   >
                     <span className="w-6 shrink-0 text-right text-sm tabular-nums text-muted-foreground">
                       {i + 1}
@@ -3535,7 +3537,7 @@ function PlayerBar(props: {
           </button>
           <button
             onClick={onTogglePlay}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow transition-transform hover:scale-105 hover:bg-primary/90"
+            className={`flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow transition-all duration-200 hover:scale-105 hover:bg-primary/90 active:scale-95 ${playing ? "animate-glow" : ""}`}
             aria-label={playing ? "暂停" : "播放"}
           >
             {playing ? <Pause className="h-4 w-4" /> : <Play className="ml-0.5 h-4 w-4" />}
@@ -3586,7 +3588,7 @@ function PlayerBar(props: {
           {menuOpen ? (
             <>
               <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
-              <div className="absolute bottom-full right-0 z-40 mb-2 w-48 rounded-xl border bg-popover p-1.5 shadow-lg">
+              <div className="animate-scale-in absolute bottom-full right-0 z-40 mb-2 w-48 origin-bottom-right rounded-xl border bg-popover p-1.5 shadow-lg">
                 <button
                   onClick={() => {
                     onOpenLyrics(track);
@@ -3739,7 +3741,7 @@ function LyricsView(props: {
   const modeLabel = mode === "both" ? "双语" : mode === "original" ? "原文" : "翻译";
 
   return (
-    <div className="fixed inset-0 z-30 flex flex-col bg-black">
+    <div className="animate-fade-in fixed inset-0 z-30 flex flex-col bg-black">
       {track.coverUrl ? (
         <img
           src={track.coverUrl}

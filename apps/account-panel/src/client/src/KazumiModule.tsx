@@ -467,7 +467,7 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
             {menuOpen ? (
               <>
                 <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
-                <div className="absolute right-0 top-full z-40 mt-1 w-52 rounded-xl border bg-popover p-1.5 shadow-lg">
+                <div className="animate-scale-in absolute right-0 top-full z-40 mt-1 w-52 origin-top-right rounded-xl border bg-popover p-1.5 shadow-lg">
                   <button
                     onClick={() => {
                       setMenuOpen(false);
@@ -908,9 +908,9 @@ function KazumiHelp(props: { onClose: () => void }) {
   const { onClose } = props;
   useEscToClose(onClose);
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50" onClick={onClose}>
+    <div className="animate-fade-in fixed inset-0 z-40 flex items-center justify-center bg-black/50" onClick={onClose}>
       <div
-        className="w-full max-w-md animate-fade-in rounded-2xl bg-card p-6 shadow-lg"
+        className="w-full max-w-md animate-scale-in rounded-2xl bg-card p-6 shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
@@ -999,8 +999,8 @@ function KazumiPlayer(props: {
   };
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/80" onClick={onClose}>
-      <div className="w-full max-w-3xl px-4" onClick={(e) => e.stopPropagation()}>
+    <div className="animate-fade-in fixed inset-0 z-40 flex items-center justify-center bg-black/80" onClick={onClose}>
+      <div className="animate-scale-in w-full max-w-3xl px-4" onClick={(e) => e.stopPropagation()}>
         <div className="mb-3 flex items-center justify-between text-white">
           <p className="truncate text-sm font-medium">{episode.name}</p>
           <div className="flex items-center gap-2">
@@ -1293,8 +1293,8 @@ function KazumiDownloadDialog(props: {
   };
   const isBatch = batchCount !== undefined && batchCount > 0;
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50" onClick={onClose}>
-      <div className="w-full max-w-sm animate-fade-in rounded-2xl bg-card p-5 shadow-lg" onClick={(e) => e.stopPropagation()}>
+    <div className="animate-fade-in fixed inset-0 z-40 flex items-center justify-center bg-black/50" onClick={onClose}>
+      <div className="w-full max-w-sm animate-scale-in rounded-2xl bg-card p-5 shadow-lg" onClick={(e) => e.stopPropagation()}>
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-base font-bold">{isBatch ? "整部下载到 NAS" : "下载到 NAS"}</h3>
           <button onClick={onClose} className="rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"><X className="h-4 w-4" /></button>
@@ -1414,7 +1414,7 @@ function RankingsView(props: { onBack: () => void; onToast: (m: string, type?: "
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto">
-        <div className="mx-auto max-w-6xl px-4 py-6">
+        <div className="animate-fade-in mx-auto max-w-6xl px-4 py-6">
           {/* 真数据说明 */}
           <div className="mb-4 rounded-2xl border bg-card p-3 text-xs text-muted-foreground">
             📊 数据来自真实搜索与下载测试：搜索成功率/响应速度由每次搜索记录，码率/下载速率由 ffprobe 实测，
@@ -1428,7 +1428,7 @@ function RankingsView(props: { onBack: () => void; onToast: (m: string, type?: "
                 <div
                   key={r.rule}
                   onClick={() => setSelectedRule(r.rule)}
-                  className={`cursor-pointer rounded-2xl border p-3 transition-colors ${selectedRule === r.rule ? "border-primary bg-primary/5" : "bg-card hover:bg-muted"}`}
+                  className={`cursor-pointer rounded-2xl border p-3 transition-all duration-200 hover:translate-x-1 ${selectedRule === r.rule ? "animate-glow border-primary bg-primary/5" : "bg-card hover:bg-muted"}`}
                 >
                   <div className="flex items-center gap-2">
                     <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${i < 3 ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>

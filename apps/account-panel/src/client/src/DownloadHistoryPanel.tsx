@@ -64,7 +64,7 @@ export default function DownloadHistoryPanel(props: {
 
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="animate-fade-in absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative w-full max-w-lg animate-slide-up rounded-t-2xl bg-card p-6">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-bold">下载历史（{records.length}）</h2>

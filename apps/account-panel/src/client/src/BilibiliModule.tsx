@@ -497,7 +497,7 @@ function HomeView(props: {
 
   return (
     <div className="flex-1 overflow-auto">
-      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-8 sm:py-10">
+      <div className="animate-fade-in mx-auto max-w-6xl px-4 py-6 sm:px-8 sm:py-10">
         <div className="mb-8 flex items-center gap-4">
           <Avatar className="h-16 w-16" onError={() => setAvatarError(true)}>
             {info?.avatarUrl && !avatarError ? <AvatarImage src={info.avatarUrl} /> : null}
@@ -1029,8 +1029,8 @@ function FavAddDialog(props: { aid: number; onClose: () => void; onToast: (m: st
     }
   };
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50" onClick={onClose}>
-      <div className="w-full max-w-sm animate-fade-in rounded-2xl bg-card p-5 shadow-lg" onClick={(e) => e.stopPropagation()}>
+    <div className="animate-fade-in fixed inset-0 z-40 flex items-center justify-center bg-black/50" onClick={onClose}>
+      <div className="w-full max-w-sm animate-scale-in rounded-2xl bg-card p-5 shadow-lg" onClick={(e) => e.stopPropagation()}>
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-base font-bold">收藏到收藏夹</h3>
           <button onClick={onClose} className="rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"><X className="h-4 w-4" /></button>
@@ -1094,7 +1094,7 @@ function HistoryView(props: { onBack: () => void; onToast: (m: string, type?: "s
   };
   return (
     <div className="flex-1 overflow-auto">
-      <div className="mx-auto max-w-3xl px-4 py-6">
+      <div className="animate-fade-in mx-auto max-w-3xl px-4 py-6">
         <div className="mb-4 flex items-center justify-between">
           <button onClick={onBack} className="flex items-center gap-1 rounded-full px-2 py-1 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">
             <ChevronLeft className="h-4 w-4" />返回
@@ -1161,7 +1161,7 @@ function WatchLaterView(props: { onBack: () => void; onToast: (m: string, type?:
   };
   return (
     <div className="flex-1 overflow-auto">
-      <div className="mx-auto max-w-3xl px-4 py-6">
+      <div className="animate-fade-in mx-auto max-w-3xl px-4 py-6">
         <div className="mb-4 flex items-center justify-between">
           <button onClick={onBack} className="flex items-center gap-1 rounded-full px-2 py-1 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">
             <ChevronLeft className="h-4 w-4" />返回
@@ -1219,7 +1219,7 @@ function FavView(props: { onBack: () => void; onToast: (m: string, type?: "succe
   };
   return (
     <div className="flex-1 overflow-auto">
-      <div className="mx-auto max-w-3xl px-4 py-6">
+      <div className="animate-fade-in mx-auto max-w-3xl px-4 py-6">
         <div className="mb-4 flex items-center justify-between">
           <button onClick={onBack} className="flex items-center gap-1 rounded-full px-2 py-1 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">
             <ChevronLeft className="h-4 w-4" />返回
@@ -1320,7 +1320,7 @@ function BangumiView(props: { onBack: () => void; onToast: (m: string, type?: "s
   }, [onToast]);
   return (
     <div className="flex-1 overflow-auto">
-      <div className="mx-auto max-w-4xl px-4 py-6">
+      <div className="animate-fade-in mx-auto max-w-4xl px-4 py-6">
         <div className="mb-4 flex items-center justify-between">
           <button onClick={onBack} className="flex items-center gap-1 rounded-full px-2 py-1 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">
             <ChevronLeft className="h-4 w-4" />返回
@@ -1375,7 +1375,7 @@ function PopularView(props: { onBack: () => void; onToast: (m: string, type?: "s
   }, [onToast]);
   return (
     <div className="flex-1 overflow-auto">
-      <div className="mx-auto max-w-6xl px-4 py-6">
+      <div className="animate-fade-in mx-auto max-w-6xl px-4 py-6">
         <div className="mb-4 flex items-center justify-between">
           <button onClick={onBack} className="flex items-center gap-1 rounded-full px-2 py-1 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">
             <ChevronLeft className="h-4 w-4" />返回
@@ -1419,17 +1419,19 @@ function DiscoverView(props: {
           <button
             key={t.id}
             onClick={() => onTabChange(t.id)}
-            className={`flex items-center gap-1.5 rounded-t-lg border-b-2 px-3 py-2 text-sm transition-colors ${
-              tab === t.id ? "border-primary font-medium text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
+            className={`group flex items-center gap-1.5 rounded-t-lg border-b-2 px-3 py-2 text-sm transition-all duration-200 ${
+              tab === t.id ? "border-primary font-medium text-primary" : "border-transparent text-muted-foreground hover:border-primary/30 hover:text-foreground"
             }`}
           >
-            {t.icon}
+            <span className={cn("transition-transform duration-200", tab === t.id ? "scale-110" : "group-hover:-translate-y-0.5")}>
+              {t.icon}
+            </span>
             {t.label}
           </button>
         ))}
       </div>
       <div className="min-h-0 flex-1 overflow-auto">
-        <div className="mx-auto max-w-6xl px-4 py-6">
+        <div className="animate-fade-in mx-auto max-w-6xl px-4 py-6">
           {tab === "recommend" ? (
             <RecommendFeed onToast={onToast} onOpenVideo={onOpenVideo} />
           ) : tab === "popular" ? (
@@ -1563,8 +1565,8 @@ function RankingFeed(props: { onToast: (m: string, type?: "success" | "error" | 
           <button
             key={r.rid}
             onClick={() => setRid(r.rid)}
-            className={`rounded-full border px-3 py-1 text-xs transition-colors ${
-              rid === r.rid ? "border-primary bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            className={`rounded-full border px-3 py-1 text-xs transition-all duration-200 active:scale-95 ${
+              rid === r.rid ? "border-primary bg-primary/10 text-primary" : "text-muted-foreground hover:scale-105 hover:bg-muted hover:text-foreground"
             }`}
           >
             {r.label}
@@ -1680,8 +1682,8 @@ function DownloadDialog(props: { video: BiliVideoDetail; onDownload: (path: stri
     }
   };
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50" onClick={onClose}>
-      <div className="w-full max-w-sm animate-fade-in rounded-2xl bg-card p-5 shadow-lg" onClick={(e) => e.stopPropagation()}>
+    <div className="animate-fade-in fixed inset-0 z-40 flex items-center justify-center bg-black/50" onClick={onClose}>
+      <div className="w-full max-w-sm animate-scale-in rounded-2xl bg-card p-5 shadow-lg" onClick={(e) => e.stopPropagation()}>
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-base font-bold">下载到 NAS</h3>
           <button onClick={onClose} className="rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"><X className="h-4 w-4" /></button>
@@ -1725,7 +1727,7 @@ function DownloadDialog(props: { video: BiliVideoDetail; onDownload: (path: stri
 function Skeleton() {
   return (
     <div className="flex-1 animate-pulse overflow-auto">
-      <div className="mx-auto max-w-4xl px-4 py-6">
+      <div className="animate-fade-in mx-auto max-w-4xl px-4 py-6">
         <div className="mb-4 h-8 w-20 rounded-full bg-muted" />
         <div className="mb-4 aspect-video w-full rounded-2xl bg-muted" />
         <div className="h-6 w-2/3 rounded bg-muted" />

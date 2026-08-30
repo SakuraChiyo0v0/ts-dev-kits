@@ -41,17 +41,19 @@ export function Sidebar(props: {
               key={it.id}
               onClick={() => onSelect(it.id)}
               className={cn(
-                "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors",
+                "group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all duration-200",
                 active === it.id
                   ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  : "text-muted-foreground hover:bg-muted hover:pl-4 hover:text-foreground",
               )}
               aria-current={active === it.id ? "page" : undefined}
             >
               <span
                 className={cn(
-                  "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
-                  active === it.id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
+                  "flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all duration-300",
+                  active === it.id
+                    ? "animate-glow bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground group-hover:scale-110 group-hover:bg-primary/10 group-hover:text-primary",
                 )}
               >
                 {it.icon}
@@ -81,12 +83,14 @@ export function Sidebar(props: {
             key={it.id}
             onClick={() => onSelect(it.id)}
             className={cn(
-              "flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] transition-colors",
+              "group flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] transition-colors",
               active === it.id ? "text-primary" : "text-muted-foreground",
             )}
             aria-current={active === it.id ? "page" : undefined}
           >
-            {it.icon}
+            <span className={cn("transition-all duration-300", active === it.id ? "animate-float scale-110" : "group-hover:scale-110")}>
+              {it.icon}
+            </span>
             {it.label}
           </button>
         ))}
