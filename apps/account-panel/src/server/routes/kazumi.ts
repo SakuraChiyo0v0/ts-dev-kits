@@ -147,6 +147,68 @@ export const kazumiRoutes = new Hono()
       return c.json({ error: "搜索失败（可能被验证码拦截）" }, 500);
     }
   })
+  /** GET /api/kazumi/search/stream?q=xxx —— 流式搜索（SSE）：搜到一个源就推一批结果。 */
+  .get("/search/stream", async (c) => {
+    const q = c.req.query("q");
+    if (q === undefined || q.trim() === "") return c.json({ error: "missing q" }, 400);
+    const client = createClient();
+    const stream = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        const enc = new TextEncoder();
+        const send = (event: string, data: unknown) => {
+          controller.enqueue(enc.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+        };
+        // 客户端断开时中止后台搜索。
+        const signal = c.req.raw.signal;
+        let done = false;
+        const abort = () => {
+          done = true;
+          try {
+            controller.close();
+          } catch {
+            // 已关闭则忽略。
+          }
+        };
+        signal.addEventListener("abort", abort);
+        try {
+          await client.searchStream(q.trim(), {
+            signal,
+            onBatch: (items) => {
+              if (done) return;
+              send("batch", {
+                items: items.map((it) => ({
+                  name: it.name.replace(/^\[[^\]]+\]\s*/, ""),
+                  src: it.src,
+                  rule: ruleFromName(it.name),
+                })),
+              });
+            },
+          });
+          if (!done) send("done", {});
+        } catch {
+          if (!done) send("error", { message: "搜索失败（可能被验证码拦截）" });
+        } finally {
+          signal.removeEventListener("abort", abort);
+          if (!done) {
+            done = true;
+            try {
+              controller.close();
+            } catch {
+              // 忽略。
+            }
+          }
+        }
+      },
+    });
+    return new Response(stream, {
+      headers: {
+        "content-type": "text/event-stream",
+        "cache-control": "no-cache",
+        connection: "keep-alive",
+        "x-accel-buffering": "no",
+      },
+    });
+  })
   /** POST /api/kazumi/roads —— 获取线路。body: { src, rule } */
   .post("/roads", async (c) => {
     const body = (await c.req.json().catch(() => ({}))) as { src?: unknown; rule?: unknown };

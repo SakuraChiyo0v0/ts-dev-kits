@@ -7,19 +7,29 @@ import {
   FilePlus2,
   Folder,
   FolderPlus,
+  HelpCircle,
+  History,
   ListChecks,
+  Moon,
+  MoreHorizontal,
   Play,
   RefreshCw,
   Search,
+  Sun,
   Trash2,
   X,
 } from "lucide-react";
 import { rpc } from "./lib/rpc";
 import DownloadHistoryPanel from "./DownloadHistoryPanel";
 import { cn } from "@/lib/utils";
+import { useTheme } from "./lib/use-theme";
+import { useToast } from "@/components/ui/toast";
+import { useEscToClose } from "@/lib/use-esc";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { EmptyState } from "@/components/ui/empty-state";
 
 // ---------- 类型 ----------
 
@@ -74,27 +84,66 @@ const CATEGORIES = [
 
 // ---------- 主组件 ----------
 
-export default function KazumiModule({ onBack }: { onBack: () => void }) {
+export default function KazumiModule({ onBack, active = true }: { onBack: () => void; active?: boolean }) {
+  const { theme, toggle } = useTheme();
   const [view, setView] = useState<"home" | "rules" | "result">("home");
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
   const [results, setResults] = useState<SearchItem[]>([]);
   const [selected, setSelected] = useState<SearchItem | null>(null);
   const [roads, setRoads] = useState<Road[]>([]);
   const [roadIndex, setRoadIndex] = useState(0);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [loadingRoads, setLoadingRoads] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [downloadTarget, setDownloadTarget] = useState<Episode | null>(null);
   const [showDownloadHistory, setShowDownloadHistory] = useState(false);
   const [playingEpisode, setPlayingEpisode] = useState<Episode | null>(null);
   const [m3u8Url, setM3u8Url] = useState<string | null>(null);
   const [playLoading, setPlayLoading] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+  // 流式搜索的取消控制器（换关键词/离开页面时中止上一轮）。
+  const searchAbortRef = useRef<AbortController | null>(null);
 
-  const showToast = useCallback((message: string) => {
-    setToast(message);
-    window.setTimeout(() => setToast(null), 3000);
+  const toastApi = useToast();
+  const showToast = useCallback(
+    (message: string, type?: "success" | "error" | "info") => {
+      toastApi.show(message, type);
+    },
+    [toastApi],
+  );
+
+  // 搜索历史（localStorage 持久化，最多 10 条）。
+  const [searchHistory, setSearchHistory] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem("kazumi-search-history");
+      return raw ? (JSON.parse(raw) as string[]) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [searchFocused, setSearchFocused] = useState(false);
+  const blurTimerRef = useRef<number | null>(null);
+
+  const recordSearch = (kw: string) => {
+    setSearchHistory((prev) => {
+      const next = [kw, ...prev.filter((h) => h !== kw)].slice(0, 10);
+      try {
+        localStorage.setItem("kazumi-search-history", JSON.stringify(next));
+      } catch {
+        // 忽略。
+      }
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    return () => {
+      if (blurTimerRef.current !== null) window.clearTimeout(blurTimerRef.current);
+      searchAbortRef.current?.abort();
+    };
   }, []);
 
   const playEpisode = useCallback(async (ep: Episode) => {
@@ -106,35 +155,87 @@ export default function KazumiModule({ onBack }: { onBack: () => void }) {
       const res = await rpc.api.kazumi.stream.$get({ query: { url: ep.url, rule: selected.rule } });
       const data = (await res.json()) as { m3u8Url?: string; error?: string };
       if (data.error !== undefined) {
-        showToast(`播放失败 ${data.error}`);
+        showToast(`播放失败 ${data.error}`, "error");
         setPlayingEpisode(null);
       } else if (data.m3u8Url !== undefined) {
         setM3u8Url(data.m3u8Url);
       }
     } catch {
-      showToast("播放失败");
+      showToast("播放失败", "error");
       setPlayingEpisode(null);
     } finally {
       setPlayLoading(false);
     }
   }, [selected, showToast]);
 
-  const doSearch = useCallback(async (kw?: string) => {
-    const keyword = (kw ?? query).trim();
-    if (keyword === "") return;
-    setQuery(keyword);
-    setSearching(true);
-    try {
-      const res = await rpc.api.kazumi.search.$get({ query: { q: keyword } });
-      const data = (await res.json()) as { items?: SearchItem[] };
-      setResults(data.items ?? []);
+  const doSearch = useCallback(
+    async (kw?: string) => {
+      const keyword = (kw ?? query).trim();
+      if (keyword === "") return;
+      // 取消上一轮未完成的流式搜索。
+      searchAbortRef.current?.abort();
+      setQuery(keyword);
+      recordSearch(keyword);
+      setSearching(true);
+      setHasSearched(true);
+      setResults([]);
       setView("result");
-    } catch {
-      showToast("搜索失败（可能被验证码拦截）");
-    } finally {
-      setSearching(false);
-    }
-  }, [query, showToast]);
+      const controller = new AbortController();
+      searchAbortRef.current = controller;
+      try {
+        // 流式搜索：SSE 逐批返回，搜到一个源的结果立即上屏，无需等全部渠道。
+        const res = await fetch(
+          `/api/kazumi/search/stream?q=${encodeURIComponent(keyword)}`,
+          { signal: controller.signal },
+        );
+        if (!res.ok || res.body === null) throw new Error("stream failed");
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        // SSE 按事件解析：event: batch / done / error。
+        const emit = (data: string) => {
+          if (data.startsWith("event: batch\n")) {
+            // 逐行解析：取 `data: <json>` 行（避免残留 event 行导致 JSON.parse 失败）。
+            const dataLine = data
+              .split("\n")
+              .find((line) => line.startsWith("data: "));
+            const jsonStr = dataLine?.slice("data: ".length) ?? "";
+            if (jsonStr === "") return;
+            try {
+              const parsed = JSON.parse(jsonStr) as { items?: SearchItem[] };
+              const items = parsed.items ?? [];
+              setResults((prev) => {
+                const seen = new Set(prev.map((i) => `${i.src}:${i.rule}`));
+                const fresh = items.filter((i) => !seen.has(`${i.src}:${i.rule}`));
+                return [...prev, ...fresh];
+              });
+            } catch {
+              // 忽略单批解析失败。
+            }
+          }
+        };
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const parts = buffer.split("\n\n");
+          buffer = parts.pop() ?? "";
+          for (const part of parts) {
+            if (part.trim() !== "") emit(part);
+          }
+        }
+      } catch (error) {
+        // 主动取消不提示；网络失败提示。
+        if ((error as Error)?.name !== "AbortError") {
+          showToast("搜索失败（可能被验证码拦截）", "error");
+        }
+      } finally {
+        setSearching(false);
+        searchAbortRef.current = null;
+      }
+    },
+    [query, showToast],
+  );
 
   const openItem = useCallback(async (item: SearchItem) => {
     setSelected(item);
@@ -147,7 +248,7 @@ export default function KazumiModule({ onBack }: { onBack: () => void }) {
       const data = (await res.json()) as { roads?: Road[] };
       setRoads(data.roads ?? []);
     } catch {
-      showToast("获取线路失败");
+      showToast("获取线路失败", "error");
     } finally {
       setLoadingRoads(false);
     }
@@ -161,7 +262,7 @@ export default function KazumiModule({ onBack }: { onBack: () => void }) {
       const data = (await res.json()) as { episodes?: Episode[] };
       setEpisodes(data.episodes ?? []);
     } catch {
-      showToast("获取集数失败");
+      showToast("获取集数失败", "error");
     }
   }, [selected, showToast]);
 
@@ -174,21 +275,58 @@ export default function KazumiModule({ onBack }: { onBack: () => void }) {
     <div className="flex min-h-0 flex-1 flex-col">
       <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border/60 bg-background/70 px-4 py-3 backdrop-blur-xl sm:px-6">
         <div className="flex items-center gap-2.5">
-          <button onClick={onBack} className="flex items-center gap-1 rounded-full px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-            <ChevronLeft className="h-4 w-4" />服务列表
-          </button>
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
             <Clapperboard className="h-4 w-4" />
           </div>
           <span className="text-base font-semibold">番剧</span>
         </div>
         <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="rounded-full" onClick={toggle} title="切换明暗主题">
+            {theme === "dark" ? <Sun /> : <Moon />}
+          </Button>
           <Button variant="ghost" size="sm" className="rounded-full" onClick={() => setShowDownloadHistory(true)}>
             <Download />下载历史
           </Button>
-          <Button variant="ghost" size="sm" className="rounded-full" onClick={() => { setView("rules"); setSelected(null); setResults([]); }}>
-            <ListChecks />规则管理
-          </Button>
+          <div className="relative">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-full"
+              onClick={() => setMenuOpen((v) => !v)}
+              aria-label="更多选项"
+            >
+              <MoreHorizontal className="h-5 w-5" />
+            </Button>
+            {menuOpen ? (
+              <>
+                <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
+                <div className="absolute right-0 top-full z-40 mt-1 w-52 rounded-xl border bg-popover p-1.5 shadow-lg">
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setView("rules");
+                      setSelected(null);
+                      setResults([]);
+                    }}
+                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted"
+                  >
+                    <ListChecks className="h-4 w-4 text-muted-foreground" />
+                    规则管理
+                  </button>
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setShowHelp(true);
+                    }}
+                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted"
+                  >
+                    <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                    使用说明
+                  </button>
+                </div>
+              </>
+            ) : null}
+          </div>
         </div>
       </header>
 
@@ -199,10 +337,15 @@ export default function KazumiModule({ onBack }: { onBack: () => void }) {
           <div className="flex-1 overflow-auto">
             <div className="mx-auto max-w-4xl px-4 py-10">
               <h1 className="mb-6 text-2xl font-bold">番剧搜索</h1>
-              <div className="mb-6 flex gap-2">
+              <div className="relative mb-6 flex gap-2">
                 <Input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
+                  onFocus={() => setSearchFocused(true)}
+                  onBlur={() => {
+                    if (blurTimerRef.current !== null) window.clearTimeout(blurTimerRef.current);
+                    blurTimerRef.current = window.setTimeout(() => setSearchFocused(false), 200);
+                  }}
                   placeholder="搜索番剧（打全部规则源）…"
                   className="rounded-full"
                   onKeyDown={(e) => { if (e.key === "Enter") void doSearch(); }}
@@ -210,24 +353,87 @@ export default function KazumiModule({ onBack }: { onBack: () => void }) {
                 <Button className="rounded-full" onClick={() => void doSearch()} disabled={searching}>
                   <Search />搜索
                 </Button>
-              </div>
-              {searching ? (
-                <p className="py-16 text-center text-sm text-muted-foreground">搜索中（遍历多个番剧源，约需 20 秒）…</p>
-              ) : results.length > 0 ? (
-                <ul className="divide-y divide-border/60 rounded-2xl border bg-card">
-                  {results.map((it, i) => (
-                    <li key={`${it.src}-${i}`}>
-                      <button onClick={() => void openItem(it)} className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted">
-                        <Play className="h-4 w-4 shrink-0 text-primary" />
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium">{it.name}</p>
-                          <p className="truncate text-xs text-muted-foreground">源：{it.rule}</p>
-                        </div>
-                        <ChevronLeft className="h-4 w-4 rotate-180 text-muted-foreground" />
+                {searchFocused && query.trim() === "" && searchHistory.length > 0 ? (
+                  <div className="absolute left-0 right-0 top-full z-20 mt-2 w-full rounded-xl border bg-popover p-2 shadow-lg">
+                    <div className="flex items-center justify-between px-3 py-1.5">
+                      <span className="text-xs font-medium text-muted-foreground">搜索历史</span>
+                      <button
+                        onClick={() => {
+                          
+                          setSearchHistory([]);
+                          try {
+                            localStorage.removeItem("kazumi-search-history");
+                          } catch {
+                            // 忽略。
+                          }
+                        }}
+                        className="text-xs text-muted-foreground transition-colors hover:text-destructive"
+                      >
+                        清空
                       </button>
-                    </li>
-                  ))}
-                </ul>
+                    </div>
+                    {searchHistory.map((h) => (
+                      <button
+                          key={h}
+                          onClick={() => void doSearch(h)}
+                          onMouseDown={(e) => e.preventDefault()}
+                        className="block w-full rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-muted"
+                      >
+                        <span className="flex items-center gap-2">
+                          <History className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span className="truncate">{h}</span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+              {searching && results.length === 0 ? (
+                <div className="py-16 text-center">
+                  <p className="text-sm text-muted-foreground">正在搜索（逐源返回结果，请稍候）…</p>
+                  <button
+                    onClick={() => searchAbortRef.current?.abort()}
+                    className="mt-3 rounded-full border px-4 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  >
+                    取消搜索
+                  </button>
+                </div>
+              ) : results.length > 0 ? (
+                <>
+                  <div className="mb-3 flex items-center justify-between">
+                    <p className="text-xs text-muted-foreground">
+                      已找到 {results.length} 条结果{searching ? "，继续搜索中…" : ""}
+                    </p>
+                    {searching ? (
+                      <button
+                        onClick={() => searchAbortRef.current?.abort()}
+                        className="rounded-full border px-3 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      >
+                        停止
+                      </button>
+                    ) : null}
+                  </div>
+                  <ul className="divide-y divide-border/60 rounded-2xl border bg-card">
+                    {results.map((it, i) => (
+                      <li key={`${it.src}-${it.rule}-${i}`}>
+                        <button onClick={() => void openItem(it)} className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted">
+                          <Play className="h-4 w-4 shrink-0 text-primary" />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium">{it.name}</p>
+                            <p className="truncate text-xs text-muted-foreground">源：{it.rule}</p>
+                          </div>
+                          <ChevronLeft className="h-4 w-4 rotate-180 text-muted-foreground" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : hasSearched ? (
+                <EmptyState
+                  icon={<Search className="h-6 w-6" />}
+                  title={`没有找到「${query.trim()}」`}
+                  description="换个关键词试试，或点击下方热门番剧直接开始"
+                />
               ) : (
                 <div className="space-y-8">
                   <div>
@@ -265,7 +471,7 @@ export default function KazumiModule({ onBack }: { onBack: () => void }) {
         ) : (
           <div className="flex-1 overflow-auto">
             <div className="mx-auto max-w-4xl px-4 py-6">
-              <button onClick={() => { setSelected(null); setResults([]); }} className="mb-4 flex items-center gap-1 rounded-full px-2 py-1 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">
+              <button onClick={() => { setSelected(null); setResults([]); setHasSearched(false); }} className="mb-4 flex items-center gap-1 rounded-full px-2 py-1 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">
                 <ChevronLeft className="h-4 w-4" />返回搜索
               </button>
               <h1 className="mb-4 text-xl font-bold">{selected.name}</h1>
@@ -274,7 +480,7 @@ export default function KazumiModule({ onBack }: { onBack: () => void }) {
               {loadingRoads ? (
                 <p className="py-10 text-center text-sm text-muted-foreground">加载线路中…</p>
               ) : roads.length === 0 ? (
-                <p className="py-10 text-center text-sm text-muted-foreground">无可用线路</p>
+                <EmptyState icon={<ListChecks className="h-6 w-6" />} title="无可用线路" description="该视频源暂时没有可用线路，试试其他搜索结果" />
               ) : (
                 <>
                   {/* 线路选择 */}
@@ -317,7 +523,7 @@ export default function KazumiModule({ onBack }: { onBack: () => void }) {
                         </button>
                       </li>
                     ))}
-                    {episodes.length === 0 ? <li className="py-10 text-center text-sm text-muted-foreground">暂无集数</li> : null}
+                    {episodes.length === 0 ? <li><EmptyState icon={<Play className="h-6 w-6" />} title="暂无集数" description="该线路暂未解析出剧集" /></li> : null}
                   </ul>
                 </>
               )}
@@ -325,12 +531,6 @@ export default function KazumiModule({ onBack }: { onBack: () => void }) {
           </div>
         )}
       </div>
-
-      {toast !== null ? (
-        <div className="fixed left-1/2 top-16 z-40 -translate-x-1/2 animate-fade-in rounded-full bg-foreground px-4 py-2 text-sm text-background shadow-lg">
-          {toast}
-        </div>
-      ) : null}
 
       {downloadTarget !== null && selected !== null ? (
         <KazumiDownloadDialog
@@ -343,10 +543,10 @@ export default function KazumiModule({ onBack }: { onBack: () => void }) {
                 json: { rule: selected.rule, name: downloadTarget.name, url: downloadTarget.url, ...(path.trim() !== "" ? { path: path.trim() } : {}) },
               });
               const data = (await res.json()) as { filePath?: string; error?: string };
-              if (data.error !== undefined) showToast(`下载失败 ${data.error}`);
-              else showToast("已下载到 NAS");
+              if (data.error !== undefined) showToast(`下载失败 ${data.error}`, "error");
+              else showToast("已下载到 NAS", "success");
             } catch {
-              showToast("下载失败");
+              showToast("下载失败", "error");
             } finally {
               setDownloading(null);
             }
@@ -357,11 +557,14 @@ export default function KazumiModule({ onBack }: { onBack: () => void }) {
 
       {showDownloadHistory ? <DownloadHistoryPanel onClose={() => setShowDownloadHistory(false)} platform="kazumi" /> : null}
 
+      {showHelp ? <KazumiHelp onClose={() => setShowHelp(false)} /> : null}
+
       {playingEpisode !== null ? (
         <KazumiPlayer
           episode={playingEpisode}
           m3u8Url={m3u8Url}
           loading={playLoading}
+          active={active}
           onClose={() => { setPlayingEpisode(null); setM3u8Url(null); }}
         />
       ) : null}
@@ -369,10 +572,68 @@ export default function KazumiModule({ onBack }: { onBack: () => void }) {
   );
 }
 
+/** 番剧模块使用说明（首次引导 + 随时可查）。 */
+function KazumiHelp(props: { onClose: () => void }) {
+  const { onClose } = props;
+  useEscToClose(onClose);
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50" onClick={onClose}>
+      <div
+        className="w-full max-w-md animate-fade-in rounded-2xl bg-card p-6 shadow-lg"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-bold">番剧使用说明</h2>
+          <button
+            onClick={onClose}
+            className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            aria-label="关闭"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="space-y-3 text-sm">
+          <div className="flex gap-2.5">
+            <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">1</span>
+            <p className="text-muted-foreground"><span className="font-medium text-foreground">搜索番剧</span>：在搜索框输入番剧名，会同时查询全部已配置的视频源（约 20 秒）。</p>
+          </div>
+          <div className="flex gap-2.5">
+            <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">2</span>
+            <p className="text-muted-foreground"><span className="font-medium text-foreground">选择线路与集数</span>：每个结果可能有多个「线路」（不同片源），切换线路后选择要看的集数。</p>
+          </div>
+          <div className="flex gap-2.5">
+            <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">3</span>
+            <p className="text-muted-foreground"><span className="font-medium text-foreground">播放与下载</span>：点集数直接在线播放；下载会保存到 NAS 的下载目录。</p>
+          </div>
+          <div className="flex gap-2.5">
+            <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">4</span>
+            <p className="text-muted-foreground"><span className="font-medium text-foreground">规则管理</span>：番剧内容来自「规则」文件（在右上角更多菜单里），通常已预装 85 个常用源，无需手动配置。</p>
+          </div>
+        </div>
+        <Button size="sm" className="mt-5 w-full rounded-full" onClick={onClose}>
+          知道了
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 /** 番剧在线播放器（hls.js 播放代理 m3u8）。 */
-function KazumiPlayer(props: { episode: Episode; m3u8Url: string | null; loading: boolean; onClose: () => void }) {
-  const { episode, m3u8Url, loading, onClose } = props;
+function KazumiPlayer(props: {
+  episode: Episode;
+  m3u8Url: string | null;
+  loading: boolean;
+  active?: boolean;
+  onClose: () => void;
+}) {
+  const { episode, m3u8Url, loading, active = true, onClose } = props;
   const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  // 模块失活时暂停播放，避免切走后仍在后台出声。
+  useEffect(() => {
+    if (!active) videoRef.current?.pause();
+  }, [active]);
+
   useEffect(() => {
     const video = videoRef.current;
     if (video === null || m3u8Url === null) return;
@@ -386,12 +647,21 @@ function KazumiPlayer(props: { episode: Episode; m3u8Url: string | null; loading
       video.src = m3u8Url;
     }
   }, [m3u8Url]);
+
+  // 双击进入/退出全屏（单击交给原生 controls，避免双重触发）。
+  const handleVideoDoubleClick = () => {
+    const el = videoRef.current;
+    if (el === null) return;
+    if (document.fullscreenElement !== null) void document.exitFullscreen().catch(() => {});
+    else void el.requestFullscreen().catch(() => {});
+  };
+
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/80" onClick={onClose}>
       <div className="w-full max-w-3xl px-4" onClick={(e) => e.stopPropagation()}>
         <div className="mb-3 flex items-center justify-between text-white">
           <p className="truncate text-sm font-medium">{episode.name}</p>
-          <button onClick={onClose} className="rounded-full p-2 transition-colors hover:bg-white/10">
+          <button onClick={onClose} className="rounded-full p-2 transition-colors hover:bg-white/10" aria-label="关闭播放器">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -399,9 +669,17 @@ function KazumiPlayer(props: { episode: Episode; m3u8Url: string | null; loading
           {loading ? (
             <div className="flex h-full w-full items-center justify-center text-sm text-white/70">解析播放地址中…</div>
           ) : (
-            <video ref={videoRef} controls autoPlay playsInline className="h-full w-full" />
+            <video
+              ref={videoRef}
+              controls
+              autoPlay
+              playsInline
+              onDoubleClick={handleVideoDoubleClick}
+              className="h-full w-full"
+            />
           )}
         </div>
+        <p className="mt-2 text-center text-xs text-white/50">双击全屏/退出全屏</p>
       </div>
     </div>
   );
@@ -409,11 +687,12 @@ function KazumiPlayer(props: { episode: Episode; m3u8Url: string | null; loading
 
 // ---------- 规则管理 ----------
 
-function RulesView(props: { onBack: () => void; onToast: (m: string) => void }) {
+function RulesView(props: { onBack: () => void; onToast: (m: string, type?: "success" | "error" | "info") => void }) {
   const { onBack, onToast } = props;
   const [rules, setRules] = useState<RuleItem[]>([]);
   const [jsonText, setJsonText] = useState("");
   const [adding, setAdding] = useState(false);
+  const [removingRule, setRemovingRule] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -421,7 +700,7 @@ function RulesView(props: { onBack: () => void; onToast: (m: string) => void }) 
       const data = (await res.json()) as { rules?: string[] };
       setRules((data.rules ?? []).map((name) => ({ name })));
     } catch {
-      onToast("读取规则失败");
+      onToast("读取规则失败", "error");
     }
   }, [onToast]);
 
@@ -432,31 +711,31 @@ function RulesView(props: { onBack: () => void; onToast: (m: string) => void }) 
     try {
       json = JSON.parse(jsonText);
     } catch {
-      onToast("JSON 解析失败");
+      onToast("JSON 解析失败", "error");
       return;
     }
     try {
       const res = await rpc.api.kazumi.rules.add.$post({ json: { json } });
       const data = (await res.json()) as { ok?: boolean; name?: string; error?: string };
-      if (data.error !== undefined) onToast(`添加失败：${data.error}`);
+      if (data.error !== undefined) onToast(`添加失败：${data.error}`, "error");
       else {
-        onToast(`已添加规则 ${data.name ?? ""}`);
+        onToast(`已添加规则 ${data.name ?? ""}`, "success");
         setJsonText("");
         setAdding(false);
         await load();
       }
     } catch {
-      onToast("添加失败");
+      onToast("添加失败", "error");
     }
   };
 
   const removeRule = async (name: string) => {
     try {
       await rpc.api.kazumi.rules.remove.$post({ json: { name } });
-      onToast("已删除");
+      onToast("已删除", "success");
       await load();
     } catch {
-      onToast("删除失败");
+      onToast("删除失败", "error");
     }
   };
 
@@ -500,13 +779,23 @@ function RulesView(props: { onBack: () => void; onToast: (m: string) => void }) 
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{r.name}</p>
               </div>
-              <button onClick={() => void removeRule(r.name)} className="shrink-0 rounded-full p-2 text-muted-foreground hover:text-destructive">
+              <button onClick={() => setRemovingRule(r.name)} className="shrink-0 rounded-full p-2 text-muted-foreground hover:text-destructive">
                 <Trash2 className="h-4 w-4" />
               </button>
             </li>
           ))}
-          {rules.length === 0 ? <li className="py-10 text-center text-sm text-muted-foreground">暂无规则，请添加番剧源规则</li> : null}
+          {rules.length === 0 ? <li><EmptyState icon={<ListChecks className="h-6 w-6" />} title="暂无规则" description="点击右上角「添加规则」粘贴 Kazumi 规则 JSON 开始使用" /></li> : null}
         </ul>
+        {removingRule !== null ? (
+          <ConfirmDialog
+            title="删除规则"
+            description={`确定删除规则「${removingRule}」？删除后该番剧源将无法使用。`}
+            confirmLabel="删除"
+            destructive
+            onConfirm={() => void removeRule(removingRule)}
+            onClose={() => setRemovingRule(null)}
+          />
+        ) : null}
       </div>
     </div>
   );
@@ -517,6 +806,7 @@ function RulesView(props: { onBack: () => void; onToast: (m: string) => void }) 
 function KazumiDownloadDialog(props: { episode: Episode; rule: string; onDownload: (path: string) => void; onClose: () => void }) {
   const { episode, rule, onDownload, onClose } = props;
   const [path, setPath] = useState("");
+  useEscToClose(onClose);
   const [dirs, setDirs] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");

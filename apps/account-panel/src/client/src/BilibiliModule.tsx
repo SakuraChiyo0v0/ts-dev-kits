@@ -9,6 +9,10 @@ import {
   History,
   ListVideo,
   LogOut,
+  Maximize,
+  MessageSquare,
+  Minimize,
+  Moon,
   Pause,
   Play,
   QrCode,
@@ -17,6 +21,7 @@ import {
   SkipBack,
   SkipForward,
   Star,
+  Sun,
   Trash2,
   Volume2,
   VolumeX,
@@ -24,17 +29,24 @@ import {
 } from "lucide-react";
 import { rpc } from "./lib/rpc";
 import DownloadHistoryPanel from "./DownloadHistoryPanel";
+import { DanmakuOverlay, type DanmakuItem } from "./DanmakuOverlay";
 import { cn } from "@/lib/utils";
+import { useTheme } from "./lib/use-theme";
+import { useToast } from "@/components/ui/toast";
+import { useEscToClose } from "@/lib/use-esc";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { EmptyState } from "@/components/ui/empty-state";
 
 // ---------- 类型 ----------
 
 interface BiliAccount {
   loggedIn: boolean;
+  error?: string;
   account?: {
     mid: number;
     nickname: string;
@@ -134,7 +146,8 @@ function coverGradient(seed: string): string {
 
 // ---------- 主组件 ----------
 
-export default function BilibiliModule({ onBack }: { onBack: () => void }) {
+export default function BilibiliModule({ onBack, active = true }: { onBack: () => void; active?: boolean }) {
+  const { theme, toggle } = useTheme();
   const [account, setAccount] = useState<BiliAccount | null>(null);
   const [login, setLogin] = useState<LoginView | null>(null);
   const [view, setView] = useState<"home" | "history" | "watchLater" | "fav" | "bangumi" | "popular">("home");
@@ -143,24 +156,32 @@ export default function BilibiliModule({ onBack }: { onBack: () => void }) {
   const [searching, setSearching] = useState(false);
   const [detail, setDetail] = useState<BiliVideoDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
   const [downloadTarget, setDownloadTarget] = useState<BiliVideoDetail | null>(null);
   const [showDownloadHistory, setShowDownloadHistory] = useState(false);
   const loginEsRef = useRef<EventSource | null>(null);
-  const toastTimer = useRef<number | null>(null);
+  // 由 VideoDetailView 注册的暂停回调：模块失活时暂停正在播放的视频/音频。
+  const pausePlaybackRef = useRef<(() => void) | null>(null);
 
-  const showToast = useCallback((message: string) => {
-    setToast(message);
-    if (toastTimer.current !== null) clearTimeout(toastTimer.current);
-    toastTimer.current = window.setTimeout(() => setToast(null), 3000);
-  }, []);
+  // 模块失活（切到其他模块）时暂停 B站播放，避免后台出声。
+  useEffect(() => {
+    if (!active) pausePlaybackRef.current?.();
+  }, [active]);
+
+  const toastApi = useToast();
+  const showToast = useCallback(
+    (message: string, type?: "success" | "error" | "info") => {
+      toastApi.show(message, type);
+    },
+    [toastApi],
+  );
 
   const refreshAccount = useCallback(async () => {
     try {
       const res = await rpc.api.bilibili.account.$get();
       setAccount((await res.json()) as BiliAccount);
     } catch {
-      setAccount({ loggedIn: false });
+      // 后端不可达：标记错误（绑定页展示「连接失败」而非误导为未登录）。
+      setAccount({ loggedIn: false, error: "无法连接后端服务，请检查服务是否已启动" });
     }
   }, []);
 
@@ -215,7 +236,7 @@ export default function BilibiliModule({ onBack }: { onBack: () => void }) {
       const data = (await res.json()) as { videos?: BiliVideo[] };
       setResults(data.videos ?? []);
     } catch {
-      showToast("搜索失败");
+      showToast("搜索失败", "error");
     } finally {
       setSearching(false);
     }
@@ -236,7 +257,7 @@ export default function BilibiliModule({ onBack }: { onBack: () => void }) {
         });
       }
     } catch {
-      showToast("获取视频失败");
+      showToast("获取视频失败", "error");
     } finally {
       setDetailLoading(false);
     }
@@ -245,10 +266,10 @@ export default function BilibiliModule({ onBack }: { onBack: () => void }) {
   const logout = useCallback(async () => {
     try {
       await rpc.api.bilibili.logout.$post();
-      showToast("已退出登录");
+      showToast("已退出登录", "success");
       await refreshAccount();
     } catch {
-      showToast("退出失败");
+      showToast("退出失败", "error");
     }
   }, [refreshAccount, showToast]);
 
@@ -258,18 +279,30 @@ export default function BilibiliModule({ onBack }: { onBack: () => void }) {
       <div className="flex min-h-0 flex-1 flex-col">
         <header className="sticky top-0 z-10 flex items-center gap-2.5 border-b border-border/60 bg-background/70 px-4 py-3 backdrop-blur-xl">
           <button onClick={onBack} className="flex items-center gap-1 rounded-full px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-            <ChevronLeft className="h-4 w-4" />服务列表
+            <ChevronLeft className="h-4 w-4" />首页
           </button>
           <span className="text-base font-semibold">哔哩哔哩</span>
         </header>
         <div className="flex flex-1 items-center justify-center p-6">
           <Card className="w-full max-w-sm border-0 bg-card/70 shadow-lg backdrop-blur-xl">
             <CardHeader className="items-center text-center">
-              <CardTitle>绑定哔哩哔哩</CardTitle>
-              <CardDescription>扫码登录 B 站，登录态同步到统一账号</CardDescription>
+              <CardTitle>{account?.error !== undefined ? "连接失败" : "绑定哔哩哔哩"}</CardTitle>
+              <CardDescription>
+                {account?.error !== undefined
+                  ? "无法连接后端服务，请检查服务是否已启动"
+                  : "扫码登录 B 站，登录态同步到统一账号"}
+              </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col items-center gap-4">
-              {login === null ? (
+              {account?.error !== undefined ? (
+                <>
+                  <p className="text-sm text-destructive">{account.error}</p>
+                  <Button size="lg" className="rounded-full" onClick={() => void refreshAccount()}>
+                    <RefreshCw />
+                    重新连接
+                  </Button>
+                </>
+              ) : login === null ? (
                 <Button size="lg" className="rounded-full" onClick={() => void startLogin()}>
                   <QrCode />扫码绑定 B 站
                 </Button>
@@ -286,7 +319,7 @@ export default function BilibiliModule({ onBack }: { onBack: () => void }) {
                   </Button>
                 </>
               )}
-              <Button variant="ghost" size="sm" className="rounded-full" onClick={onBack}>返回服务列表</Button>
+              <Button variant="ghost" size="sm" className="rounded-full" onClick={onBack}>返回首页</Button>
             </CardContent>
           </Card>
         </div>
@@ -299,15 +332,15 @@ export default function BilibiliModule({ onBack }: { onBack: () => void }) {
     <div className="flex min-h-0 flex-1 flex-col">
       <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border/60 bg-background/70 px-4 py-3 backdrop-blur-xl sm:px-6">
         <div className="flex items-center gap-2.5">
-          <button onClick={onBack} className="flex items-center gap-1 rounded-full px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-            <ChevronLeft className="h-4 w-4" />服务列表
-          </button>
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
             <ListVideo className="h-4 w-4" />
           </div>
           <span className="text-base font-semibold">哔哩哔哩</span>
         </div>
         <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="rounded-full" onClick={toggle} title="切换明暗主题">
+            {theme === "dark" ? <Sun /> : <Moon />}
+          </Button>
           <Button variant="ghost" size="sm" className="rounded-full" onClick={() => void refreshAccount()}>
             <RefreshCw />刷新
           </Button>
@@ -329,6 +362,9 @@ export default function BilibiliModule({ onBack }: { onBack: () => void }) {
             onBack={() => setDetail(null)}
             onToast={showToast}
             onDownload={() => setDownloadTarget(detail)}
+            registerPause={(fn) => {
+              pausePlaybackRef.current = fn;
+            }}
           />
         ) : view === "history" ? (
           <HistoryView onBack={() => setView("home")} onToast={showToast} />
@@ -358,12 +394,6 @@ export default function BilibiliModule({ onBack }: { onBack: () => void }) {
         )}
       </div>
 
-      {toast !== null ? (
-        <div className="fixed left-1/2 top-16 z-40 -translate-x-1/2 animate-fade-in rounded-full bg-foreground px-4 py-2 text-sm text-background shadow-lg">
-          {toast}
-        </div>
-      ) : null}
-
       {downloadTarget !== null ? (
         <DownloadDialog
           video={downloadTarget}
@@ -378,14 +408,18 @@ export default function BilibiliModule({ onBack }: { onBack: () => void }) {
 }
 
 /** 下载到 NAS。 */
-async function downloadToNas(video: BiliVideoDetail, path: string, toast: (m: string) => void): Promise<void> {
+async function downloadToNas(
+  video: BiliVideoDetail,
+  path: string,
+  toast: (m: string, type?: "success" | "error" | "info") => void,
+): Promise<void> {
   try {
     const res = await rpc.api.bilibili.download.$post({
       json: { bvid: video.bvid, ...(video.cid !== undefined ? { cid: video.cid } : {}), ...(path.trim() !== "" ? { path: path.trim() } : {}) },
     });
     const data = (await res.json()) as { filePath?: string; error?: string };
-    if (data.error !== undefined) toast(`下载失败 ${data.error}`);
-    else toast("已下载到 NAS");
+    if (data.error !== undefined) toast(`下载失败 ${data.error}`, "error");
+    else toast("已下载到 NAS", "success");
   } catch {
     toast("下载失败");
   }
@@ -410,6 +444,40 @@ function HomeView(props: {
   const { account, query, setQuery, searching, results, onSearch, onOpenVideo, onOpenHistory, onOpenWatchLater, onOpenFav, onOpenBangumi, onOpenPopular } = props;
   const info = account?.account;
   const [avatarError, setAvatarError] = useState(false);
+  // 搜索历史（localStorage 持久化，最多 10 条）。
+  const [searchHistory, setSearchHistory] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem("bili-search-history");
+      return raw ? (JSON.parse(raw) as string[]) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [searchFocused, setSearchFocused] = useState(false);
+  const blurTimerRef = useRef<number | null>(null);
+
+  const submitSearch = (kw: string) => {
+    const q = kw.trim();
+    if (q === "") return;
+    setQuery(q);
+    setSearchHistory((prev) => {
+      const next = [q, ...prev.filter((h) => h !== q)].slice(0, 10);
+      try {
+        localStorage.setItem("bili-search-history", JSON.stringify(next));
+      } catch {
+        // 忽略。
+      }
+      return next;
+    });
+    onSearch();
+  };
+
+  useEffect(() => {
+    return () => {
+      if (blurTimerRef.current !== null) window.clearTimeout(blurTimerRef.current);
+    };
+  }, []);
+
   return (
     <div className="flex-1 overflow-auto">
       <div className="mx-auto max-w-6xl px-4 py-6 sm:px-8 sm:py-10">
@@ -431,17 +499,56 @@ function HomeView(props: {
           </div>
         </div>
 
-        <div className="mb-6 flex gap-2">
+        <div className="relative mb-6 flex gap-2">
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => {
+              if (blurTimerRef.current !== null) window.clearTimeout(blurTimerRef.current);
+              blurTimerRef.current = window.setTimeout(() => setSearchFocused(false), 200);
+            }}
             placeholder="搜索 B 站视频…"
             className="rounded-full"
-            onKeyDown={(e) => { if (e.key === "Enter") onSearch(); }}
+            onKeyDown={(e) => { if (e.key === "Enter") submitSearch(query); }}
           />
-          <Button className="rounded-full" onClick={onSearch} disabled={searching}>
+          <Button className="rounded-full" onClick={() => submitSearch(query)} disabled={searching}>
             <Search />搜索
           </Button>
+          {searchFocused && query.trim() === "" && searchHistory.length > 0 ? (
+            <div className="absolute left-0 right-0 top-full z-20 mt-2 w-full rounded-xl border bg-popover p-2 shadow-lg">
+              <div className="flex items-center justify-between px-3 py-1.5">
+                <span className="text-xs font-medium text-muted-foreground">搜索历史</span>
+                <button
+                  onClick={() => {
+                    
+                    setSearchHistory([]);
+                    try {
+                      localStorage.removeItem("bili-search-history");
+                    } catch {
+                      // 忽略。
+                    }
+                  }}
+                  className="text-xs text-muted-foreground transition-colors hover:text-destructive"
+                >
+                  清空
+                </button>
+              </div>
+              {searchHistory.map((h) => (
+                <button
+                          key={h}
+                          onClick={() => submitSearch(h)}
+                          onMouseDown={(e) => e.preventDefault()}
+                  className="block w-full rounded-lg px-3 py-2 text-left text-sm transition-colors hover:bg-muted"
+                >
+                  <span className="flex items-center gap-2">
+                    <History className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="truncate">{h}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : null}
         </div>
 
         <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
@@ -453,11 +560,14 @@ function HomeView(props: {
         </div>
 
         {results.length > 0 ? (
-          <VideoGrid videos={results} onOpen={onOpenVideo} />
+          <>
+            <p className="mb-3 text-xs text-muted-foreground">共 {results.length} 条结果</p>
+            <VideoGrid videos={results} onOpen={onOpenVideo} />
+          </>
         ) : searching ? (
           <p className="py-16 text-center text-sm text-muted-foreground">搜索中…</p>
         ) : (
-          <p className="py-16 text-center text-sm text-muted-foreground">输入关键词搜索 B 站视频</p>
+          <EmptyState icon={<Search className="h-6 w-6" />} title="搜索 B 站视频" description="输入关键词，搜索全站投稿、番剧与影视内容" />
         )}
       </div>
     </div>
@@ -506,39 +616,91 @@ function VideoGrid(props: { videos: BiliVideo[]; onOpen: (bvid: string) => void 
 function VideoDetailView(props: {
   detail: BiliVideoDetail;
   onBack: () => void;
-  onToast: (m: string) => void;
+  onToast: (m: string, type?: "success" | "error" | "info") => void;
   onDownload: () => void;
+  registerPause?: (fn: () => void) => void;
 }) {
-  const { detail, onBack, onToast, onDownload } = props;
+  const { detail, onBack, onToast, onDownload, registerPause } = props;
   const [stream, setStream] = useState<StreamInfo | null>(null);
   const [streamLoading, setStreamLoading] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [muted, setMuted] = useState(false);
+  const [volume, setVolume] = useState(1);
+  const [rate, setRate] = useState(1);
+  const [fullscreen, setFullscreen] = useState(false);
   const [selectedCid, setSelectedCid] = useState<number | undefined>(detail.cid);
   const [showFavAdd, setShowFavAdd] = useState(false);
+  const [danmakuItems, setDanmakuItems] = useState<DanmakuItem[]>([]);
+  const [danmakuOn, setDanmakuOn] = useState(true);
+  const [danmakuLoading, setDanmakuLoading] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const playerWrapRef = useRef<HTMLDivElement | null>(null);
   const pages = detail.pages ?? [];
 
-  const play = useCallback(async (cid?: number) => {
-    setStream(null);
-    setStreamLoading(true);
-    try {
-      const res = await rpc.api.bilibili.stream.$get({
-        query: { bvid: detail.bvid, ...(cid !== undefined ? { cid: String(cid) } : {}) },
-      });
-      const data = (await res.json()) as StreamInfo;
-      setStream(data);
-      setCurrentTime(0);
-      setDuration((data.durationMs ?? 0) / 1000);
-    } catch {
-      onToast("取流失败");
-    } finally {
-      setStreamLoading(false);
-    }
-  }, [detail.bvid, onToast]);
+  // 向模块注册「暂停播放」回调：切走模块时由父组件调用，避免后台出声。
+  useEffect(() => {
+    if (registerPause === undefined) return;
+    registerPause(() => {
+      videoRef.current?.pause();
+      audioRef.current?.pause();
+    });
+    return () => {
+      registerPause(() => {});
+    };
+  }, [registerPause]);
+
+  // 按 cid 分段拉取弹幕（每段 6 分钟，最多 20 段覆盖 2 小时）。
+  const loadDanmaku = useCallback(
+    async (cid: number) => {
+      setDanmakuItems([]);
+      setDanmakuLoading(true);
+      try {
+        const all: DanmakuItem[] = [];
+        for (let segment = 0; segment < 20; segment += 1) {
+          const res = await rpc.api.bilibili.danmaku.$get({
+            query: { cid: String(cid), segment: String(segment) },
+          });
+          const data = (await res.json()) as { items?: DanmakuItem[] };
+          const batch = data.items ?? [];
+          if (batch.length === 0) break;
+          all.push(...batch);
+        }
+        setDanmakuItems(all.sort((a, b) => a.time - b.time));
+      } catch {
+        // 弹幕加载失败不阻塞播放，静默降级。
+      } finally {
+        setDanmakuLoading(false);
+      }
+    },
+    [],
+  );
+
+  const play = useCallback(
+    async (cid?: number) => {
+      setStream(null);
+      setStreamLoading(true);
+      try {
+        const res = await rpc.api.bilibili.stream.$get({
+          query: { bvid: detail.bvid, ...(cid !== undefined ? { cid: String(cid) } : {}) },
+        });
+        const data = (await res.json()) as StreamInfo;
+        setStream(data);
+        setCurrentTime(0);
+        setDuration((data.durationMs ?? 0) / 1000);
+        // 播放的同时拉取对应分P弹幕。
+        const targetCid = cid ?? detail.cid;
+        if (targetCid !== undefined) void loadDanmaku(targetCid);
+      } catch {
+        onToast("取流失败", "error");
+      } finally {
+        setStreamLoading(false);
+      }
+    },
+    [detail.bvid, detail.cid, loadDanmaku, onToast],
+  );
 
   // 视频/音频元素就绪后同步播放。
   useEffect(() => {
@@ -569,10 +731,49 @@ function VideoDetailView(props: {
   const toggleMute = useCallback(() => {
     setMuted((m) => {
       const next = !m;
-      if (videoRef.current !== null) videoRef.current.volume = next ? 0 : 1;
-      if (audioRef.current !== null) audioRef.current.volume = next ? 0 : 1;
+      const v = next ? 0 : volume;
+      if (videoRef.current !== null) videoRef.current.volume = v;
+      if (audioRef.current !== null) audioRef.current.volume = v;
       return next;
     });
+  }, [volume]);
+
+  const changeVolume = useCallback(
+    (v: number) => {
+      setVolume(v);
+      if (v > 0) setMuted(false);
+      if (videoRef.current !== null) videoRef.current.volume = v;
+      if (audioRef.current !== null) audioRef.current.volume = v;
+    },
+    [],
+  );
+
+  const cycleRate = useCallback(() => {
+    setRate((r) => {
+      const rates = [0.5, 0.75, 1, 1.25, 1.5, 2];
+      const idx = rates.indexOf(r);
+      const next = rates[(idx + 1) % rates.length] ?? 1;
+      if (videoRef.current !== null) videoRef.current.playbackRate = next;
+      if (audioRef.current !== null) audioRef.current.playbackRate = next;
+      return next;
+    });
+  }, []);
+
+  const toggleFullscreen = useCallback(() => {
+    // 全屏「视频 + 控制条」的整体容器，保证全屏下仍可操作。
+    const el = playerWrapRef.current;
+    if (el === null) return;
+    if (document.fullscreenElement !== null) {
+      void document.exitFullscreen().catch(() => {});
+    } else {
+      void el.requestFullscreen().catch(() => {});
+    }
+  }, []);
+
+  useEffect(() => {
+    const onChange = () => setFullscreen(document.fullscreenElement !== null);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
   }, []);
 
   const seekBy = useCallback((delta: number) => {
@@ -593,65 +794,124 @@ function VideoDetailView(props: {
           <ChevronLeft className="h-4 w-4" />返回
         </button>
 
-        <div className="relative mb-4 aspect-video w-full overflow-hidden rounded-2xl bg-black">
-          <video
-            ref={videoRef}
-            className="h-full w-full"
-            playsInline
-            onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
-            onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
-            onPlay={() => setPlaying(true)}
-            onPause={() => setPlaying(false)}
-            onEnded={() => setPlaying(false)}
-            onError={() => setPlaying(false)}
-          />
-          <audio ref={audioRef} className="hidden" />
-          {stream === null && !streamLoading ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-              {detail.cover ? <img src={detail.cover} alt="" className="absolute inset-0 h-full w-full object-cover opacity-40" /> : null}
-              <button onClick={() => void play(selectedCid)} className="relative z-10 rounded-full bg-white/90 p-4 text-black shadow-lg">
-                <Play className="h-8 w-8" />
+        <div
+          ref={playerWrapRef}
+          className={cn(
+            "relative mb-4 overflow-hidden rounded-2xl bg-black",
+            // 全屏时容器撑满视口，视频居中按 16:9 适配，控制条叠加在底部。
+            fullscreen ? "flex h-screen w-screen flex-col" : "aspect-video w-full",
+          )}
+        >
+          <div className={cn("relative w-full", fullscreen ? "flex-1 bg-black" : "aspect-video")}>
+            <video
+              ref={videoRef}
+              className="h-full w-full"
+              playsInline
+              onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
+              onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
+              onPlay={() => setPlaying(true)}
+              onPause={() => setPlaying(false)}
+              onEnded={() => setPlaying(false)}
+              onError={() => setPlaying(false)}
+            />
+            <audio ref={audioRef} className="hidden" />
+            {/* 弹幕层（仅在有流且开启时渲染，覆盖视频上方，不拦截点击）。 */}
+            {stream !== null && danmakuOn && danmakuItems.length > 0 ? (
+              <DanmakuOverlay items={danmakuItems} currentTime={currentTime} paused={!playing} />
+            ) : null}
+            {stream !== null && danmakuOn && danmakuLoading ? (
+              <div className="pointer-events-none absolute right-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-xs text-white/80">
+                弹幕加载中…
+              </div>
+            ) : null}
+            {stream === null && !streamLoading ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+                {detail.cover ? <img src={detail.cover} alt="" className="absolute inset-0 h-full w-full object-cover opacity-40" /> : null}
+                <button onClick={() => void play(selectedCid)} className="relative z-10 rounded-full bg-white/90 p-4 text-black shadow-lg">
+                  <Play className="h-8 w-8" />
+                </button>
+                <span className="relative z-10 text-sm text-white/80">点击播放</span>
+              </div>
+            ) : null}
+            {streamLoading ? (
+              <div className="absolute inset-0 flex items-center justify-center text-sm text-white/70">取流中…</div>
+            ) : null}
+          </div>
+
+          {stream !== null ? (
+            <div
+              className={cn(
+                "flex items-center gap-3",
+                fullscreen
+                  ? "absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/80 to-transparent p-4 text-white"
+                  : "bg-card p-3",
+              )}
+            >
+              <button onClick={togglePlay} className={cn("rounded-full p-2", fullscreen ? "bg-white/20 text-white" : "bg-primary text-primary-foreground")}>
+                {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
               </button>
-              <span className="relative z-10 text-sm text-white/80">点击播放</span>
+              <button onClick={() => void seekBy(-10)} className="rounded-full p-2 text-muted-foreground hover:text-foreground">
+                <SkipBack className="h-4 w-4" />
+              </button>
+              <button onClick={() => void seekBy(10)} className="rounded-full p-2 text-muted-foreground hover:text-foreground">
+                <SkipForward className="h-4 w-4" />
+              </button>
+              <button onClick={toggleMute} className="rounded-full p-2 text-muted-foreground hover:text-foreground">
+                {muted || volume === 0 ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+              </button>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.01}
+                value={muted ? 0 : volume}
+                onChange={(e) => changeVolume(Number(e.target.value))}
+                className="w-16 accent-primary"
+                aria-label="音量"
+              />
+              <button
+                onClick={() => setDanmakuOn((v) => !v)}
+                className={cn(
+                  "rounded-full p-2 transition-colors",
+                  danmakuOn ? (fullscreen ? "bg-white/20 text-white" : "bg-primary/10 text-primary") : "text-muted-foreground hover:text-foreground",
+                )}
+                title={danmakuOn ? "关闭弹幕" : "开启弹幕"}
+              >
+                <MessageSquare className="h-4 w-4" />
+              </button>
+              <button
+                onClick={cycleRate}
+                className={cn("rounded-full px-2 py-1 text-xs font-medium transition-colors hover:text-foreground", fullscreen ? "text-white" : "text-muted-foreground")}
+                title="切换倍速"
+              >
+                {rate}x
+              </button>
+              <input
+                type="range"
+                min={0}
+                max={duration || 1}
+                step={0.1}
+                value={currentTime}
+                onChange={(e) => {
+                  const t = Number(e.target.value);
+                  if (videoRef.current !== null) videoRef.current.currentTime = t;
+                  if (audioRef.current !== null) audioRef.current.currentTime = t;
+                }}
+                className="flex-1"
+              />
+              <span className={cn("text-xs tabular-nums", fullscreen ? "text-white/80" : "text-muted-foreground")}>
+                {fmtDuration(currentTime)} / {fmtDuration(duration)}
+              </span>
+              <button
+                onClick={toggleFullscreen}
+                className="rounded-full p-2 text-muted-foreground transition-colors hover:text-foreground"
+                title={fullscreen ? "退出全屏" : "全屏"}
+              >
+                {fullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+              </button>
             </div>
           ) : null}
-          {streamLoading ? (
-            <div className="absolute inset-0 flex items-center justify-center text-sm text-white/70">取流中…</div>
-          ) : null}
         </div>
-
-        {stream !== null ? (
-          <div className="mb-4 flex items-center gap-3 rounded-xl bg-card p-3">
-            <button onClick={togglePlay} className="rounded-full bg-primary p-2 text-primary-foreground">
-              {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-            </button>
-            <button onClick={() => void seekBy(-10)} className="rounded-full p-2 text-muted-foreground hover:text-foreground">
-              <SkipBack className="h-4 w-4" />
-            </button>
-            <button onClick={() => void seekBy(10)} className="rounded-full p-2 text-muted-foreground hover:text-foreground">
-              <SkipForward className="h-4 w-4" />
-            </button>
-            <button onClick={toggleMute} className="rounded-full p-2 text-muted-foreground hover:text-foreground">
-              {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-            </button>
-            <input
-              type="range"
-              min={0}
-              max={duration || 1}
-              step={0.1}
-              value={currentTime}
-              onChange={(e) => {
-                const t = Number(e.target.value);
-                if (videoRef.current !== null) videoRef.current.currentTime = t;
-                if (audioRef.current !== null) audioRef.current.currentTime = t;
-              }}
-              className="flex-1"
-            />
-            <span className="text-xs tabular-nums text-muted-foreground">
-              {fmtDuration(currentTime)} / {fmtDuration(duration)}
-            </span>
-          </div>
-        ) : null}
 
         <h1 className="text-xl font-bold">{detail.title}</h1>
         <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
@@ -667,7 +927,11 @@ function VideoDetailView(props: {
               {pages.map((p) => (
                 <button
                   key={p.cid}
-                  onClick={() => setSelectedCid(p.cid)}
+                  onClick={() => {
+                    setSelectedCid(p.cid);
+                    // 已播放过则直接切换该分 P 的流与弹幕。
+                    if (stream !== null) void play(p.cid);
+                  }}
                   className={cn(
                     "rounded-full border px-3 py-1.5 text-xs transition-colors",
                     selectedCid === p.cid ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted",
@@ -704,11 +968,12 @@ function VideoDetailView(props: {
   );
 }
 
-function FavAddDialog(props: { aid: number; onClose: () => void; onToast: (m: string) => void }) {
+function FavAddDialog(props: { aid: number; onClose: () => void; onToast: (m: string, type?: "success" | "error" | "info") => void }) {
   const { aid, onClose, onToast } = props;
   const [folders, setFolders] = useState<FavFolderItem[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  useEscToClose(onClose, !submitting);
   useEffect(() => {
     void (async () => {
       try {
@@ -716,7 +981,7 @@ function FavAddDialog(props: { aid: number; onClose: () => void; onToast: (m: st
         const data = (await res.json()) as { folders?: FavFolderItem[] };
         setFolders(data.folders ?? []);
       } catch {
-        onToast("获取收藏夹失败");
+        onToast("获取收藏夹失败", "error");
       }
     })();
   }, [onToast]);
@@ -726,8 +991,8 @@ function FavAddDialog(props: { aid: number; onClose: () => void; onToast: (m: st
     try {
       const res = await rpc.api.bilibili.fav.add.$post({ json: { rid: selected, aid } });
       const data = (await res.json()) as { ok?: boolean; error?: string };
-      if (data.error !== undefined) onToast(`收藏失败 ${data.error}`);
-      else onToast("已收藏");
+      if (data.error !== undefined) onToast(`收藏失败 ${data.error}`, "error");
+      else onToast("已收藏", "success");
     } catch {
       onToast("收藏失败");
     } finally {
@@ -767,9 +1032,10 @@ function FavAddDialog(props: { aid: number; onClose: () => void; onToast: (m: st
   );
 }
 
-function HistoryView(props: { onBack: () => void; onToast: (m: string) => void }) {
+function HistoryView(props: { onBack: () => void; onToast: (m: string, type?: "success" | "error" | "info") => void }) {
   const { onBack, onToast } = props;
   const [items, setItems] = useState<HistoryEntry[]>([]);
+  const [confirmClear, setConfirmClear] = useState(false);
   useEffect(() => {
     void (async () => {
       try {
@@ -777,7 +1043,7 @@ function HistoryView(props: { onBack: () => void; onToast: (m: string) => void }
         const data = (await res.json()) as { items?: HistoryEntry[] };
         setItems(data.items ?? []);
       } catch {
-        onToast("获取历史失败");
+        onToast("获取历史失败", "error");
       }
     })();
   }, [onToast]);
@@ -785,9 +1051,9 @@ function HistoryView(props: { onBack: () => void; onToast: (m: string) => void }
     try {
       await rpc.api.bilibili.history.clear.$post();
       setItems([]);
-      onToast("已清空历史");
+      onToast("已清空历史", "success");
     } catch {
-      onToast("清空失败");
+      onToast("清空失败", "error");
     }
   };
   const remove = async (kid: number) => {
@@ -795,7 +1061,7 @@ function HistoryView(props: { onBack: () => void; onToast: (m: string) => void }
       await rpc.api.bilibili.history.remove.$post({ json: { kid } });
       setItems((prev) => prev.filter((h) => h.kid !== kid));
     } catch {
-      onToast("删除失败");
+      onToast("删除失败", "error");
     }
   };
   return (
@@ -806,10 +1072,20 @@ function HistoryView(props: { onBack: () => void; onToast: (m: string) => void }
             <ChevronLeft className="h-4 w-4" />返回
           </button>
           <h1 className="text-lg font-bold">历史记录（{items.length}）</h1>
-          <button onClick={() => void clearAll()} className="rounded-full px-3 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-destructive">
+          <button onClick={() => setConfirmClear(true)} className="rounded-full px-3 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-destructive">
             清空
           </button>
         </div>
+        {confirmClear ? (
+          <ConfirmDialog
+            title="清空历史记录"
+            description="将清空 B 站账号的全部观看历史，此操作不可恢复。"
+            confirmLabel="清空"
+            destructive
+            onConfirm={() => void clearAll()}
+            onClose={() => setConfirmClear(false)}
+          />
+        ) : null}
         <ul className="divide-y divide-border/60">
           {items.map((h) => (
             <li key={h.kid} className="flex items-center gap-3 py-3">
@@ -825,14 +1101,14 @@ function HistoryView(props: { onBack: () => void; onToast: (m: string) => void }
               </button>
             </li>
           ))}
-          {items.length === 0 ? <li className="py-16 text-center text-sm text-muted-foreground">暂无历史记录</li> : null}
+          {items.length === 0 ? <li><EmptyState icon={<History className="h-6 w-6" />} title="暂无历史记录" description="看过的视频会出现在这里" /></li> : null}
         </ul>
       </div>
     </div>
   );
 }
 
-function WatchLaterView(props: { onBack: () => void; onToast: (m: string) => void }) {
+function WatchLaterView(props: { onBack: () => void; onToast: (m: string, type?: "success" | "error" | "info") => void }) {
   const { onBack, onToast } = props;
   const [items, setItems] = useState<Array<{ aid: number; bvid?: string; title: string; cover?: string; duration?: number; owner?: string }>>([]);
   useEffect(() => {
@@ -842,7 +1118,7 @@ function WatchLaterView(props: { onBack: () => void; onToast: (m: string) => voi
         const data = (await res.json()) as { items?: typeof items };
         setItems(data.items ?? []);
       } catch {
-        onToast("获取失败");
+        onToast("获取失败", "error");
       }
     })();
   }, [onToast]);
@@ -850,9 +1126,9 @@ function WatchLaterView(props: { onBack: () => void; onToast: (m: string) => voi
     try {
       await rpc.api.bilibili["watch-later"].remove.$post({ json: { aid } });
       setItems((prev) => prev.filter((t) => t.aid !== aid));
-      onToast("已移除");
+      onToast("已移除", "success");
     } catch {
-      onToast("移除失败");
+      onToast("移除失败", "error");
     }
   };
   return (
@@ -879,14 +1155,14 @@ function WatchLaterView(props: { onBack: () => void; onToast: (m: string) => voi
               </button>
             </li>
           ))}
-          {items.length === 0 ? <li className="py-16 text-center text-sm text-muted-foreground">稍后再看为空</li> : null}
+          {items.length === 0 ? <li><EmptyState icon={<Clock className="h-6 w-6" />} title="稍后再看为空" description="收藏的稍后再看视频会出现在这里" /></li> : null}
         </ul>
       </div>
     </div>
   );
 }
 
-function FavView(props: { onBack: () => void; onToast: (m: string) => void; onOpenVideo: (bvid: string) => void }) {
+function FavView(props: { onBack: () => void; onToast: (m: string, type?: "success" | "error" | "info") => void; onOpenVideo: (bvid: string) => void }) {
   const { onBack, onToast, onOpenVideo } = props;
   const [folders, setFolders] = useState<FavFolderItem[]>([]);
   const [content, setContent] = useState<Array<{ aid: number; bvid: string; title: string; cover?: string; duration?: number; owner?: string }> | null>(null);
@@ -898,7 +1174,7 @@ function FavView(props: { onBack: () => void; onToast: (m: string) => void; onOp
         const data = (await res.json()) as { folders?: FavFolderItem[] };
         setFolders(data.folders ?? []);
       } catch {
-        onToast("获取收藏夹失败");
+        onToast("获取收藏夹失败", "error");
       }
     })();
   }, [onToast]);
@@ -910,7 +1186,7 @@ function FavView(props: { onBack: () => void; onToast: (m: string) => void; onOp
       const data = (await res.json()) as { items?: typeof content };
       setContent(data.items ?? []);
     } catch {
-      onToast("获取内容失败");
+      onToast("获取内容失败", "error");
     }
   };
   return (
@@ -946,7 +1222,7 @@ function FavView(props: { onBack: () => void; onToast: (m: string) => void; onOp
                 </button>
               </li>
             ))}
-            {content.length === 0 ? <li className="py-16 text-center text-sm text-muted-foreground">收藏夹为空</li> : null}
+            {content.length === 0 ? <li><EmptyState icon={<Folder className="h-6 w-6" />} title="收藏夹为空" description="收藏的视频会出现在这里" /></li> : null}
           </ul>
         )}
       </div>
@@ -954,7 +1230,7 @@ function FavView(props: { onBack: () => void; onToast: (m: string) => void; onOp
   );
 }
 
-function BangumiView(props: { onBack: () => void; onToast: (m: string) => void }) {
+function BangumiView(props: { onBack: () => void; onToast: (m: string, type?: "success" | "error" | "info") => void }) {
   const { onBack, onToast } = props;
   const [items, setItems] = useState<Array<{ seasonId: number; title: string; cover?: string; newEp?: string; typeName?: string; url?: string }>>([]);
   useEffect(() => {
@@ -964,7 +1240,7 @@ function BangumiView(props: { onBack: () => void; onToast: (m: string) => void }
         const data = (await res.json()) as { items?: typeof items };
         setItems(data.items ?? []);
       } catch {
-        onToast("获取追番失败");
+        onToast("获取追番失败", "error");
       }
     })();
   }, [onToast]);
@@ -1003,13 +1279,13 @@ function BangumiView(props: { onBack: () => void; onToast: (m: string) => void }
             </a>
           ))}
         </div>
-        {items.length === 0 ? <p className="py-16 text-center text-sm text-muted-foreground">暂无追番</p> : null}
+        {items.length === 0 ? <EmptyState icon={<Star className="h-6 w-6" />} title="暂无追番" description="追过的番剧会出现在这里" /> : null}
       </div>
     </div>
   );
 }
 
-function PopularView(props: { onBack: () => void; onToast: (m: string) => void; onOpenVideo: (bvid: string) => void }) {
+function PopularView(props: { onBack: () => void; onToast: (m: string, type?: "success" | "error" | "info") => void; onOpenVideo: (bvid: string) => void }) {
   const { onBack, onToast, onOpenVideo } = props;
   const [videos, setVideos] = useState<BiliVideo[]>([]);
   useEffect(() => {
@@ -1019,7 +1295,7 @@ function PopularView(props: { onBack: () => void; onToast: (m: string) => void; 
         const data = (await res.json()) as { videos?: BiliVideo[] };
         setVideos(data.videos ?? []);
       } catch {
-        onToast("获取热门失败");
+        onToast("获取热门失败", "error");
       }
     })();
   }, [onToast]);
@@ -1041,6 +1317,7 @@ function PopularView(props: { onBack: () => void; onToast: (m: string) => void; 
 function DownloadDialog(props: { video: BiliVideoDetail; onDownload: (path: string) => void; onClose: () => void }) {
   const { video, onDownload, onClose } = props;
   const [path, setPath] = useState("");
+  useEscToClose(onClose);
   const [dirs, setDirs] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");

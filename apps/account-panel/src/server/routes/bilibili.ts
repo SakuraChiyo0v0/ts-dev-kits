@@ -25,6 +25,12 @@ function safeSubdir(raw: string): string {
   return raw.replace(/\.\./gu, "").replace(/^\/+|\/+$/gu, "");
 }
 
+/** B 站图片统一升级为 https：避免用户经 https 访问面板时 http 图片被浏览器混合内容拦截。 */
+function httpsImg(url?: string): string | undefined {
+  if (url === undefined || url === "") return url;
+  return url.replace(/^http:\/\//u, "https://");
+}
+
 /** 把媒体项映射为前端可用的视频摘要。 */
 function mediaToJson(item: {
   id: string;
@@ -42,7 +48,7 @@ function mediaToJson(item: {
     bvid: item.bvid ?? "",
     title: item.title,
     ...(item.cid !== undefined ? { cid: item.cid } : {}),
-    ...(item.cover !== undefined ? { cover: item.cover } : {}),
+    ...(item.cover !== undefined ? { cover: httpsImg(item.cover) } : {}),
     ...(item.duration !== undefined ? { duration: item.duration } : {}),
     ...(item.owner !== undefined ? { owner: item.owner.name } : {}),
     ...(item.play !== undefined ? { play: item.play } : {}),
@@ -69,7 +75,7 @@ export const bilibiliRoutes = new Hono()
         account: {
           mid: card.mid,
           nickname: card.name,
-          ...(card.face !== undefined ? { avatarUrl: card.face } : {}),
+          ...(card.face !== undefined ? { avatarUrl: httpsImg(card.face) } : {}),
           ...(card.sign !== undefined ? { signature: card.sign } : {}),
           fans: card.fans,
           following: card.following,
@@ -97,7 +103,7 @@ export const bilibiliRoutes = new Hono()
           bvid: v.bvid,
           aid: v.aid,
           title: v.title,
-          ...(v.cover !== undefined ? { cover: v.cover } : {}),
+          ...(v.cover !== undefined ? { cover: httpsImg(v.cover) } : {}),
           ...(v.duration !== undefined ? { duration: v.duration } : {}),
           ...(v.play !== undefined ? { play: v.play } : {}),
           ...(v.danmaku !== undefined ? { danmaku: v.danmaku } : {}),
@@ -119,7 +125,7 @@ export const bilibiliRoutes = new Hono()
           bvid: v.bvid,
           aid: v.aid,
           title: v.title,
-          ...(v.cover !== undefined ? { cover: v.cover } : {}),
+          ...(v.cover !== undefined ? { cover: httpsImg(v.cover) } : {}),
           ...(v.duration !== undefined ? { duration: v.duration } : {}),
           ...(v.play !== undefined ? { play: v.play } : {}),
           ...(v.author !== undefined ? { author: v.author } : {}),
@@ -241,13 +247,13 @@ export const bilibiliRoutes = new Hono()
       return c.json({ error: "下载失败" }, 500);
     }
   })
-  /** GET /api/bilibili/history —— 历史记录。 */
+  /** GET /api/bilibili/history —— 历史记录（B站 history/cursor ps 上限 20）。 */
   .get("/history", async (c) => {
     await warmupAuth("bilibili");
     const client = createClient();
     if (!client.isLoggedIn) return c.json({ error: "未登录" }, 401);
     try {
-      const { list } = await client.data.listHistory({ ps: 50 });
+      const { list } = await client.data.listHistory({ ps: 20 });
       return c.json({
         items: list.map((h) => ({
           kid: h.kid,
@@ -257,7 +263,7 @@ export const bilibiliRoutes = new Hono()
           ...(h.progress !== undefined ? { progress: h.progress } : {}),
           ...(h.duration !== undefined ? { duration: h.duration } : {}),
           ...(h.authorName !== undefined ? { author: h.authorName } : {}),
-          ...(h.cover !== undefined ? { cover: h.cover } : {}),
+          ...(h.cover !== undefined ? { cover: httpsImg(h.cover) } : {}),
           ...(h.uri !== undefined ? { uri: h.uri } : {}),
         })),
       });
@@ -302,7 +308,7 @@ export const bilibiliRoutes = new Hono()
           aid: t.aid,
           ...(t.bvid !== undefined ? { bvid: t.bvid } : {}),
           title: t.title,
-          ...(t.cover !== undefined ? { cover: t.cover } : {}),
+          ...(t.cover !== undefined ? { cover: httpsImg(t.cover) } : {}),
           ...(t.duration !== undefined ? { duration: t.duration } : {}),
           ...(t.owner !== undefined ? { owner: t.owner.name } : {}),
         })),
@@ -338,7 +344,7 @@ export const bilibiliRoutes = new Hono()
           fid: f.fid,
           title: f.title,
           mediaCount: f.mediaCount,
-          ...(f.cover !== undefined ? { cover: f.cover } : {}),
+          ...(f.cover !== undefined ? { cover: httpsImg(f.cover) } : {}),
         })),
       });
     } catch {
@@ -358,7 +364,7 @@ export const bilibiliRoutes = new Hono()
           aid: it.id,
           bvid: it.bvid,
           title: it.title,
-          ...(it.cover !== undefined ? { cover: it.cover } : {}),
+          ...(it.cover !== undefined ? { cover: httpsImg(it.cover) } : {}),
           ...(it.duration !== undefined ? { duration: it.duration } : {}),
           ...(it.upper !== undefined ? { owner: it.upper.name } : {}),
         })),
@@ -387,14 +393,19 @@ export const bilibiliRoutes = new Hono()
   .get("/bangumi", async (c) => {
     await warmupAuth("bilibili");
     const client = createClient();
-    if (!client.isLoggedIn) return c.json({ error: "未登录" }, 401);
+    if (!client.isLoggedIn || client.currentMid === undefined) {
+      return c.json({ error: "未登录" }, 401);
+    }
     try {
-      const { list } = await client.creative.listFollowedSeasons({ ps: 50 });
+      const { list } = await client.creative.listFollowedSeasons({
+        vmid: client.currentMid,
+        ps: 30,
+      });
       return c.json({
         items: list.map((s) => ({
           seasonId: s.seasonId,
           title: s.title,
-          ...(s.cover !== undefined ? { cover: s.cover } : {}),
+          ...(s.cover !== undefined ? { cover: httpsImg(s.cover) } : {}),
           ...(s.newEp !== undefined ? { newEp: s.newEp } : {}),
           ...(s.seasonTypeName !== undefined ? { typeName: s.seasonTypeName } : {}),
           ...(s.url !== undefined ? { url: s.url } : {}),
@@ -402,6 +413,28 @@ export const bilibiliRoutes = new Hono()
       });
     } catch {
       return c.json({ error: "获取追番失败" }, 500);
+    }
+  })
+  /** GET /api/bilibili/danmaku?cid=xxx&segment=n —— 获取视频弹幕（按 6 分钟分段拉取）。 */
+  .get("/danmaku", async (c) => {
+    const cidRaw = c.req.query("cid");
+    if (cidRaw === undefined || cidRaw === "") return c.json({ error: "missing cid" }, 400);
+    const cid = Number(cidRaw);
+    if (!Number.isFinite(cid)) return c.json({ error: "invalid cid" }, 400);
+    const segment = Math.max(0, Number(c.req.query("segment") ?? "0"));
+    const client = createClient();
+    try {
+      const items = await client.danmaku.list(cid, Number.isFinite(segment) ? segment : 0);
+      return c.json({
+        items: items.map((d) => ({
+          time: d.time,
+          mode: d.mode,
+          color: d.color,
+          text: d.text,
+        })),
+      });
+    } catch {
+      return c.json({ error: "获取弹幕失败" }, 500);
     }
   })
   /** GET /api/bilibili/download-history —— B 站下载历史（按平台隔离）。 */

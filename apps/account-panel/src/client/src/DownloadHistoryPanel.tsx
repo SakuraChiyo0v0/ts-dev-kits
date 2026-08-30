@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ChevronDown, X } from "lucide-react";
 import { rpc } from "./lib/rpc";
 import { cn } from "@/lib/utils";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface DownloadRecord {
   id: string;
@@ -20,6 +21,7 @@ export default function DownloadHistoryPanel(props: {
 }) {
   const { onClose, platform } = props;
   const [records, setRecords] = useState<DownloadRecord[]>([]);
+  const [confirmClear, setConfirmClear] = useState(false);
 
   const api =
     platform === "bilibili"
@@ -68,7 +70,7 @@ export default function DownloadHistoryPanel(props: {
           <h2 className="text-lg font-bold">下载历史（{records.length}）</h2>
           <div className="flex items-center gap-1">
             <button
-              onClick={() => void clearAll()}
+              onClick={() => setConfirmClear(true)}
               className="rounded-full px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
               清空
@@ -81,6 +83,16 @@ export default function DownloadHistoryPanel(props: {
             </button>
           </div>
         </div>
+        {confirmClear ? (
+          <ConfirmDialog
+            title="清空下载历史"
+            description="将删除全部下载记录（不影响已下载的文件），此操作不可恢复。"
+            confirmLabel="清空"
+            destructive
+            onConfirm={() => void clearAll()}
+            onClose={() => setConfirmClear(false)}
+          />
+        ) : null}
         <ul className="max-h-[60vh] divide-y divide-border/60 overflow-y-auto">
           {records.map((r) => (
             <li key={r.id} className="flex items-center gap-3 py-2.5">

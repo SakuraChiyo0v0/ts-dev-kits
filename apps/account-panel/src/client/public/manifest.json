@@ -1,9 +1,17 @@
 {
-  "name": "网易云音乐面板",
-  "short_name": "音乐",
+  "name": "账号面板",
+  "short_name": "账号面板",
+  "description": "统一账号面板：网易云音乐、B站视频、番剧聚合",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f5f5f7",
   "theme_color": "#fa233b",
-  "icons": []
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
 }

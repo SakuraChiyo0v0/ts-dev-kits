@@ -42,6 +42,13 @@ import {
 } from "lucide-react";
 import { rpc } from "./lib/rpc";
 import { cn } from "@/lib/utils";
+import { useTheme } from "./lib/use-theme";
+import { useToast } from "@/components/ui/toast";
+import { useEscToClose } from "@/lib/use-esc";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Sidebar, type ModuleId } from "@/components/layout/Sidebar";
+import { Onboarding, shouldShowOnboarding } from "@/components/onboarding/Onboarding";
 
 // 模块级懒加载：B 站 / 番剧模块（含 hls.js）按需拆 chunk，减小主 bundle。
 const BilibiliModule = lazy(() => import("./BilibiliModule"));
@@ -240,47 +247,13 @@ function currentLineIndex(lines: LyricLine[], time: number): number {
   return idx;
 }
 
-function useTheme() {
-  const [theme, setTheme] = useState<"light" | "dark">(() => {
-    if (typeof window === "undefined") return "light";
-    const stored = localStorage.getItem("theme");
-    if (stored === "dark" || stored === "light") return stored;
-    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-  });
-
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", theme === "dark");
-  }, [theme]);
-
-  // 用户未手动选过主题时，跟随系统偏好实时切换。
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const onChange = (e: MediaQueryListEvent) => {
-      if (localStorage.getItem("theme") === null) {
-        setTheme(e.matches ? "dark" : "light");
-      }
-    };
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  }, []);
-
-  const toggle = () => {
-    setTheme((t) => {
-      const next = t === "dark" ? "light" : "dark";
-      localStorage.setItem("theme", next);
-      return next;
-    });
-  };
-
-  return { theme, toggle };
-}
-
 export default function App() {
   const [account, setAccount] = useState<AccountPayload | null>(null);
   const [login, setLogin] = useState<LoginView | null>(null);
-  const [activeModule, setActiveModule] = useState<string | null>(null);
+  const [activeModule, setActiveModule] = useState<ModuleId>("home");
   // 主账号登录态：由 httpOnly Cookie 承载（浏览器自动携带），这里只存用户名。
   const [userAuth, setUserAuth] = useState<{ username: string } | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [detail, setDetail] = useState<PlaylistDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [avatarError, setAvatarError] = useState(false);
@@ -338,8 +311,6 @@ export default function App() {
     }
   });
   const [muted, setMuted] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
-  const toastTimer = useRef<number | null>(null);
   const [level, setLevel] = useState<string>("exhigh");
   const [rate, setRate] = useState(1);
   const [sleepMinutes, setSleepMinutes] = useState<number | null>(null);
@@ -391,6 +362,8 @@ export default function App() {
     }
   }, [volume, muted]);
 
+  const toastApi = useToast();
+
   useEffect(() => {
     const audio = audioRef.current;
     if (audio !== null) audio.playbackRate = rate;
@@ -401,15 +374,17 @@ export default function App() {
     const id = window.setTimeout(() => {
       audioRef.current?.pause();
       setSleepMinutes(null);
+      toastApi.show(`睡眠定时已到（${sleepMinutes} 分钟），播放已暂停`, "info");
     }, sleepMinutes * 60 * 1000);
     return () => window.clearTimeout(id);
-  }, [sleepMinutes]);
+  }, [sleepMinutes, toastApi]);
 
-  const showToast = useCallback((message: string) => {
-    setToast(message);
-    if (toastTimer.current !== null) clearTimeout(toastTimer.current);
-    toastTimer.current = window.setTimeout(() => setToast(null), 3000);
-  }, []);
+  const showToast = useCallback(
+    (message: string, type?: "success" | "error" | "info") => {
+      toastApi.show(message, type);
+    },
+    [toastApi],
+  );
 
   const refresh = useCallback(async () => {
     setAccount(null);
@@ -471,6 +446,17 @@ export default function App() {
     })();
   }, []);
 
+  // 页面标题随模块切换（歌曲播放时 playAt 已单独更新 title，这里只在无曲时覆盖）。
+  useEffect(() => {
+    const titles: Record<ModuleId, string> = {
+      home: "账号面板",
+      netease: "账号面板 · 网易云音乐",
+      bilibili: "账号面板 · 哔哩哔哩",
+      kazumi: "账号面板 · 番剧",
+    };
+    if (currentTrack === null) document.title = titles[activeModule];
+  }, [activeModule, currentTrack]);
+
   // 卸载时清理批量下载轮询 timer 与登录 EventSource。
   useEffect(() => {
     return () => {
@@ -487,13 +473,14 @@ export default function App() {
         if (data.ok === true && data.username !== undefined) {
           // session 已通过 httpOnly Cookie 下发，前端只记用户名。
           setUserAuth({ username: data.username });
-          showToast(`欢迎回来，${data.username}`);
+          showToast(`欢迎回来，${data.username}`, "success");
+          setShowOnboarding(shouldShowOnboarding());
           await refresh();
         } else {
           showToast(data.error ?? "登录失败");
         }
       } catch {
-        showToast("登录失败");
+        showToast("登录失败", "error");
       }
     },
     [refresh, showToast],
@@ -506,7 +493,7 @@ export default function App() {
       // 忽略。
     }
     setUserAuth(null);
-    setActiveModule(null);
+    setActiveModule("home");
   }, [userAuth]);
 
   const startLogin = useCallback(async () => {
@@ -635,7 +622,7 @@ export default function App() {
     } catch (error) {
       // 取流失败：保持播放栏显示，但不出声。
       const detail = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
-      showToast(`播放失败 ${detail}`);
+      showToast(`播放失败 ${detail}`, "error");
     }
   }, [showToast, likedIds, muted, volume]);
 
@@ -646,7 +633,7 @@ export default function App() {
         const d = (await res.json()) as PlaylistDetail;
         if (d.tracks.length > 0) await playAt(d.tracks, 0);
       } catch {
-        showToast("播放失败");
+        showToast("播放失败", "error");
       }
     },
     [playAt, showToast],
@@ -659,10 +646,10 @@ export default function App() {
       if (data.songs !== undefined && data.songs.length > 0) {
         await playAt(data.songs, 0);
       } else {
-        showToast("暂无电台歌曲");
+        showToast("暂无电台歌曲", "info");
       }
     } catch {
-      showToast("获取电台失败");
+      showToast("获取电台失败", "error");
     }
   }, [playAt, showToast]);
 
@@ -783,14 +770,14 @@ export default function App() {
         void audioRef.current.play();
       }
     } catch {
-      showToast("切换音质失败");
+      showToast("切换音质失败", "error");
     }
   }, [currentTrack, level, showToast]);
 
   const shareTrack = useCallback(
     async (track: Track) => {
       const ok = await copyText(`https://music.163.com/song?id=${track.id}`);
-      showToast(ok ? "已复制歌曲链接" : "复制失败");
+      showToast(ok ? "已复制歌曲链接" : "复制失败", ok ? "success" : "error");
     },
     [showToast],
   );
@@ -798,7 +785,7 @@ export default function App() {
   const sharePlaylist = useCallback(
     async (id: string) => {
       const ok = await copyText(`https://music.163.com/playlist?id=${id}`);
-      showToast(ok ? "已复制歌单链接" : "复制失败");
+      showToast(ok ? "已复制歌单链接" : "复制失败", ok ? "success" : "error");
     },
     [showToast],
   );
@@ -819,12 +806,12 @@ export default function App() {
         });
         const data = (await res.json()) as { filePath?: string; error?: string };
         if (data.error !== undefined) {
-          showToast(`下载失败 ${data.error}`);
+          showToast(`下载失败 ${data.error}`, "error");
         } else {
-          showToast("已下载到 NAS");
+          showToast("已下载到 NAS", "success");
         }
       } catch {
-        showToast("下载失败");
+        showToast("下载失败", "error");
       }
     },
     [showToast],
@@ -842,7 +829,7 @@ export default function App() {
         });
         const data = (await res.json()) as { taskId?: string; error?: string };
         if (data.error !== undefined || data.taskId === undefined) {
-          showToast("批量下载失败");
+          showToast("批量下载失败", "error");
           return;
         }
         const taskId = data.taskId;
@@ -856,12 +843,12 @@ export default function App() {
               batchTimerRef.current = null;
               setBatchProgress({ total: p.total ?? tracks.length, done: p.done ?? tracks.length, status: "done" });
               setDownloadedVersion((v) => v + 1);
-              showToast(`已下载 ${p.total ?? 0} 首到 NAS`);
+              showToast(`已下载 ${p.total ?? 0} 首到 NAS`, "success");
               window.setTimeout(() => setBatchProgress(null), 3000);
             } else if (p.status === "error") {
               batchTimerRef.current = null;
               setBatchProgress(null);
-              showToast("批量下载失败");
+              showToast("批量下载失败", "error");
             } else {
               setBatchProgress({ total: p.total ?? tracks.length, done: p.done ?? 0, status: "running" });
               batchTimerRef.current = window.setTimeout(poll, 1500);
@@ -869,12 +856,12 @@ export default function App() {
           } catch {
             batchTimerRef.current = null;
             setBatchProgress(null);
-            showToast("下载进度查询失败");
+            showToast("下载进度查询失败", "error");
           }
         };
         batchTimerRef.current = window.setTimeout(poll, 1500);
       } catch {
-        showToast("批量下载失败");
+        showToast("批量下载失败", "error");
       }
     },
     [showToast],
@@ -909,10 +896,10 @@ export default function App() {
   const logout = useCallback(async () => {
     try {
       await rpc.api.logout.$post();
-      showToast("已退出登录");
+      showToast("已退出登录", "success");
       await refresh();
     } catch {
-      showToast("退出失败");
+      showToast("退出失败", "error");
     }
   }, [refresh, showToast]);
 
@@ -920,11 +907,11 @@ export default function App() {
     async (id: string) => {
       try {
         await rpc.api.playlist.delete.$post({ json: { id } });
-        showToast("已删除歌单");
+        showToast("已删除歌单", "success");
         setDetail(null);
         await refresh();
       } catch {
-        showToast("删除失败");
+        showToast("删除失败", "error");
       }
     },
     [refresh, showToast],
@@ -934,10 +921,10 @@ export default function App() {
     async (id: string, name: string) => {
       try {
         await rpc.api.playlist.update.$post({ json: { id, name } });
-        showToast("已重命名");
+        showToast("已重命名", "success");
         await refresh();
       } catch {
-        showToast("重命名失败");
+        showToast("重命名失败", "error");
       }
     },
     [refresh, showToast],
@@ -947,9 +934,9 @@ export default function App() {
     try {
       await rpc.api["download-history"].clear.$post();
       setDownloadRecords([]);
-      showToast("已清空下载历史");
+      showToast("已清空下载历史", "success");
     } catch {
-      showToast("清空失败");
+      showToast("清空失败", "error");
     }
   }, [showToast]);
 
@@ -958,7 +945,7 @@ export default function App() {
       await rpc.api["download-history"].remove.$post({ json: { id } });
       setDownloadRecords((prev) => prev.filter((r) => r.id !== id));
     } catch {
-      showToast("删除失败");
+      showToast("删除失败", "error");
     }
   }, [showToast]);
 
@@ -968,9 +955,9 @@ export default function App() {
         for (const playlistId of playlistIds) {
           await rpc.api.playlist.add.$post({ json: { playlistId, trackIds } });
         }
-        showToast(`已加入 ${playlistIds.length} 个歌单`);
+        showToast(`已加入 ${playlistIds.length} 个歌单`, "success");
       } catch {
-        showToast("添加失败");
+        showToast("添加失败", "error");
       }
     },
     [showToast],
@@ -980,9 +967,9 @@ export default function App() {
     async (playlistId: string, trackIds: string[]) => {
       try {
         await rpc.api.playlist.remove.$post({ json: { playlistId, trackIds } });
-        showToast(`已移除 ${trackIds.length} 首`);
+        showToast(`已移除 ${trackIds.length} 首`, "success");
       } catch {
-        showToast("移除失败");
+        showToast("移除失败", "error");
       }
     },
     [showToast],
@@ -1057,10 +1044,10 @@ export default function App() {
       try {
         if (liked) {
           await rpc.api.unlike.$post({ query: { id: track.id } });
-          showToast("已取消红心");
+          showToast("已取消红心", "success");
         } else {
           await rpc.api.like.$post({ query: { id: track.id } });
-          showToast("已添加红心");
+          showToast("已添加红心", "success");
         }
         // 成功后同步全局红心集合 + 播放栏当前曲目红心态。
         setLikedIds((prev) => {
@@ -1074,7 +1061,7 @@ export default function App() {
           return isCurrent ? !liked : prev;
         });
       } catch {
-        showToast("操作失败");
+        showToast("操作失败", "error");
       }
     },
     [showToast, currentTrack],
@@ -1101,16 +1088,38 @@ export default function App() {
       setLyricLines(mergeLyrics(data.original, data.translated));
     } catch {
       setLyricLines([]);
-      showToast("获取歌词失败");
+      showToast("获取歌词失败", "error");
     }
   }, [showToast]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
+      // 守卫 1：焦点在交互元素/可编辑内容上时，把按键还给浏览器（Space 激活按钮、方向键滚动等）。
       if (
         target !== null &&
-        (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)
+        (target.closest("input, textarea, select, button, a, [role='button'], [contenteditable]") !== null ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      // 守卫 2：有弹窗/对话框打开时，不劫持全局快捷键（Esc 由各弹窗自行处理）。
+      if (document.querySelector("[role='dialog']") !== null) return;
+      // 守卫 3：视频元素获得焦点（B站/番剧播放器）或处于全屏时，不劫持。
+      if (target?.closest("video") !== null || document.fullscreenElement !== null) return;
+      // 守卫 4：快捷键只在网易云音乐模块生效（避免在 B站/番剧页误触切歌）。
+      if (activeModule !== "netease") return;
+      // 守卫 5：弹窗类 UI 打开时（歌词/队列/详情/下载等）不响应播放快捷键，避免背后误触。
+      if (
+        showLyrics ||
+        showQueue ||
+        songDetail !== null ||
+        downloadTarget !== null ||
+        addPlaylistTarget !== null ||
+        showHistory ||
+        showDownloadHistory ||
+        showLogs ||
+        showHelp
       ) {
         return;
       }
@@ -1123,52 +1132,35 @@ export default function App() {
         seekBy(5);
       } else if (e.code === "KeyM") {
         toggleMute();
-      } else if (e.code === "ArrowUp") {
-        e.preventDefault();
-        void playPrev();
-      } else if (e.code === "ArrowDown") {
-        e.preventDefault();
-        void playNext();
       } else if (e.key === "?") {
         e.preventDefault();
         setShowHelp(true);
       }
+      // 说明：不再劫持 ↑/↓（此前映射为切歌，会拦截页面滚动，反直觉），
+      // 音量请用播放器栏音量滑条或 M 静音。
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [togglePlay, seekBy, toggleMute, playPrev, playNext]);
+  }, [togglePlay, seekBy, toggleMute, activeModule, showLyrics, showQueue, songDetail, downloadTarget, addPlaylistTarget, showHistory, showDownloadHistory, showLogs, showHelp]);
 
   return (
     <div className="flex h-screen flex-col bg-background">
-      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border/60 bg-background/70 px-4 py-3 backdrop-blur-xl sm:px-6 sm:py-4">
-        <div className="flex items-center gap-2.5">
-          {activeModule !== null ? (
-            <button
-              onClick={() => setActiveModule(null)}
-              className="flex items-center gap-1 rounded-full px-2 py-1 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              title="返回服务列表"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              服务列表
-            </button>
-          ) : null}
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
-            <Music2 className="h-4 w-4" />
+      {/* 顶部仅在未登录或首页展示；进入具体模块后完全不展示，由各模块自身 header / 侧边栏负责 */}
+      {userAuth === null || activeModule === "home" ? (
+        <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border/60 bg-background/70 px-4 py-3 backdrop-blur-xl sm:px-6">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
+              <Music2 className="h-4 w-4" />
+            </div>
+            <span className="text-base font-semibold">账号面板</span>
           </div>
-          <span className="text-base font-semibold">音乐</span>
-        </div>
-        <div className="flex items-center gap-1">
-          {account?.loggedIn && detail === null ? (
-            <Button variant="ghost" size="sm" className="rounded-full" onClick={() => void refresh()}>
-              <RefreshCw />
-              刷新
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" className="rounded-full" onClick={toggle} title="切换明暗主题">
+              {theme === "dark" ? <Sun /> : <Moon />}
             </Button>
-          ) : null}
-          <Button variant="ghost" size="icon" className="rounded-full" onClick={toggle}>
-            {theme === "dark" ? <Sun /> : <Moon />}
-          </Button>
-        </div>
-      </header>
+          </div>
+        </header>
+      ) : null}
 
       {fetching > 0 ? (
         <div className="fixed inset-x-0 top-0 z-50 h-0.5 overflow-hidden bg-primary/20">
@@ -1176,87 +1168,134 @@ export default function App() {
         </div>
       ) : null}
 
-      <div className={cn("flex min-h-0 flex-1 flex-col", currentTrack !== null && "pb-24")}>
-        {detailLoading ? (
-          <PlaylistSkeleton />
-        ) : detail !== null ? (
-          <PlaylistView
-            detail={detail}
-            {...(currentTrack !== null ? { currentTrackId: currentTrack.id } : {})}
-            onBack={() => setDetail(null)}
-            onPlay={(t, i) => void playAt(detail.tracks, i)}
-            onPlayAll={() => void playAt(detail.tracks, 0)}
-            onToggleLike={toggleLike}
-            onSharePlaylist={(id) => void sharePlaylist(id)}
-            onShowDetail={setSongDetail}
-            onDownloadLocal={(t) => setDownloadTarget(t)}
-            onDownloadAll={(path, level) => void downloadBatch(detail.tracks, path, level)}
-            onRemoveSongs={(trackIds) => void removeSongsFromCurrentPlaylist(detail.id, trackIds)}
-            onDeletePlaylist={(id) => void deletePlaylist(id)}
-            onRenamePlaylist={(id, name) => void renamePlaylist(id, name)}
-            downloadedVersion={downloadedVersion}
-          />
-        ) : userAuth === null ? (
-          <LoginView onUserLogin={(u, p) => void userLogin(u, p)} />
-        ) : activeModule === null ? (
-          <Launcher
+      <div className="flex min-h-0 flex-1">
+        {userAuth !== null ? (
+          <Sidebar
             username={userAuth.username}
-            onOpenNetease={() => setActiveModule("netease")}
-            onOpenBilibili={() => {
-              audioRef.current?.pause();
-              setActiveModule("bilibili");
-            }}
-            onOpenKazumi={() => {
-              audioRef.current?.pause();
-              setActiveModule("kazumi");
+            active={activeModule}
+            onSelect={(m) => {
+              if (m !== "netease") audioRef.current?.pause();
+              setActiveModule(m);
             }}
             onLogout={() => void userLogout()}
           />
-        ) : activeModule === "netease" ? (
-          account === null ? (
-            <HomeSkeleton />
-          ) : account.loggedIn ? (
-            <HomeView
-              account={account}
-              recentTracks={recentTracks}
-              lastTrack={lastTrack}
-              playCounts={playCounts}
-              onResume={() => void resumePlay()}
-              avatarError={avatarError}
-              onAvatarError={() => setAvatarError(true)}
-              onOpenPlaylist={(id) => void openPlaylist(id)}
-              onPlayPlaylist={(id) => void playPlaylist(id)}
-              onPlaySong={(t) => void playAt([t], 0)}
-              onRefresh={() => void refresh()}
-              onShowHistory={() => setShowHistory(true)}
-              onDownloadLocal={(t) => setDownloadTarget(t)}
-              onLogout={() => void logout()}
-              onDismissLast={dismissLast}
-              onToggleLike={toggleLike}
-              likedIds={likedIds}
-              recommend={recommend}
-              recommendPlaylists={recommendPlaylists}
-              onPlayPersonalFm={() => void playPersonalFm()}
-              onOpenDownloadHistory={() => void openDownloadHistory()}
-              onOpenLogs={() => void openLogs()}
-            />
-          ) : (
-            <BindNeteaseView
-              login={login}
-              onLogin={() => void startLogin()}
-              onCancel={() => setLogin(null)}
-              onBack={() => setActiveModule(null)}
-            />
-          )
-        ) : activeModule === "bilibili" ? (
-          <Suspense fallback={<HomeSkeleton />}>
-            <BilibiliModule onBack={() => setActiveModule(null)} />
-          </Suspense>
-        ) : activeModule === "kazumi" ? (
-          <Suspense fallback={<HomeSkeleton />}>
-            <KazumiModule onBack={() => setActiveModule(null)} />
-          </Suspense>
         ) : null}
+
+        <div
+          className={cn(
+            "flex min-h-0 flex-1 flex-col",
+            // 播放时给底部播放器留位：窄屏还要叠加底部 Tab 高度。
+            currentTrack !== null && "pb-[5.5rem] sm:pb-24",
+          )}
+        >
+          {userAuth === null ? (
+            <LoginView onUserLogin={(u, p) => void userLogin(u, p)} />
+          ) : (
+            <>
+              {/* 首页：服务总览 */}
+              <div className={cn("h-full", activeModule !== "home" && "hidden")}>
+                <Launcher
+                  username={userAuth.username}
+                  onSelect={(m) => {
+                    if (m !== "netease") audioRef.current?.pause();
+                    setActiveModule(m);
+                  }}
+                  onLogout={() => void userLogout()}
+                />
+              </div>
+
+              {/* 网易云模块（保持挂载，切走不销毁播放状态） */}
+              <div className={cn("module-netease h-full", activeModule !== "netease" && "hidden")}>
+                <div className="flex min-h-0 flex-1 flex-col">
+                  <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border/60 bg-background/70 px-4 py-3 backdrop-blur-xl sm:px-6">
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                        <Music2 className="h-4 w-4" />
+                      </div>
+                      <span className="text-base font-semibold">网易云音乐</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="icon" className="rounded-full" onClick={toggle} title="切换明暗主题">
+                        {theme === "dark" ? <Sun /> : <Moon />}
+                      </Button>
+                    </div>
+                  </header>
+                  <div className="flex min-h-0 flex-1 flex-col">
+                    {detailLoading ? (
+                      <PlaylistSkeleton />
+                    ) : detail !== null ? (
+                      <PlaylistView
+                    detail={detail}
+                    {...(currentTrack !== null ? { currentTrackId: currentTrack.id } : {})}
+                    onBack={() => setDetail(null)}
+                    onPlay={(t, i) => void playAt(detail.tracks, i)}
+                    onPlayAll={() => void playAt(detail.tracks, 0)}
+                    onToggleLike={toggleLike}
+                    onSharePlaylist={(id) => void sharePlaylist(id)}
+                    onShowDetail={setSongDetail}
+                    onDownloadLocal={(t) => setDownloadTarget(t)}
+                    onDownloadAll={(path, level) => void downloadBatch(detail.tracks, path, level)}
+                    onRemoveSongs={(trackIds) => void removeSongsFromCurrentPlaylist(detail.id, trackIds)}
+                    onDeletePlaylist={(id) => void deletePlaylist(id)}
+                    onRenamePlaylist={(id, name) => void renamePlaylist(id, name)}
+                    downloadedVersion={downloadedVersion}
+                  />
+                ) : account === null ? (
+                  <HomeSkeleton />
+                ) : account.loggedIn ? (
+                  <HomeView
+                    account={account}
+                    recentTracks={recentTracks}
+                    lastTrack={lastTrack}
+                    playCounts={playCounts}
+                    onResume={() => void resumePlay()}
+                    avatarError={avatarError}
+                    onAvatarError={() => setAvatarError(true)}
+                    onOpenPlaylist={(id) => void openPlaylist(id)}
+                    onPlayPlaylist={(id) => void playPlaylist(id)}
+                    onPlaySong={(t) => void playAt([t], 0)}
+                    onRefresh={() => void refresh()}
+                    onShowHistory={() => setShowHistory(true)}
+                    onDownloadLocal={(t) => setDownloadTarget(t)}
+                    onLogout={() => void logout()}
+                    onDismissLast={dismissLast}
+                    onToggleLike={toggleLike}
+                    likedIds={likedIds}
+                    recommend={recommend}
+                    recommendPlaylists={recommendPlaylists}
+                    onPlayPersonalFm={() => void playPersonalFm()}
+                    onOpenDownloadHistory={() => void openDownloadHistory()}
+                    onOpenLogs={() => void openLogs()}
+                  />
+                    ) : (
+                      <BindNeteaseView
+                        login={login}
+                        {...(account?.error !== undefined ? { error: account.error } : {})}
+                        onLogin={() => void startLogin()}
+                        onCancel={() => setLogin(null)}
+                        onBack={() => setActiveModule("home")}
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* B站模块 */}
+              <div className={cn("module-bilibili h-full", activeModule !== "bilibili" && "hidden")}>
+                <Suspense fallback={<HomeSkeleton />}>
+                  <BilibiliModule active={activeModule === "bilibili"} onBack={() => setActiveModule("home")} />
+                </Suspense>
+              </div>
+
+              {/* 番剧模块 */}
+              <div className={cn("module-kazumi h-full", activeModule !== "kazumi" && "hidden")}>
+                <Suspense fallback={<HomeSkeleton />}>
+                  <KazumiModule active={activeModule === "kazumi"} onBack={() => setActiveModule("home")} />
+                </Suspense>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       <audio
@@ -1356,12 +1395,6 @@ export default function App() {
         />
       ) : null}
 
-      {toast !== null ? (
-        <div className="fixed left-1/2 top-16 z-40 -translate-x-1/2 animate-fade-in rounded-full bg-foreground px-4 py-2 text-sm text-background shadow-lg">
-          {toast}
-        </div>
-      ) : null}
-
       {batchProgress !== null ? (
         <div className="fixed left-1/2 top-16 z-40 w-64 -translate-x-1/2 rounded-2xl border bg-card p-4 shadow-lg">
           <div className="mb-2 flex items-center justify-between text-sm">
@@ -1457,6 +1490,8 @@ export default function App() {
       ) : null}
 
       {showLogs ? <LogsPanel lines={logLines} onClose={() => setShowLogs(false)} /> : null}
+
+      {showOnboarding ? <Onboarding onDone={() => setShowOnboarding(false)} /> : null}
     </div>
   );
 }
@@ -1515,7 +1550,7 @@ function DownloadHistoryPanel(props: {
             </li>
           ))}
           {records.length === 0 ? (
-            <li className="py-10 text-center text-sm text-muted-foreground">暂无下载记录</li>
+            <li><EmptyState icon={<Download className="h-6 w-6" />} title="暂无下载记录" description="下载到 NAS 的歌会出现在这里" /></li>
           ) : null}
         </ul>
       </div>
@@ -1646,7 +1681,7 @@ function HistoryPanel(props: {
             </li>
           ))}
           {tracks.length === 0 ? (
-            <li className="py-10 text-center text-sm text-muted-foreground">暂无播放历史</li>
+            <li><EmptyState icon={<Clock className="h-6 w-6" />} title="暂无播放历史" description="听过的歌会出现在这里" /></li>
           ) : null}
         </ul>
       </div>
@@ -1659,9 +1694,9 @@ function MultiSelectDialog(props: {
   options: Array<{ id: string; name: string }>;
   onConfirm: (selectedIds: string[]) => void;
   onClose: () => void;
-}) {
-  const { title, options, onConfirm, onClose } = props;
+}) {  const { title, options, onConfirm, onClose } = props;
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  useEscToClose(onClose);
   const toggle = (id: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -1737,6 +1772,64 @@ function MultiSelectDialog(props: {
   );
 }
 
+function RenamePlaylistDialog(props: {
+  currentName: string;
+  onConfirm: (name: string) => void;
+  onClose: () => void;
+}) {
+  const { currentName, onConfirm, onClose } = props;
+  const [name, setName] = useState(currentName);
+  useEscToClose(onClose);
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
+      <div
+        className="w-full max-w-sm animate-fade-in rounded-2xl bg-card p-5 shadow-lg"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-base font-bold">重命名歌单</h3>
+          <button
+            onClick={onClose}
+            className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            aria-label="关闭"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <Input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="歌单名称"
+          className="rounded-full"
+          autoFocus
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && name.trim() !== "") {
+              onConfirm(name.trim());
+              onClose();
+            }
+          }}
+        />
+        <div className="mt-4 flex gap-2">
+          <Button variant="ghost" size="sm" className="flex-1 rounded-full" onClick={onClose}>
+            取消
+          </Button>
+          <Button
+            size="sm"
+            className="flex-1 rounded-full"
+            disabled={name.trim() === ""}
+            onClick={() => {
+              onConfirm(name.trim());
+              onClose();
+            }}
+          >
+            保存
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function FolderPicker(props: {
   value: string;
   onSelect: (path: string) => void;
@@ -1747,6 +1840,7 @@ function FolderPicker(props: {
   const [dirs, setDirs] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
+  useEscToClose(onClose);
 
   useEffect(() => {
     let cancelled = false;
@@ -2229,7 +2323,7 @@ function QueuePanel(props: {
             );
           })}
           {queue.length === 0 ? (
-            <li className="py-10 text-center text-sm text-muted-foreground">暂无播放队列</li>
+            <li><EmptyState icon={<List className="h-6 w-6" />} title="暂无播放队列" description="播放歌曲后会自动加入队列" /></li>
           ) : null}
         </ul>
       </div>
@@ -2237,23 +2331,36 @@ function QueuePanel(props: {
   );
 }
 
-/** 网易云模块内：未绑定时显示绑定页（扫码登录网易云）。 */
+/** 网易云模块内：未绑定时显示绑定页（扫码登录网易云）。若后端不可达显示错误态。 */
 function BindNeteaseView(props: {
   login: LoginView | null;
+  error?: string;
   onLogin: () => void;
   onCancel: () => void;
   onBack: () => void;
 }) {
-  const { login, onLogin, onCancel, onBack } = props;
+  const { login, error, onLogin, onCancel, onBack } = props;
   return (
     <div className="flex flex-1 items-center justify-center p-6">
       <Card className="w-full max-w-sm border-0 bg-card/70 shadow-lg backdrop-blur-xl">
         <CardHeader className="items-center text-center">
-          <CardTitle>绑定网易云</CardTitle>
-          <CardDescription>扫码登录网易云，登录态将同步到你的统一账号</CardDescription>
+          <CardTitle>{error !== undefined ? "连接失败" : "绑定网易云"}</CardTitle>
+          <CardDescription>
+            {error !== undefined
+              ? "无法连接后端服务，请检查服务是否已启动"
+              : "扫码登录网易云，登录态将同步到你的统一账号"}
+          </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col items-center gap-4">
-          {login === null ? (
+          {error !== undefined ? (
+            <>
+              <p className="text-sm text-destructive">{error}</p>
+              <Button size="lg" className="rounded-full" onClick={onLogin}>
+                <RefreshCw />
+                重新连接
+              </Button>
+            </>
+          ) : login === null ? (
             <Button size="lg" className="rounded-full" onClick={onLogin}>
               <QrCode />
               扫码绑定网易云
@@ -2278,7 +2385,7 @@ function BindNeteaseView(props: {
             </>
           )}
           <Button variant="ghost" size="sm" className="rounded-full" onClick={onBack}>
-            返回服务列表
+            返回首页
           </Button>
         </CardContent>
       </Card>
@@ -2287,11 +2394,23 @@ function BindNeteaseView(props: {
 }
 
 function LoginView(props: {
-  onUserLogin: (username: string, password: string) => void;
+  onUserLogin: (username: string, password: string) => void | Promise<void>;
 }) {
   const { onUserLogin } = props;
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const submit = async () => {
+    if (username.trim().length < 2 || password.length < 6 || submitting) return;
+    setSubmitting(true);
+    try {
+      await onUserLogin(username.trim(), password);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div className="flex flex-1 items-center justify-center p-6">
       <Card className="w-full max-w-sm border-0 bg-card/70 shadow-lg backdrop-blur-xl">
@@ -2300,13 +2419,21 @@ function LoginView(props: {
           <CardDescription>统一账号，一个登录入口管理所有服务</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col items-center gap-4">
-          <div className="flex w-full flex-col gap-3">
+          <form
+            className="flex w-full flex-col gap-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void submit();
+            }}
+          >
             <Input
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="用户名"
               className="rounded-full"
               autoComplete="username"
+              autoFocus
+              aria-label="用户名"
             />
             <Input
               type="password"
@@ -2315,38 +2442,37 @@ function LoginView(props: {
               placeholder="密码"
               className="rounded-full"
               autoComplete="current-password"
+              aria-label="密码"
             />
-            <Button
-              size="lg"
-              className="rounded-full"
-              disabled={username.trim().length < 2 || password.length < 6}
-              onClick={() => onUserLogin(username.trim(), password)}
-            >
-              登录
+            <Button size="lg" className="rounded-full" disabled={username.trim().length < 2 || password.length < 6 || submitting} onClick={() => void submit()}>
+              {submitting ? "登录中…" : "登录"}
             </Button>
-          </div>
+          </form>
         </CardContent>
       </Card>
     </div>
   );
 }
 
-/** 模块选择页（统一登录后的路由分发入口）。 */
+/** 首页：服务总览（欢迎 + 三模块入口卡片）。 */
 function Launcher(props: {
   username: string;
-  onOpenNetease: () => void;
-  onOpenBilibili: () => void;
-  onOpenKazumi: () => void;
+  onSelect: (m: ModuleId) => void;
   onLogout: () => void;
 }) {
-  const { username, onOpenNetease, onOpenBilibili, onOpenKazumi, onLogout } = props;
+  const { username, onSelect, onLogout } = props;
+  const entries: Array<{ id: ModuleId; title: string; sub: string; icon: React.ReactNode }> = [
+    { id: "netease", title: "音乐", sub: "网易云 · 听歌 / 歌单 / 下载", icon: <Music2 className="h-7 w-7" /> },
+    { id: "bilibili", title: "哔哩哔哩", sub: "视频 · 搜索 / 收藏 / 追番", icon: <Tv className="h-7 w-7" /> },
+    { id: "kazumi", title: "番剧", sub: "Kazumi · 聚合搜索 / 在线播放", icon: <Clapperboard className="h-7 w-7" /> },
+  ];
   return (
-    <div className="flex-1 animate-fade-in overflow-auto">
+    <div className="h-full animate-fade-in overflow-auto">
       <div className="mx-auto max-w-4xl px-4 py-10 sm:px-8">
         <div className="mb-8 flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">你好，{username}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">选择一个服务开始使用</p>
+            <p className="mt-1 text-sm text-muted-foreground">从一个服务开始，或从左侧导航随时切换</p>
           </div>
           <button
             onClick={onLogout}
@@ -2355,37 +2481,20 @@ function Launcher(props: {
             退出登录
           </button>
         </div>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-          <button
-            onClick={onOpenNetease}
-            className="group flex aspect-square flex-col items-center justify-center gap-3 rounded-2xl border bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg"
-          >
-            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <Music2 className="h-7 w-7" />
-            </span>
-            <span className="text-sm font-medium">音乐</span>
-            <span className="text-xs text-muted-foreground">网易云</span>
-          </button>
-          <button
-            onClick={onOpenBilibili}
-            className="group flex aspect-square flex-col items-center justify-center gap-3 rounded-2xl border bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg"
-          >
-            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <Tv className="h-7 w-7" />
-            </span>
-            <span className="text-sm font-medium">哔哩哔哩</span>
-            <span className="text-xs text-muted-foreground">视频</span>
-          </button>
-          <button
-            onClick={onOpenKazumi}
-            className="group flex aspect-square flex-col items-center justify-center gap-3 rounded-2xl border bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg"
-          >
-            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <Clapperboard className="h-7 w-7" />
-            </span>
-            <span className="text-sm font-medium">番剧</span>
-            <span className="text-xs text-muted-foreground">Kazumi</span>
-          </button>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {entries.map((e) => (
+            <button
+              key={e.id}
+              onClick={() => onSelect(e.id)}
+              className="group flex flex-col items-center gap-3 rounded-2xl border bg-card p-6 text-center shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg"
+            >
+              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+                {e.icon}
+              </span>
+              <span className="text-base font-medium">{e.title}</span>
+              <span className="text-xs text-muted-foreground">{e.sub}</span>
+            </button>
+          ))}
         </div>
       </div>
     </div>
@@ -2691,7 +2800,8 @@ function HomeView(props: {
                 {history.map((h) => (
                   <button
                     key={h}
-                    onMouseDown={() => setSongQuery(h)}
+                    onClick={() => setSongQuery(h)}
+                    onMouseDown={(e) => e.preventDefault()}
                     className="block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-muted"
                   >
                     {h}
@@ -2699,7 +2809,7 @@ function HomeView(props: {
                 ))}
                 <div className="my-1 h-px bg-border" />
                 <button
-                  onMouseDown={() => {
+                  onClick={() => {
                     setHistory([]);
                     try {
                       localStorage.removeItem("search-history");
@@ -2767,7 +2877,7 @@ function HomeView(props: {
                 </li>
               ))}
               {songResults.length === 0 ? (
-                <li className="py-10 text-center text-sm text-muted-foreground">无搜索结果</li>
+                <li><EmptyState icon={<Search className="h-6 w-6" />} title="无搜索结果" description="换个关键词试试" /></li>
               ) : null}
             </ul>
           </div>
@@ -2956,6 +3066,9 @@ function PlaylistView(props: {
   const [batchLevel, setBatchLevel] = useState("exhigh");
   const [batchFolderOpen, setBatchFolderOpen] = useState(false);
   const [removeOpen, setRemoveOpen] = useState(false);
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [renameValue, setRenameValue] = useState("");
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   // 加载时查询哪些歌已下载、哪些已红心。
   useEffect(() => {
@@ -3029,10 +3142,8 @@ function PlaylistView(props: {
               </button>
               <button
                 onClick={() => {
-                  const name = window.prompt("重命名歌单", detail.title);
-                  if (name !== null && name.trim() !== "" && name.trim() !== detail.title) {
-                    onRenamePlaylist(detail.id, name.trim());
-                  }
+                  setRenameValue(detail.title);
+                  setRenameOpen(true);
                 }}
                 className="rounded-full p-1.5 text-muted-foreground transition-colors hover:text-foreground"
                 title="重命名歌单"
@@ -3040,11 +3151,7 @@ function PlaylistView(props: {
                 <Pencil className="h-4 w-4" />
               </button>
               <button
-                onClick={() => {
-                  if (window.confirm(`确定删除歌单「${detail.title}」？`)) {
-                    onDeletePlaylist(detail.id);
-                  }
-                }}
+                onClick={() => setDeleteOpen(true)}
                 className="rounded-full p-1.5 text-muted-foreground transition-colors hover:text-destructive"
                 title="删除歌单"
               >
@@ -3131,6 +3238,29 @@ function PlaylistView(props: {
             options={detail.tracks.map((t) => ({ id: t.id, name: `${t.title} - ${t.artists?.join(" / ") ?? ""}` }))}
             onConfirm={(trackIds) => onRemoveSongs(trackIds)}
             onClose={() => setRemoveOpen(false)}
+          />
+        ) : null}
+
+        {renameOpen ? (
+          <RenamePlaylistDialog
+            currentName={detail.title}
+            onConfirm={(name) => {
+              if (name.trim() !== "" && name.trim() !== detail.title) {
+                onRenamePlaylist(detail.id, name.trim());
+              }
+            }}
+            onClose={() => setRenameOpen(false)}
+          />
+        ) : null}
+
+        {deleteOpen ? (
+          <ConfirmDialog
+            title="删除歌单"
+            description={`确定删除歌单「${detail.title}」？删除后不可恢复。`}
+            confirmLabel="删除"
+            destructive
+            onConfirm={() => onDeletePlaylist(detail.id)}
+            onClose={() => setDeleteOpen(false)}
           />
         ) : null}
 
@@ -3306,7 +3436,7 @@ function PlayerBar(props: {
 
   return (
     <div
-      className="fixed inset-x-0 bottom-0 z-20 animate-slide-up border-t border-border/60 bg-background/70 backdrop-blur-xl"
+      className="fixed inset-x-0 bottom-14 z-20 animate-slide-up border-t border-border/60 bg-background/70 backdrop-blur-xl sm:bottom-0"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       <div className="mx-auto flex max-w-4xl items-center gap-3 px-4 py-2 sm:gap-4 sm:px-6 sm:py-2.5">
