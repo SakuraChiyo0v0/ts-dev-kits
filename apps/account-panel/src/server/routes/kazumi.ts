@@ -16,7 +16,7 @@ import { promisify } from "node:util";
 import { basename, join } from "node:path";
 import { getDownloadManager, downloadRoot } from "../downloads.js";
 import { appLogger } from "../logger.js";
-import { recordRuleSearch, recordRuleBandwidth, recordRuleDownload, recordRuleProbeFailure, rankedRuleNames, listRuleRankings } from "../rule-rankings.js";
+import { recordRuleSearch, recordRuleBandwidth, recordRuleDownload, recordRuleProbeFailure, rankedRuleNames, listRuleRankings, setUserScore } from "../rule-rankings.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -172,6 +172,15 @@ export const kazumiRoutes = new Hono()
     } catch {
       return c.json({ error: "读取排名失败" }, 500);
     }
+  })
+  /** POST /api/kazumi/rule-rankings/score —— 设置源的个人评分（-5~+5，水印/字幕等主观加减）。body: { rule, score } */
+  .post("/rule-rankings/score", async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as { rule?: unknown; score?: unknown };
+    const rule = typeof body.rule === "string" ? body.rule.trim() : "";
+    const score = Number(body.score);
+    if (rule === "" || !Number.isFinite(score)) return c.json({ error: "参数错误" }, 400);
+    await setUserScore(rule, score);
+    return c.json({ ok: true, score: Math.max(-5, Math.min(5, Math.round(score))) });
   })
   /** GET /api/kazumi/rules —— 规则列表。 */
   .get("/rules", (c) => {

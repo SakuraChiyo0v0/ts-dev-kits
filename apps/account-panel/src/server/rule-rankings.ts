@@ -13,11 +13,13 @@
  *   download_successes  INTEGER —— 下载成功次数
  *   speed_sum           BIGINT  —— 下载累计速率 bps（ffprobe 实测视频码率）
  *   probe_failures      INTEGER —— 线路质量探测失败次数（加密源/JS 动态取流，无法解析播放）
+ *   user_score          INTEGER —— 用户个人评分（-5 ~ +5，水印/字幕差等手动加减，默认 0）
  *   last_seen           TIMESTAMPTZ —— 最近一次活动
  *
  * 综合分 score（查询时计算，不落库，满分 100）：
  *   搜索成功率*50 + 下载成功率*20 + 平均码率档*20 + 下载速率档*5 + 搜索速度档*5
  *   - 可播放性惩罚：探测失败（加密源）每 2 次 -5 分（最多 -20），避免加密源排前被优先点到。
+ *   + 用户个人评分：user_score * 4（-20 ~ +20，直接影响排名，体现水印/字幕等主观体验）。
  */
 import { Pool } from "pg";
 import { appLogger } from "./logger.js";
@@ -41,6 +43,7 @@ if (pool !== null) {
         download_successes INTEGER NOT NULL DEFAULT 0,
         speed_sum BIGINT NOT NULL DEFAULT 0,
         probe_failures INTEGER NOT NULL DEFAULT 0,
+        user_score INTEGER NOT NULL DEFAULT 0,
         last_seen TIMESTAMPTZ NOT NULL DEFAULT now()
       )`);
       // 老表缺新字段时补列（幂等）。
@@ -48,6 +51,7 @@ if (pool !== null) {
       await pool.query(`ALTER TABLE rule_rankings ADD COLUMN IF NOT EXISTS download_successes INTEGER NOT NULL DEFAULT 0`);
       await pool.query(`ALTER TABLE rule_rankings ADD COLUMN IF NOT EXISTS speed_sum BIGINT NOT NULL DEFAULT 0`);
       await pool.query(`ALTER TABLE rule_rankings ADD COLUMN IF NOT EXISTS probe_failures INTEGER NOT NULL DEFAULT 0`);
+      await pool.query(`ALTER TABLE rule_rankings ADD COLUMN IF NOT EXISTS user_score INTEGER NOT NULL DEFAULT 0`);
     } catch (error) {
       appLogger.error("rule_rankings 建表失败", { error });
     }
@@ -142,6 +146,27 @@ export async function recordRuleProbeFailure(rule: string): Promise<void> {
   }
 }
 
+/**
+ * 设置用户个人评分（-5 ~ +5，0 表示中性）。
+ * 用于水印/字幕/画质等主观体验的手动加减，直接影响综合排名。
+ */
+export async function setUserScore(rule: string, score: number): Promise<void> {
+  if (pool === null) return;
+  const clamped = Math.max(-5, Math.min(5, Math.round(score)));
+  try {
+    await pool.query(
+      `INSERT INTO rule_rankings (rule, user_score, last_seen)
+       VALUES ($1, $2, now())
+       ON CONFLICT (rule) DO UPDATE SET
+         user_score = EXCLUDED.user_score,
+         last_seen = now()`,
+      [rule, clamped],
+    );
+  } catch (error) {
+    appLogger.error("setUserScore 失败", { rule, error });
+  }
+}
+
 /** 一条规则的排名统计。 */
 export interface RuleRanking {
   rule: string;
@@ -156,6 +181,8 @@ export interface RuleRanking {
   downloadSuccessRate: number;
   /** 平均下载速率 bps（ffprobe 实测）。 */
   avgSpeed: number;
+  /** 用户个人评分（-5 ~ +5，0 中性）。 */
+  userScore: number;
   /** 综合质量分 0~100。 */
   score: number;
 }
@@ -178,10 +205,11 @@ export async function listRuleRankings(): Promise<RuleRanking[]> {
       download_successes: number;
       speed_sum: string;
       probe_failures: number;
+      user_score: number;
     }>(`SELECT rule, searches, successes, latency_sum, bandwidth_sum, probes,
-              downloads, download_successes, speed_sum, probe_failures
+              downloads, download_successes, speed_sum, probe_failures, user_score
         FROM rule_rankings
-        WHERE searches > 0 OR probes > 0 OR downloads > 0 OR probe_failures > 0`);
+        WHERE searches > 0 OR probes > 0 OR downloads > 0 OR probe_failures > 0 OR user_score != 0`);
     const ranked = rows.map((row) => {
       const searches = Number(row.searches) || 0;
       const successes = Number(row.successes) || 0;
@@ -213,6 +241,9 @@ export async function listRuleRankings(): Promise<RuleRanking[]> {
       // 可播放性惩罚：探测失败（加密源/JS 取流）每 2 次 -5 分，最多 -20，避免排前被优先点到。
       const probeFailures = Number(row.probe_failures) || 0;
       score -= Math.min(20, Math.floor(probeFailures / 2) * 5);
+      // 用户个人评分：±5 分制，按 ×4 加权（-20 ~ +20）直接影响排名。
+      const userScore = Number(row.user_score) || 0;
+      score += userScore * 4;
       score = Math.max(0, score);
       return {
         rule: row.rule,
@@ -223,6 +254,7 @@ export async function listRuleRankings(): Promise<RuleRanking[]> {
         avgBandwidth: Math.round(avgBandwidth),
         downloads,
         downloadSuccesses,
+        userScore,
         downloadSuccessRate: Math.round(downloadSuccessRate * 100) / 100,
         avgSpeed: Math.round(avgSpeed),
         score,

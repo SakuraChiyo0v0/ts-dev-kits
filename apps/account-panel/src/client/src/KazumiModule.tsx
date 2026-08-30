@@ -26,6 +26,15 @@ import DownloadHistoryPanel from "./DownloadHistoryPanel";
 import { cn } from "@/lib/utils";
 import { useTheme } from "./lib/use-theme";
 import { parseSseEvent, splitSseChunks } from "./lib/kazumi-sse";
+import {
+  PolarAngleAxis,
+  PolarGrid,
+  PolarRadiusAxis,
+  Radar,
+  RadarChart,
+  ResponsiveContainer,
+  Tooltip,
+} from "recharts";
 import { useToast } from "@/components/ui/toast";
 import { useEscToClose } from "@/lib/use-esc";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -106,7 +115,7 @@ function formatBitrate(bps: number): string {
 
 export default function KazumiModule({ onBack, active = true }: { onBack: () => void; active?: boolean }) {
   const { theme, toggle } = useTheme();
-  const [view, setView] = useState<"home" | "rules" | "result">("home");
+  const [view, setView] = useState<"home" | "rules" | "result" | "rankings">("home");
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
@@ -458,6 +467,18 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
                   <button
                     onClick={() => {
                       setMenuOpen(false);
+                      setView("rankings");
+                      setSelected(null);
+                      setResults([]);
+                    }}
+                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted"
+                  >
+                    <Trophy className="h-4 w-4 text-muted-foreground" />
+                    源排行
+                  </button>
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false);
                       setView("rules");
                       setSelected(null);
                       setResults([]);
@@ -485,7 +506,9 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col">
-        {view === "rules" ? (
+        {view === "rankings" ? (
+          <RankingsView onBack={() => setView("home")} onToast={showToast} />
+        ) : view === "rules" ? (
           <RulesView onBack={() => setView("home")} onToast={showToast} />
         ) : selected === null ? (
           <div className="flex-1 overflow-auto">
@@ -1296,6 +1319,184 @@ function KazumiDownloadDialog(props: {
           <Button size="sm" className="flex-1 rounded-full" onClick={() => { onDownload(path); onClose(); }}>
             <Download />{isBatch ? "下载全部" : "下载"}
           </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** 源排行页：雷达图展示各源六维能力 + 综合分 + 个人评分。 */
+function RankingsView(props: { onBack: () => void; onToast: (m: string, type?: "success" | "error" | "info") => void }) {
+  const { onBack, onToast } = props;
+  const [rankings, setRankings] = useState<Array<{
+    rule: string;
+    searches: number;
+    successes: number;
+    successRate: number;
+    avgLatencyMs: number;
+    avgBandwidth: number;
+    downloads: number;
+    downloadSuccesses: number;
+    downloadSuccessRate: number;
+    avgSpeed: number;
+    userScore: number;
+    score: number;
+  }>>([]);
+  const [selectedRule, setSelectedRule] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const res = await rpc.api.kazumi["rule-rankings"].$get();
+      const data = (await res.json()) as { rankings?: typeof rankings };
+      const list = data.rankings ?? [];
+      setRankings(list);
+      if (selectedRule === null && list.length > 0) setSelectedRule(list[0]!.rule);
+    } catch {
+      onToast("读取源排行失败", "error");
+    }
+  }, [onToast, selectedRule]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const setScore = async (rule: string, score: number) => {
+    try {
+      await rpc.api.kazumi["rule-rankings"].score.$post({ json: { rule, score } });
+      onToast(`已更新 ${rule} 个人评分 ${score > 0 ? "+" : ""}${score}`, "success");
+      await load();
+    } catch {
+      onToast("评分失败", "error");
+    }
+  };
+
+  const fmtBitrate = (bps: number): string =>
+    bps > 0 ? `${(bps / 1_000_000).toFixed(1)} Mbps` : "—";
+  const fmtPct = (rate: number): string => `${Math.round(rate * 100)}%`;
+  const fmtSpeed = (ms: number): string => (ms > 0 ? `${(ms / 1000).toFixed(0)}s` : "—");
+
+  // 六维雷达数据（0~100 归一）：搜索成功率 / 下载成功率 / 画质码率 / 下载速率 / 响应速度 / 个人评分。
+  const radarData = (() => {
+    const r = rankings.find((x) => x.rule === selectedRule);
+    if (r === undefined) return [];
+    const bandwidthScore = Math.min(100, (r.avgBandwidth / 8_000_000) * 100);
+    const speedScore = Math.min(100, (r.avgSpeed / 10_000_000) * 100);
+    const latencyScore = Math.max(0, Math.min(100, (1 - (r.avgLatencyMs - 1000) / 4000) * 100));
+    const userScoreNorm = ((r.userScore + 5) / 10) * 100;
+    return [
+      { axis: "搜索成功率", value: Math.round(r.successRate * 100) },
+      { axis: "下载成功率", value: Math.round(r.downloadSuccessRate * 100) },
+      { axis: "画质码率", value: Math.round(bandwidthScore) },
+      { axis: "下载速率", value: Math.round(speedScore) },
+      { axis: "响应速度", value: Math.round(latencyScore) },
+      { axis: "个人评分", value: Math.round(userScoreNorm) },
+    ];
+  })();
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex items-center justify-between border-b border-border/60 px-4 py-3 sm:px-6">
+        <button onClick={onBack} className="flex items-center gap-1 rounded-full px-2 py-1 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">
+          <ChevronLeft className="h-4 w-4" />返回
+        </button>
+        <h1 className="text-lg font-bold">源排行</h1>
+        <div className="w-16" />
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-auto">
+        <div className="mx-auto max-w-6xl px-4 py-6">
+          {/* 真数据说明 */}
+          <div className="mb-4 rounded-2xl border bg-card p-3 text-xs text-muted-foreground">
+            📊 数据来自真实搜索与下载测试：搜索成功率/响应速度由每次搜索记录，码率/下载速率由 ffprobe 实测，
+            下载成功率为实际下载成败统计。个人评分可手动调整（水印/字幕等主观体验）。
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
+            {/* 左侧：源列表 + 评分 */}
+            <div className="space-y-2">
+              {rankings.map((r, i) => (
+                <div
+                  key={r.rule}
+                  onClick={() => setSelectedRule(r.rule)}
+                  className={`cursor-pointer rounded-2xl border p-3 transition-colors ${selectedRule === r.rule ? "border-primary bg-primary/5" : "bg-card hover:bg-muted"}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${i < 3 ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+                      {i + 1}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate font-medium">{r.rule}</span>
+                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">{r.score} 分</span>
+                  </div>
+                  <div className="mt-1.5 flex items-center justify-between pl-8">
+                    <span className="text-[11px] text-muted-foreground">
+                      搜索 {fmtPct(r.successRate)} · 下载 {r.downloads > 0 ? fmtPct(r.downloadSuccessRate) : "—"} · 码率 {fmtBitrate(r.avgBandwidth)}
+                    </span>
+                    {/* 个人评分 */}
+                    <span className="flex items-center gap-0.5">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); void setScore(r.rule, r.userScore - 1); }}
+                        className="rounded-full px-1.5 text-xs text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                        title="扣分（水印/字幕差）"
+                      >−</button>
+                      <span className={`min-w-6 text-center text-xs font-semibold ${r.userScore > 0 ? "text-emerald-500" : r.userScore < 0 ? "text-destructive" : "text-muted-foreground"}`}>
+                        {r.userScore > 0 ? `+${r.userScore}` : r.userScore}
+                      </span>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); void setScore(r.rule, r.userScore + 1); }}
+                        className="rounded-full px-1.5 text-xs text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                        title="加分"
+                      >+</button>
+                    </span>
+                  </div>
+                </div>
+              ))}
+              {rankings.length === 0 ? (
+                <p className="py-10 text-center text-xs text-muted-foreground">
+                  暂无排行数据——搜索、下载过番剧后自动积累
+                </p>
+              ) : null}
+            </div>
+
+            {/* 右侧：雷达图 + 详情 */}
+            <div className="rounded-2xl border bg-card p-4">
+              {selectedRule !== null && radarData.length > 0 ? (
+                <>
+                  <h2 className="mb-1 text-base font-bold">{selectedRule}</h2>
+                  <p className="mb-3 text-xs text-muted-foreground">
+                    综合 {rankings.find((r) => r.rule === selectedRule)?.score ?? 0} 分
+                    {rankings.find((r) => r.rule === selectedRule)?.userScore !== 0
+                      ? `（含个人评分 ${rankings.find((r) => r.rule === selectedRule)?.userScore ?? 0}）`
+                      : ""}
+                  </p>
+                  <div className="h-72 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RadarChart data={radarData} outerRadius="70%">
+                        <PolarGrid />
+                        <PolarAngleAxis dataKey="axis" tick={{ fontSize: 12 }} />
+                        <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
+                        <Radar name="能力" dataKey="value" stroke="var(--color-primary)" fill="var(--color-primary)" fillOpacity={0.35} />
+                        <Tooltip />
+                      </RadarChart>
+                    </ResponsiveContainer>
+                  </div>
+                  {(() => {
+                    const r = rankings.find((x) => x.rule === selectedRule);
+                    if (r === undefined) return null;
+                    return (
+                      <div className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
+                        <div className="rounded-xl bg-muted p-2"><p className="text-muted-foreground">搜索次数</p><p className="font-semibold">{r.searches}</p></div>
+                        <div className="rounded-xl bg-muted p-2"><p className="text-muted-foreground">搜索成功率</p><p className="font-semibold">{fmtPct(r.successRate)}</p></div>
+                        <div className="rounded-xl bg-muted p-2"><p className="text-muted-foreground">平均响应</p><p className="font-semibold">{fmtSpeed(r.avgLatencyMs)}</p></div>
+                        <div className="rounded-xl bg-muted p-2"><p className="text-muted-foreground">平均码率</p><p className="font-semibold">{fmtBitrate(r.avgBandwidth)}</p></div>
+                        <div className="rounded-xl bg-muted p-2"><p className="text-muted-foreground">下载成功率</p><p className="font-semibold">{r.downloads > 0 ? fmtPct(r.downloadSuccessRate) : "—"}</p></div>
+                        <div className="rounded-xl bg-muted p-2"><p className="text-muted-foreground">实测下载速率</p><p className="font-semibold">{fmtBitrate(r.avgSpeed)}</p></div>
+                      </div>
+                    );
+                  })()}
+                </>
+              ) : (
+                <p className="py-20 text-center text-xs text-muted-foreground">选择左侧源查看雷达图</p>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>
