@@ -10,10 +10,15 @@ import { accountRoutes } from "./routes/account.js";
 import { userRoutes } from "./routes/users.js";
 import { bilibiliRoutes } from "./routes/bilibili.js";
 import { kazumiRoutes } from "./routes/kazumi.js";
+import { requireAuth } from "./auth-middleware.js";
 
 const api = new Hono()
   .route("/auth", authRoutes)
   .route("/users", userRoutes)
+  // bilibili/kazumi 全部端点（含 proxy/seg 等代理出口）要求面板会话。
+  // 此前无任何 cookie/session 校验，/api/bilibili/proxy 是未鉴权 SSRF 出口（见交接文档遗留事项 P0）。
+  .use("/bilibili/*", requireAuth)
+  .use("/kazumi/*", requireAuth)
   .route("/bilibili", bilibiliRoutes)
   .route("/kazumi", kazumiRoutes)
   .route("/", accountRoutes)

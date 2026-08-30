@@ -82,9 +82,37 @@ export function createAnimeClient(options: AnimeClientOptions = {}): AnimeClient
   const engine = new RuleEngine(
     options.fetchImpl ? new DefaultRuleRequestExecutor(options.fetchImpl) : undefined,
   );
-  // 会话级失效源黑名单：一次会话内失败的源（网络/超时/无结果/损坏）跨多次搜索复用跳过。
+  // 会话级失效源黑名单：一次会话内失败的源跨多次搜索复用跳过。
+  // 实现：连续失败计数 + TTL 过期（默认 10 分钟），避免单次瞬时抖动把可用源永久拉黑
+  // 到容器重启（超时收敛到 6s 后该问题会更明显）。
   // 失效源随站点维护会变化，跨会话/重启不持久化（重启后重新探测）。
-  const deadRules = new Set<string>();
+  const deadRules = new Map<string, { failures: number; blockedUntil: number | null }>();
+  const DEAD_RULE_FAIL_THRESHOLD = 2; // 连续失败 N 次才拉黑
+  const DEAD_RULE_TTL_MS = 10 * 60 * 1000; // 拉黑后 10 分钟过期
+
+  /** 规则是否当前被拉黑（未拉黑 / 已过期自动放行）。 */
+  function isDeadRule(name: string): boolean {
+    const entry = deadRules.get(name);
+    if (entry === undefined) return false;
+    // 未达阈值（failures < 阈值，blockedUntil 为 null）：只累计计数，不算拉黑。
+    if (entry.blockedUntil === null) return false;
+    if (Date.now() >= entry.blockedUntil) {
+      deadRules.delete(name);
+      return false;
+    }
+    return true;
+  }
+
+  /** 记录一次规则失败；连续失败达到阈值才拉黑（带 TTL）。 */
+  function markRuleFailed(name: string): void {
+    const prev = deadRules.get(name);
+    const failures = (prev?.failures ?? 0) + 1;
+    if (failures >= DEAD_RULE_FAIL_THRESHOLD) {
+      deadRules.set(name, { failures, blockedUntil: Date.now() + DEAD_RULE_TTL_MS });
+    } else {
+      deadRules.set(name, { failures, blockedUntil: null });
+    }
+  }
 
   const rules: RuleManager = {
     list: () => loader.list(),
@@ -202,7 +230,7 @@ export function createAnimeClient(options: AnimeClientOptions = {}): AnimeClient
           if (index >= ruleList.length) return;
           const rule = ruleList[index];
           if (rule === undefined) return;
-          if (deadRules.has(rule.name)) continue;
+          if (isDeadRule(rule.name)) continue;
           try {
             const trace = await engine.search(rule, keyword);
             if (stopped || checkAbort()) return;
@@ -219,8 +247,9 @@ export function createAnimeClient(options: AnimeClientOptions = {}): AnimeClient
             }
           } catch (error) {
             // 单个规则失败（验证码/无结果/网络错误/解析错误）不影响整体：跳过该规则，
-            // 并记入黑名单，避免同一失效源在后续搜索中被反复重试拖慢。
-            deadRules.add(rule.name);
+            // 并累计失败计数——连续失败达阈值才拉黑（TTL 过期自动放行），
+            // 避免单次瞬时抖动把可用源永久拉黑到容器重启。
+            markRuleFailed(rule.name);
             if (error instanceof KazumiError && error.code === "CAPTCHA") {
               captchaBlocked = true;
             }

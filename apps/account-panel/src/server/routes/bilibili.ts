@@ -20,6 +20,30 @@ const BILI_REFERER = "https://www.bilibili.com/";
 const BILI_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
+/**
+ * proxy 出口 host 白名单：只允许代理 B 站自家视频/图片域名，
+ * 防止把面板变成任意 URL 的开放代理（SSRF 出口）。
+ * 匹配主域 + 子域（如 upos-sz-mirrorcos.bilivideo.com、i0.hdslb.com）。
+ */
+const PROXY_HOST_ALLOWLIST = [
+  /(^|\.)bilivideo\.com$/u,
+  /(^|\.)bilibili\.com$/u,
+  /(^|\.)hdslb\.com$/u, // 封面/用户头像图片
+];
+
+/** 校验代理目标 URL 是否在白名单内；不在则返回错误原因（null = 允许）。 */
+function proxyHostAllowed(rawUrl: string): string | null {
+  let u: URL;
+  try {
+    u = new URL(rawUrl);
+  } catch {
+    return "url 非法";
+  }
+  if (u.protocol !== "https:" && u.protocol !== "http:") return "仅支持 http(s)";
+  if (PROXY_HOST_ALLOWLIST.some((re) => re.test(u.hostname))) return null;
+  return `域名不在白名单：${u.hostname}`;
+}
+
 /** 清理子路径（去穿越 + 首尾斜杠）。 */
 function safeSubdir(raw: string): string {
   return raw.replace(/\.\./gu, "").replace(/^\/+|\/+$/gu, "");
@@ -191,6 +215,9 @@ export const bilibiliRoutes = new Hono()
   .get("/proxy", async (c) => {
     const url = c.req.query("url");
     if (url === undefined || url === "") return c.json({ error: "missing url" }, 400);
+    // SSRF 防护：只允许代理 B 站自家域名（见 PROXY_HOST_ALLOWLIST）。
+    const denied = proxyHostAllowed(url);
+    if (denied !== null) return c.json({ error: `代理目标被拒绝：${denied}` }, 403);
     const range = c.req.header("range");
     try {
       const resp = await fetch(url, {

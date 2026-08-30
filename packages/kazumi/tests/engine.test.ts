@@ -271,3 +271,57 @@ describe("RuleManager add/remove", () => {
     rmSync(dir, { recursive: true, force: true });
   });
 });
+
+describe("失效源黑名单（连续失败阈值 + TTL）", () => {
+  /** 可编程 fetch：按调用次数返回成功/失败 HTML。 */
+  function flakyFetch(results: Array<{ status: number; body: string }>) {
+    let calls = 0;
+    return (async () => {
+      const r = results[Math.min(calls, results.length - 1)]!;
+      calls += 1;
+      return new Response(r.body, {
+        status: r.status,
+        headers: { "content-type": "text/html" },
+      });
+    }) as typeof fetch;
+  }
+
+  it("单次失败不拉黑：下一次搜索仍尝试该源", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "kazumi-test-"));
+    writeRule("mock-flaky", xpathRule(server.baseUrl), dir);
+    // 第一次调用返回 500（失败），第二次起返回正常搜索页。
+    const fetchImpl = flakyFetch([
+      { status: 500, body: "boom" },
+      { status: 200, body: "<html><body><div><div><section></section></div></div></body></html>" },
+    ]);
+    const client = createAnimeClient({ rulesDir: dir, fetchImpl });
+
+    // 第一次：源失败，记 1 次失败（未达阈值 2，不拉黑）。
+    const first = await client.search("测试", { rules: ["mock-flaky"] });
+    expect(first).toEqual([]);
+    // 第二次：源仍被尝试（未拉黑），成功返回空列表而非跳过。
+    const second = await client.search("测试", { rules: ["mock-flaky"] });
+    expect(second).toEqual([]);
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("连续 2 次失败才拉黑：后续搜索跳过该源（不发起请求）", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "kazumi-test-"));
+    writeRule("mock-flaky2", xpathRule(server.baseUrl), dir);
+    let requests = 0;
+    const fetchImpl = (async () => {
+      requests += 1;
+      return new Response("boom", { status: 500, headers: { "content-type": "text/html" } });
+    }) as typeof fetch;
+    const client = createAnimeClient({ rulesDir: dir, fetchImpl });
+
+    // 连续两次失败 → 触发拉黑（阈值 2）。
+    await client.search("测试", { rules: ["mock-flaky2"] });
+    await client.search("测试", { rules: ["mock-flaky2"] });
+    const requestsAfterTwo = requests;
+    // 第三次：已拉黑，不再发起请求（requests 不增长）。
+    await client.search("测试", { rules: ["mock-flaky2"] });
+    expect(requests).toBe(requestsAfterTwo);
+    rmSync(dir, { recursive: true, force: true });
+  });
+});

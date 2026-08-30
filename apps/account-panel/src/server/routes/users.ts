@@ -15,6 +15,9 @@ const SESSION_COOKIE = "app_session";
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
+/** 会话 Cookie 名（供鉴权中间件等复用）。 */
+export { SESSION_COOKIE };
+
 /** 启动时对管理员密码做一次 scrypt 哈希（运行时不再明文比较）。 */
 const ADMIN_HASH: string | null =
   ADMIN_PASSWORD !== undefined && ADMIN_PASSWORD !== "" ? hashPassword(ADMIN_PASSWORD) : null;
@@ -59,7 +62,7 @@ function verifyPassword(password: string, stored: string): boolean {
 }
 
 /** 校验 token 是否有效（PG 优先，否则内存）。 */
-async function lookupSession(token: string): Promise<string | undefined> {
+export async function lookupSession(token: string): Promise<string | undefined> {
   if (pool !== null) {
     try {
       const { rows } = await pool.query<{ user_id: string }>(
@@ -71,7 +74,7 @@ async function lookupSession(token: string): Promise<string | undefined> {
       await pool.query("DELETE FROM sessions WHERE token = $1", [token]);
       return undefined;
     } catch {
-      return undefined;
+      // PG 短暂不可用：回落内存 session（与 createSession 的内存兜底对称）。
     }
   }
   const session = memorySessions.get(token);
