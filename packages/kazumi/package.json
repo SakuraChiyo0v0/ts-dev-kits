@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/kazumi",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Kazumi-rule-compatible anime scraping & download SDK: declarative rule engine (XPath + API modes) + m3u8 download merged to mp4 via ffmpeg",
   "license": "UNLICENSED",
   "publishConfig": {
