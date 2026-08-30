@@ -260,17 +260,19 @@ export async function listRuleRankings(): Promise<RuleRanking[]> {
       const probes = Number(row.probes) || 0;
       const successRate = searches > 0 ? successes / searches : 0;
       const avgLatencyMs = searches > 0 ? latencySum / searches : 0;
-      const avgBandwidth = probes > 0 ? bandwidthSum / probes : 0;
       const downloads = Number(row.downloads) || 0;
       const downloadSuccesses = Number(row.download_successes) || 0;
       const speedSum = Number(row.speed_sum) || 0;
       const downloadSuccessRate = downloads > 0 ? downloadSuccesses / downloads : 0;
       // 平均下载速率 = 累计码率 / 下载成功次数（speed_sum 只在成功时累加）。
       const avgSpeed = downloadSuccesses > 0 ? speedSum / downloadSuccesses : 0;
-      // 码率档：0~8Mbps 线性映射到 0~1（>8Mbps 记满）。
-      const bandwidthScore = Math.min(1, avgBandwidth / 8_000_000);
-      // 下载速率档：0~10Mbps 线性映射到 0~1（>10Mbps 记满，用下载实测码率）。
-      const speedScore = Math.min(1, avgSpeed / 10_000_000);
+      // 平均码率：优先线路探测（master playlist 声明值），无探测数据时回退下载实测码率，
+      // 避免只做过下载测试的源显示 0（probes=0 时 bandwidth_sum 为空）。
+      const avgBandwidth = probes > 0 ? bandwidthSum / probes : avgSpeed;
+      // 码率档：0~4Mbps 线性映射到 0~1（实测源码率多在 1~3.9M，>4Mbps 记满）。
+      const bandwidthScore = Math.min(1, avgBandwidth / 4_000_000);
+      // 下载速率档：0~4Mbps 线性映射到 0~1（>4Mbps 记满，用下载实测码率）。
+      const speedScore = Math.min(1, avgSpeed / 4_000_000);
       // 搜索速度档：>5s 记 0，<1s 记 1。
       const latencyScore = Math.max(0, Math.min(1, 1 - (avgLatencyMs - 1000) / 4000));
       // 综合分：搜索成功率为主(50)，下载成功率(20)、画质码率(20)次之，下载速率(5)、搜索速度(5)加分。
