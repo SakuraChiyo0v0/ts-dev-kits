@@ -112,6 +112,8 @@ export class ApiSession {
   readonly vcBaseUrl: string;
   /** 创作中心接口根地址,默认 https://member.bilibili.com(测试可覆盖)。 */
   readonly memberBaseUrl: string;
+  /** 直播接口根地址,默认 https://api.live.bilibili.com(测试可覆盖)。 */
+  readonly liveBaseUrl: string;
   /** 登录态失效(-101)时的回调:返回 true 表示已刷新 cookie,调用方应重试一次。 */
   onAuthFailure?: () => Promise<boolean>;
   /** 会话级基础 cookie(构造时生成一次,buvid3/buvid4 会话内保持稳定,避免触发风控)。 */
@@ -124,6 +126,7 @@ export class ApiSession {
       baseUrl?: string;
       vcBaseUrl?: string;
       memberBaseUrl?: string;
+      liveBaseUrl?: string;
     } = {},
   ) {
     this.cookie = options.cookie ?? "";
@@ -131,6 +134,7 @@ export class ApiSession {
     this.baseUrl = (options.baseUrl ?? "https://api.bilibili.com").replace(/\/+$/u, "");
     this.vcBaseUrl = (options.vcBaseUrl ?? "https://api.vc.bilibili.com").replace(/\/+$/u, "");
     this.memberBaseUrl = (options.memberBaseUrl ?? "https://member.bilibili.com").replace(/\/+$/u, "");
+    this.liveBaseUrl = (options.liveBaseUrl ?? "https://api.live.bilibili.com").replace(/\/+$/u, "");
     this.#baseCookies = baseCookies();
     this.wbi = new WbiSigner(this);
   }

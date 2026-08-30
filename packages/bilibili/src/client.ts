@@ -33,6 +33,7 @@ import {
   CreativeApi,
   UserApi,
   SearchApi,
+  LiveApi,
 } from "./api/index.js";
 import type {
   BilibiliClientOptions,
@@ -76,6 +77,7 @@ export class BilibiliClient {
   #creative: CreativeApi | undefined;
   #user: UserApi | undefined;
   #search: SearchApi | undefined;
+  #live: LiveApi | undefined;
 
   constructor(options: BilibiliClientOptions = {}) {
     // 显式 cookie 优先;未传时从登录态存储自动加载(复用 account 底座)。
@@ -104,6 +106,7 @@ export class BilibiliClient {
       ...(options.baseUrl !== undefined ? { baseUrl: options.baseUrl } : {}),
       ...(options.vcBaseUrl !== undefined ? { vcBaseUrl: options.vcBaseUrl } : {}),
       ...(options.memberBaseUrl !== undefined ? { memberBaseUrl: options.memberBaseUrl } : {}),
+      ...(options.liveBaseUrl !== undefined ? { liveBaseUrl: options.liveBaseUrl } : {}),
     });
     if (authStore !== undefined && credentials !== null) {
       // 登录态失效(-101)时自动续期一次并重试。
@@ -221,6 +224,12 @@ export class BilibiliClient {
   get search(): SearchApi {
     this.#search ??= new SearchApi(this.#session);
     return this.#search;
+  }
+
+  /** 直播 API(关注直播列表,只读)。 */
+  get live(): LiveApi {
+    this.#live ??= new LiveApi(this.#session);
+    return this.#live;
   }
 
   /** 解析任意 B 站链接,返回媒体项列表。 */

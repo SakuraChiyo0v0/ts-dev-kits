@@ -245,6 +245,51 @@ export const bilibiliRoutes = new Hono()
       return c.json({ error: "获取周榜视频失败" }, 500);
     }
   })
+  /** GET /api/bilibili/live?page=1 —— 关注直播列表（只读）。 */
+  .get("/live", async (c) => {
+    const page = Number(c.req.query("page") ?? 1);
+    const client = createClient();
+    try {
+      const data = await client.live.following({ page: Number.isFinite(page) ? page : 1, pageSize: 20 });
+      return c.json({
+        rooms: data.rooms.map((r) => ({
+          roomid: r.roomid,
+          liveStatus: r.liveStatus,
+          ...(r.title !== undefined ? { title: r.title } : {}),
+          ...(r.cover !== undefined ? { cover: httpsImg(r.cover) } : {}),
+          ...(r.upName !== undefined ? { upName: r.upName } : {}),
+          ...(r.upMid !== undefined ? { upMid: r.upMid } : {}),
+          ...(r.liveTime !== undefined ? { liveTime: r.liveTime } : {}),
+        })),
+        liveCount: data.liveCount,
+        totalPage: data.totalPage,
+      });
+    } catch {
+      return c.json({ error: "获取直播列表失败" }, 500);
+    }
+  })
+  /** GET /api/bilibili/liked?pn=1 —— 点赞过的视频（需登录）。 */
+  .get("/liked", async (c) => {
+    const pn = Number(c.req.query("pn") ?? 1);
+    const client = createClient();
+    try {
+      const { items, count } = await client.search.likedVideos({ pn: Number.isFinite(pn) ? pn : 1, ps: 20 });
+      return c.json({
+        videos: items.map((v) => ({
+          bvid: v.bvid,
+          aid: v.aid,
+          title: v.title,
+          ...(v.cover !== undefined ? { cover: httpsImg(v.cover) } : {}),
+          ...(v.duration !== undefined ? { duration: v.duration } : {}),
+          ...(v.play !== undefined ? { play: v.play } : {}),
+          ...(v.author !== undefined ? { author: v.author } : {}),
+        })),
+        count,
+      });
+    } catch {
+      return c.json({ error: "获取点赞视频失败" }, 500);
+    }
+  })
   /** GET /api/bilibili/video?bvid=xxx —— 视频详情（含分P）。 */
   .get("/video", async (c) => {
     const bvid = c.req.query("bvid");

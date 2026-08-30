@@ -147,6 +147,33 @@ export class SearchApi {
     );
     return (data.list ?? []).map(toRecommendItem);
   }
+
+  /**
+   * 点赞过的视频（需登录）。
+   * /x/v2/space/likearc，返回 data.list[]，每项含 archive 嵌套（aid/bvid/title/pic/duration/owner/stat）。
+   */
+  async likedVideos(
+    options: { pn?: number; ps?: number } = {},
+  ): Promise<{ items: VideoSearchItem[]; count: number }> {
+    const mid = this.#session.currentMid();
+    if (mid === undefined) {
+      return { items: [], count: 0 };
+    }
+    const data = await this.#session.getPlain<{
+      list?: Array<Record<string, unknown>> | null;
+      count?: number;
+    }>(`${this.#session.baseUrl}/x/v2/space/likearc`, {
+      vmid: mid,
+      mid,
+      ps: options.ps ?? 20,
+      pn: options.pn ?? 1,
+    });
+    const items = (data.list ?? [])
+      .map((entry) => entry.archive)
+      .filter((a): a is Record<string, unknown> => a !== undefined && a !== null)
+      .map(toRecommendItem);
+    return { items, count: Number(data.count ?? items.length) };
+  }
 }
 
 /** 每周必看期数。 */

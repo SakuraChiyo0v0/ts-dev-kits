@@ -202,6 +202,8 @@ export interface BilibiliClientOptions {
   vcBaseUrl?: string;
   /** 创作中心接口根地址(测试用,默认官方 member.bilibili.com)。 */
   memberBaseUrl?: string;
+  /** 直播接口根地址(测试用,默认官方 api.live.bilibili.com)。 */
+  liveBaseUrl?: string;
   /** 下载器配置。 */
   download?: DownloadConfig;
   /** 是否合并音视频(需 @sakurachiyo0v0/ffmpeg),默认 true。 */

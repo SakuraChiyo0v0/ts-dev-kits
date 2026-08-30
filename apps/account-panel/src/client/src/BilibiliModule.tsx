@@ -8,6 +8,7 @@ import {
   Folder,
   FolderPlus,
   History,
+  Heart,
   ListVideo,
   LogOut,
   Maximize,
@@ -17,6 +18,7 @@ import {
   Pause,
   Play,
   QrCode,
+  Radio,
   RefreshCw,
   Search,
   SkipBack,
@@ -155,7 +157,7 @@ export default function BilibiliModule({ onBack, active = true }: { onBack: () =
   const [login, setLogin] = useState<LoginView | null>(null);
   const [view, setView] = useState<"home" | "history" | "watchLater" | "fav" | "bangumi" | "popular">("home");
   // 「发现」视图内的子 tab：推荐流 / 综合热门 / 排行榜 / 每周必看。
-  const [exploreTab, setExploreTab] = useState<"recommend" | "popular" | "ranking" | "weekly">("popular");
+  const [exploreTab, setExploreTab] = useState<"recommend" | "popular" | "ranking" | "weekly" | "live" | "liked">("popular");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<BiliVideo[]>([]);
   const [searching, setSearching] = useState(false);
@@ -1330,18 +1332,20 @@ function PopularView(props: { onBack: () => void; onToast: (m: string, type?: "s
 
 /** 「发现」视图：推荐流 / 综合热门 / 排行榜 / 每周必看 四个子 tab（对齐 Bilibili-Gate 的推荐体系）。 */
 function DiscoverView(props: {
-  tab: "recommend" | "popular" | "ranking" | "weekly";
-  onTabChange: (t: "recommend" | "popular" | "ranking" | "weekly") => void;
+  tab: "recommend" | "popular" | "ranking" | "weekly" | "live" | "liked";
+  onTabChange: (t: "recommend" | "popular" | "ranking" | "weekly" | "live" | "liked") => void;
   onBack: () => void;
   onToast: (m: string, type?: "success" | "error" | "info") => void;
   onOpenVideo: (bvid: string) => void;
 }) {
   const { tab, onTabChange, onBack, onToast, onOpenVideo } = props;
-  const tabs: Array<{ id: "recommend" | "popular" | "ranking" | "weekly"; label: string; icon: React.ReactNode }> = [
+  const tabs: Array<{ id: "recommend" | "popular" | "ranking" | "weekly" | "live" | "liked"; label: string; icon: React.ReactNode }> = [
     { id: "recommend", label: "推荐", icon: <Sparkles className="h-3.5 w-3.5" /> },
     { id: "popular", label: "综合热门", icon: <Flame className="h-3.5 w-3.5" /> },
     { id: "ranking", label: "排行榜", icon: <Trophy className="h-3.5 w-3.5" /> },
     { id: "weekly", label: "每周必看", icon: <CalendarDays className="h-3.5 w-3.5" /> },
+    { id: "live", label: "直播", icon: <Radio className="h-3.5 w-3.5" /> },
+    { id: "liked", label: "点赞过", icon: <Heart className="h-3.5 w-3.5" /> },
   ];
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -1374,6 +1378,10 @@ function DiscoverView(props: {
             <PopularFeed onToast={onToast} onOpenVideo={onOpenVideo} />
           ) : tab === "ranking" ? (
             <RankingFeed onToast={onToast} onOpenVideo={onOpenVideo} />
+          ) : tab === "live" ? (
+            <LiveFeed onToast={onToast} />
+          ) : tab === "liked" ? (
+            <LikedFeed onToast={onToast} onOpenVideo={onOpenVideo} />
           ) : (
             <WeeklyFeed onToast={onToast} onOpenVideo={onOpenVideo} />
           )}
@@ -1665,6 +1673,109 @@ function Skeleton() {
         <div className="h-6 w-2/3 rounded bg-muted" />
         <div className="mt-2 h-4 w-1/3 rounded bg-muted" />
       </div>
+    </div>
+  );
+}
+
+/** 直播：关注直播列表（分页，直播中在前）。 */
+function LiveFeed(props: { onToast: (m: string, type?: "success" | "error" | "info") => void }) {
+  const { onToast } = props;
+  const [rooms, setRooms] = useState<Array<{ roomid: number; liveStatus: number; title?: string; cover?: string; upName?: string; upMid?: number }>>([]);
+  const [page, setPage] = useState(1);
+  const [totalPage, setTotalPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const load = useCallback(async (p: number) => {
+    setLoading(true);
+    try {
+      const res = await rpc.api.bilibili.live.$get({ query: { page: String(p) } });
+      const data = (await res.json()) as {
+        rooms?: Array<{ roomid: number; liveStatus: number; title?: string; cover?: string; upName?: string; upMid?: number }>;
+        totalPage?: number;
+      };
+      setRooms(data.rooms ?? []);
+      setTotalPage(data.totalPage ?? 1);
+    } catch {
+      onToast("获取直播列表失败", "error");
+    } finally {
+      setLoading(false);
+    }
+  }, [onToast]);
+  useEffect(() => { void load(page); }, [page, load]);
+  return (
+    <div className="space-y-4">
+      {loading ? (
+        <p className="py-10 text-center text-sm text-muted-foreground">加载中…</p>
+      ) : rooms.length === 0 ? (
+        <EmptyState icon={<Radio className="h-6 w-6" />} title="暂无关注直播" description="去关注一些主播后，这里会显示他们的直播间" />
+      ) : (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          {rooms.map((r) => (
+            <a
+              key={r.roomid}
+              href={`https://live.bilibili.com/${r.roomid}`}
+              target="_blank"
+              rel="noreferrer"
+              className="group overflow-hidden rounded-2xl border bg-card transition-colors hover:bg-muted"
+            >
+              <div className="relative aspect-video overflow-hidden bg-muted">
+                {r.cover !== undefined ? <img src={r.cover} alt="" className="h-full w-full object-cover" loading="lazy" /> : null}
+                {r.liveStatus === 1 ? (
+                  <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-red-500 px-2 py-0.5 text-[11px] font-medium text-white">
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />直播中
+                  </span>
+                ) : (
+                  <span className="absolute left-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[11px] text-white">未开播</span>
+                )}
+              </div>
+              <div className="p-3">
+                <p className="truncate text-sm font-medium">{r.title ?? r.upName ?? `房间 ${r.roomid}`}</p>
+                <p className="mt-0.5 truncate text-xs text-muted-foreground">{r.upName}</p>
+              </div>
+            </a>
+          ))}
+        </div>
+      )}
+      {totalPage > 1 ? (
+        <div className="flex items-center justify-center gap-3 py-4">
+          <Button variant="outline" size="sm" className="rounded-full" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>
+            上一页
+          </Button>
+          <span className="text-xs text-muted-foreground">{page} / {totalPage}</span>
+          <Button variant="outline" size="sm" className="rounded-full" onClick={() => setPage((p) => Math.min(totalPage, p + 1))} disabled={page >= totalPage}>
+            下一页
+          </Button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** 点赞过：点赞的视频列表。 */
+function LikedFeed(props: { onToast: (m: string, type?: "success" | "error" | "info") => void; onOpenVideo: (bvid: string) => void }) {
+  const { onToast, onOpenVideo } = props;
+  const [videos, setVideos] = useState<BiliVideo[]>([]);
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await rpc.api.bilibili.liked.$get();
+        const data = (await res.json()) as { videos?: BiliVideo[]; count?: number };
+        setVideos(data.videos ?? []);
+        setCount(data.count ?? 0);
+      } catch {
+        onToast("获取点赞视频失败", "error");
+      }
+    })();
+  }, [onToast]);
+  return (
+    <div className="space-y-4">
+      {videos.length > 0 ? (
+        <p className="text-xs text-muted-foreground">共 {count} 个点赞视频</p>
+      ) : null}
+      <VideoGrid videos={videos} onOpen={onOpenVideo} />
+      {videos.length === 0 ? (
+        <EmptyState icon={<Heart className="h-6 w-6" />} title="暂无点赞视频" description="给视频点赞后，它们会出现在这里" />
+      ) : null}
     </div>
   );
 }
