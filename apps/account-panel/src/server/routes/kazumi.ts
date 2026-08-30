@@ -14,6 +14,7 @@ import {
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { basename, join } from "node:path";
+import { readFileSync, readdirSync } from "node:fs";
 import { getDownloadManager, downloadRoot } from "../downloads.js";
 import { appLogger } from "../logger.js";
 import { resolveWithBrowser } from "../browser-resolver.js";
@@ -262,7 +263,25 @@ export const kazumiRoutes = new Hono()
   .get("/rules", (c) => {
     try {
       const client = createClient();
-      return c.json({ rules: client.rules.list() });
+      const rules = client.rules.list();
+      // 扫描规则文件里的 deprecated 标记（官方废弃的源：站点失效/取流依赖 WebView 特有逻辑）。
+      const deprecated: string[] = [];
+      try {
+        for (const f of readdirSync(rulesDir())) {
+          if (!f.endsWith(".json")) continue;
+          try {
+            const data = JSON.parse(readFileSync(join(rulesDir(), f), "utf8")) as { name?: string; deprecated?: boolean };
+            if (data.deprecated === true && typeof data.name === "string" && rules.includes(data.name)) {
+              deprecated.push(data.name);
+            }
+          } catch {
+            // 单个规则文件损坏：跳过。
+          }
+        }
+      } catch {
+        // 扫描失败不影响规则列表返回。
+      }
+      return c.json({ rules, deprecated });
     } catch {
       return c.json({ error: "读取规则失败" }, 500);
     }

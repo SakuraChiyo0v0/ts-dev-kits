@@ -131,6 +131,8 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
     avgSpeed: number;
     tags: string[];
   }>>(new Map());
+  // 官方废弃的源（deprecated: true）：搜索结果标注「不再维护」。
+  const [deprecatedRules, setDeprecatedRules] = useState<Set<string>>(new Set());
   const [results, setResults] = useState<SearchItem[]>([]);
   const [selected, setSelected] = useState<SearchItem | null>(null);
   const [roads, setRoads] = useState<Road[]>([]);
@@ -232,6 +234,22 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
         setRuleRankings(map);
       } catch {
         // 排名加载失败不影响搜索。
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // 加载官方废弃源列表（deprecated），搜索结果标注「不再维护」。
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await rpc.api.kazumi.rules.$get();
+        const data = (await res.json()) as { deprecated?: string[] };
+        if (cancelled) return;
+        setDeprecatedRules(new Set(data.deprecated ?? []));
+      } catch {
+        // 加载失败不影响搜索。
       }
     })();
     return () => { cancelled = true; };
@@ -641,6 +659,9 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
                                 <p className="truncate text-sm font-medium">{it.name}</p>
                                 <p className="flex items-center gap-1.5 truncate text-xs text-muted-foreground">
                                   源：{it.rule}
+                                  {deprecatedRules.has(it.rule) ? (
+                                    <span className="rounded-full bg-zinc-500/15 px-1.5 py-0.5 text-[10px] text-zinc-500 dark:text-zinc-400" title="官方已停止维护，部分剧集可能无法播放/下载">不再维护</span>
+                                  ) : null}
                                   {rank !== undefined ? (
                                     <span className="ml-1 flex shrink-0 items-center gap-1">
                                       <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">{rank.score}分</span>
@@ -1421,6 +1442,8 @@ function RankingsView(props: { onBack: () => void; onToast: (m: string, type?: "
   const [selectedRule, setSelectedRule] = useState<string | null>(null);
   // 标签面板：当前在给哪个源打标签。
   const [tagTarget, setTagTarget] = useState<string | null>(null);
+  // 官方废弃源（deprecated）。
+  const [deprecatedRules, setDeprecatedRules] = useState<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     try {
@@ -1429,6 +1452,12 @@ function RankingsView(props: { onBack: () => void; onToast: (m: string, type?: "
       const list = data.rankings ?? [];
       setRankings(list);
       if (selectedRule === null && list.length > 0) setSelectedRule(list[0]!.rule);
+      // 顺带加载废弃源列表
+      const rulesRes = await rpc.api.kazumi.rules.$get().catch(() => null);
+      if (rulesRes !== null) {
+        const rulesData = (await rulesRes.json()) as { deprecated?: string[] };
+        setDeprecatedRules(new Set(rulesData.deprecated ?? []));
+      }
     } catch {
       onToast("读取源排行失败", "error");
     }
@@ -1514,7 +1543,12 @@ function RankingsView(props: { onBack: () => void; onToast: (m: string, type?: "
                     <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${i < 3 ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
                       {i + 1}
                     </span>
-                    <span className="min-w-0 flex-1 truncate font-medium">{r.rule}</span>
+                    <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate font-medium">
+                      <span className="truncate">{r.rule}</span>
+                      {deprecatedRules.has(r.rule) ? (
+                        <span className="shrink-0 rounded-full bg-zinc-500/15 px-1.5 py-0.5 text-[9px] text-zinc-500 dark:text-zinc-400">不再维护</span>
+                      ) : null}
+                    </span>
                     <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">{r.score} 分</span>
                   </div>
                   <div className="mt-1.5 flex items-center justify-between pl-8">
