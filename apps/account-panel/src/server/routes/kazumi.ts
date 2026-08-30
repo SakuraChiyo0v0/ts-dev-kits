@@ -289,6 +289,56 @@ export const kazumiRoutes = new Hono()
       return c.json({ error: message }, 500);
     }
   })
+  /**
+   * POST /api/kazumi/download-all —— 整部番批量下载。
+   * body: { rule, title, episodes: [{name,url}], path? }
+   * 下载到 <DOWNLOAD_DIR>/kazumi/<title>/（或 path 指定子目录），文件名「title.集名.mp4」。
+   * 单集失败不中断，返回 { done, failed, files }。
+   */
+  .post("/download-all", async (c) => {
+    const body = (await c.req.json().catch(() => ({}))) as {
+      rule?: unknown;
+      title?: unknown;
+      episodes?: unknown;
+      path?: unknown;
+    };
+    const rule = typeof body.rule === "string" ? body.rule : "";
+    const title = typeof body.title === "string" ? body.title.trim() : "";
+    if (rule === "" || title === "") return c.json({ error: "参数错误" }, 400);
+    const episodes = Array.isArray(body.episodes)
+      ? body.episodes
+          .filter((e): e is { name: unknown; url: unknown } => typeof e === "object" && e !== null)
+          .map((e) => ({
+            name: typeof e.name === "string" ? e.name : "",
+            url: typeof e.url === "string" ? e.url : "",
+          }))
+          .filter((e) => e.name !== "" && e.url !== "")
+      : [];
+    if (episodes.length === 0) return c.json({ error: "没有可下载的集数" }, 400);
+    const safeSub = safeSubdir(typeof body.path === "string" ? body.path.trim() : "");
+    // 整部番默认放进 kazumi/<剧名>/ 文件夹（文件名已含剧名，目录也按剧名归类便于导入）。
+    const baseDir = safeSub === "" ? join(downloadRoot(), "kazumi", title) : join(downloadRoot(), safeSub, title);
+    const client = createClient();
+    try {
+      const files = await client.downloadAll(episodes, {
+        outputDir: baseDir,
+        rule,
+        title,
+        adFilter: true,
+        concurrency: 2,
+      });
+      for (const { filePath } of files) {
+        getDownloadManager("kazumi").record({ filename: basename(filePath), filePath, status: "done" });
+      }
+      appLogger.info("kazumi download-all ok", { rule, title, count: files.length, dir: safeSub });
+      return c.json({ done: files.length, failed: episodes.length - files.length, files: files.map((f) => f.filePath) });
+    } catch (error) {
+      appLogger.error("kazumi download-all failed", { rule, title, dir: safeSub, error });
+      const message =
+        error instanceof Error && error.message !== "" ? error.message : "批量下载失败";
+      return c.json({ error: message }, 500);
+    }
+  })
   /** GET /api/kazumi/stream?url=xxx&rule=xxx —— 解析播放页 → 可播的代理 m3u8 URL。 */
   .get("/stream", async (c) => {
     const url = c.req.query("url");

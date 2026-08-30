@@ -109,6 +109,34 @@ export interface Road {
   identifier: string[];
 }
 
+/** 线路清晰度档位(从高到低),用于线路排序。 */
+export const ROAD_QUALITY_RANKS: Array<{ rank: number; pattern: RegExp }> = [
+  { rank: 100, pattern: /(8k|2160p|4k|uhd|超清4k)/i },
+  { rank: 80, pattern: /(1080p|1080|蓝光|bluray|bd|fhd|高清1080)/i },
+  { rank: 60, pattern: /(720p|hd|高清|超清)/i },
+  { rank: 40, pattern: /(480p|sd|标清|流畅|普清)/i },
+];
+
+/** 根据线路名估算清晰度档位(无匹配返回 0)。 */
+export function roadQualityRank(name: string): number {
+  for (const { rank, pattern } of ROAD_QUALITY_RANKS) {
+    if (pattern.test(name)) return rank;
+  }
+  return 0;
+}
+
+/**
+ * 线路排序:清晰度高的排前,同档位按名称字典序稳定。
+ * 让「1080P/蓝光」等线路优先出现在选择列表首位。
+ */
+export function sortRoadsByQuality(roads: Road[]): Road[] {
+  return [...roads].sort((a, b) => {
+    const rankDiff = roadQualityRank(b.name) - roadQualityRank(a.name);
+    if (rankDiff !== 0) return rankDiff;
+    return a.name.localeCompare(b.name, "zh-Hans-CN");
+  });
+}
+
 /** 集数(名称 + 播放页 URL)。 */
 export interface Episode {
   name: string;

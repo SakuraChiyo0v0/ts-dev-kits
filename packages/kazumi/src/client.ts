@@ -7,6 +7,7 @@ import { RuleEngine, type ChapterTrace, type SearchTrace } from "./engine/engine
 import { DefaultRuleRequestExecutor } from "./request/executor.js";
 import { EpisodeDownloader } from "./stream/download.js";
 import { KazumiError } from "./errors.js";
+import { sortRoadsByQuality } from "./types.js";
 import type {
   AnimeClientOptions,
   AnimeRule,
@@ -60,16 +61,34 @@ export interface AnimeClient {
   getRoads(item: SearchItem): Promise<Road[]>;
   /** 线路 → 集数列表。 */
   getEpisodes(item: SearchItem, road: Road): Promise<Episode[]>;
-  /** 下载单集 mp4。 */
+  /** 下载单集 mp4。title 提供时文件名用「番剧名.集名.mp4」。 */
   download(
     episode: Episode,
     opts: {
       outputDir: string;
       rule: string;
       adFilter?: boolean;
+      title?: string;
       onProgress?: (progress: DownloadProgress) => void;
     },
   ): Promise<{ filePath: string }>;
+  /**
+   * 批量下载整部番（并发下载到同一目录，文件名含番剧名）。
+   * 单集失败不中断整体，通过 onEpisodeError 上报。
+   */
+  downloadAll(
+    episodes: Episode[],
+    opts: {
+      outputDir: string;
+      rule: string;
+      adFilter?: boolean;
+      title: string;
+      concurrency?: number;
+      onEpisodeStart?: (index: number, total: number, episode: Episode) => void;
+      onEpisodeDone?: (index: number, total: number, episode: Episode, filePath: string) => void;
+      onEpisodeError?: (index: number, total: number, episode: Episode, error: Error) => void;
+    },
+  ): Promise<{ filePath: string }[]>;
   /** 规则调试:单规则搜索,返回原始响应与匹配片段。 */
   traceSearch(ruleName: string, keyword: string): Promise<SearchTrace>;
   /** 规则调试:单规则章节查询,返回原始响应与线路。 */
@@ -290,7 +309,8 @@ export function createAnimeClient(options: AnimeClientOptions = {}): AnimeClient
     async getRoads(item: SearchItem): Promise<Road[]> {
       const rule = await inferRule(item, loader);
       const trace = await engine.queryChapters(rule, item.src);
-      return trace.roads;
+      // 按清晰度排序：高清/1080P 等线路排前，方便默认选到最佳源。
+      return sortRoadsByQuality(trace.roads);
     },
 
     async getEpisodes(item: SearchItem, road: Road): Promise<Episode[]> {
@@ -308,6 +328,8 @@ export function createAnimeClient(options: AnimeClientOptions = {}): AnimeClient
         outputDir: string;
         rule: string;
         adFilter?: boolean;
+        /** 番剧名：提供时文件名用「番剧名.集名.mp4」。 */
+        title?: string;
         onProgress?: (progress: DownloadProgress) => void;
       },
     ): Promise<{ filePath: string }> {
@@ -318,8 +340,62 @@ export function createAnimeClient(options: AnimeClientOptions = {}): AnimeClient
       });
       return downloader.download(rule, episode, {
         outputDir: opts.outputDir,
+        ...(opts.title !== undefined ? { title: opts.title } : {}),
         ...(opts.onProgress ? { onProgress: opts.onProgress } : {}),
       });
+    },
+
+    async downloadAll(
+      episodes: Episode[],
+      opts: {
+        outputDir: string;
+        rule: string;
+        adFilter?: boolean;
+        /** 番剧名：同时用作下载文件夹名与文件名前缀。 */
+        title: string;
+        /** 并发下载集数，默认 2（避免单源频繁请求被风控）。 */
+        concurrency?: number;
+        onEpisodeStart?: (index: number, total: number, episode: Episode) => void;
+        onEpisodeDone?: (index: number, total: number, episode: Episode, filePath: string) => void;
+        onEpisodeError?: (index: number, total: number, episode: Episode, error: Error) => void;
+      },
+    ): Promise<{ filePath: string }[]> {
+      const rule = await loader.load(opts.rule);
+      const downloader = new EpisodeDownloader(options.fetchImpl, {
+        ...options.download,
+        ...(opts.adFilter !== undefined ? { adFilter: opts.adFilter } : {}),
+      });
+      const concurrency = Math.max(1, Math.min(opts.concurrency ?? 2, 4));
+      const results: { filePath: string }[] = [];
+      let next = 0;
+      async function worker(): Promise<void> {
+        while (true) {
+          const index = next;
+          next += 1;
+          const episode = episodes[index];
+          if (episode === undefined) return;
+          opts.onEpisodeStart?.(index, episodes.length, episode);
+          try {
+            const result = await downloader.download(rule, episode, {
+              outputDir: opts.outputDir,
+              title: opts.title,
+            });
+            results.push(result);
+            opts.onEpisodeDone?.(index, episodes.length, episode, result.filePath);
+          } catch (error) {
+            opts.onEpisodeError?.(
+              index,
+              episodes.length,
+              episode,
+              error instanceof Error ? error : new Error(String(error)),
+            );
+          }
+        }
+      }
+      await Promise.all(
+        Array.from({ length: Math.min(concurrency, episodes.length) }, () => worker()),
+      );
+      return results;
     },
 
     async traceSearch(ruleName: string, keyword: string): Promise<SearchTrace> {

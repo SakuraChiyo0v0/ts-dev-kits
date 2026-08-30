@@ -4,6 +4,7 @@ import {
   ChevronLeft,
   Clapperboard,
   Download,
+  HardDriveDownload,
   FilePlus2,
   Folder,
   FolderPlus,
@@ -83,6 +84,15 @@ const CATEGORIES = [
   "校园",
 ];
 
+/** 从线路名提取清晰度标记（与 SDK ROAD_QUALITY_RANKS 对应，供前端 badge 展示）。 */
+function qualityBadge(name: string): string | null {
+  if (/(8k|2160p|4k|uhd|超清4k)/i.test(name)) return "4K";
+  if (/(1080p|1080|蓝光|bluray|bd|fhd)/i.test(name)) return "1080P";
+  if (/(720p|hd|高清|超清)/i.test(name)) return "高清";
+  if (/(480p|sd|标清|流畅|普清)/i.test(name)) return "标清";
+  return null;
+}
+
 // ---------- 主组件 ----------
 
 export default function KazumiModule({ onBack, active = true }: { onBack: () => void; active?: boolean }) {
@@ -101,6 +111,8 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
   const [loadingRoads, setLoadingRoads] = useState(false);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [downloadTarget, setDownloadTarget] = useState<Episode | null>(null);
+  // 整部番批量下载进度。
+  const [batchDownload, setBatchDownload] = useState<{ done: number; total: number; failed: number } | null>(null);
   const [showDownloadHistory, setShowDownloadHistory] = useState(false);
   const [playingEpisode, setPlayingEpisode] = useState<Episode | null>(null);
   const [m3u8Url, setM3u8Url] = useState<string | null>(null);
@@ -272,6 +284,32 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
     const road = roads[roadIndex];
     if (road !== undefined) void loadEpisodes(road);
   }, [roads, roadIndex, loadEpisodes]);
+
+  const downloadAllEpisodes = useCallback(async () => {
+    if (selected === null || episodes.length === 0) return;
+    const title = selected.name.replace(/^\[[^\]]+\]\s*/, "").slice(0, 60);
+    setBatchDownload({ done: 0, total: episodes.length, failed: 0 });
+    showToast(`开始下载整部《${title}》（${episodes.length} 集）…`, "info");
+    try {
+      const res = await rpc.api.kazumi["download-all"].$post({
+        json: {
+          rule: selected.rule,
+          title,
+          episodes: episodes.map((ep) => ({ name: ep.name, url: ep.url })),
+        },
+      });
+      const data = (await res.json()) as { done?: number; failed?: number; error?: string };
+      if (data.error !== undefined) {
+        showToast(`批量下载失败：${data.error}`, "error");
+      } else {
+        showToast(`整部下载完成：成功 ${data.done ?? 0} 集${(data.failed ?? 0) > 0 ? `，失败 ${data.failed} 集` : ""}`, data.failed ?? 0 > 0 ? "error" : "success");
+      }
+    } catch {
+      showToast("批量下载失败", "error");
+    } finally {
+      setBatchDownload(null);
+    }
+  }, [selected, episodes, showToast]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -518,21 +556,59 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
                 <EmptyState icon={<ListChecks className="h-6 w-6" />} title="无可用线路" description="该视频源暂时没有可用线路，试试其他搜索结果" />
               ) : (
                 <>
-                  {/* 线路选择 */}
+                  {/* 线路选择（清晰度高的排前，来自服务端排序） */}
                   <div className="mb-4 flex flex-wrap gap-2">
                     {roads.map((r, i) => (
                       <button
                         key={`${r.name}-${i}`}
                         onClick={() => setRoadIndex(i)}
                         className={cn(
-                          "rounded-full border px-3 py-1.5 text-xs transition-colors",
+                          "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition-colors",
                           roadIndex === i ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted",
                         )}
                       >
                         {r.name || `线路${i + 1}`}
+                        {qualityBadge(r.name) !== null ? (
+                          <span className={cn("rounded-full px-1.5 py-0.5 text-[10px] leading-none", roadIndex === i ? "bg-primary-foreground/20 text-primary-foreground" : "bg-primary/10 text-primary")}>
+                            {qualityBadge(r.name)}
+                          </span>
+                        ) : null}
                       </button>
                     ))}
                   </div>
+
+                  {/* 批量下载工具条 */}
+                  {episodes.length > 0 ? (
+                    <div className="mb-4 flex items-center justify-between rounded-2xl border bg-card px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <HardDriveDownload className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-medium">共 {episodes.length} 集</span>
+                        {batchDownload !== null ? (
+                          <span className="text-xs text-muted-foreground">
+                            已下载 {batchDownload.done}/{batchDownload.total}
+                            {batchDownload.failed > 0 ? `，失败 ${batchDownload.failed}` : ""}
+                          </span>
+                        ) : null}
+                      </div>
+                      <Button
+                        size="sm"
+                        className="rounded-full"
+                        disabled={batchDownload !== null}
+                        onClick={() => void downloadAllEpisodes()}
+                      >
+                        <Download />
+                        {batchDownload !== null ? "下载中…" : "下载全部"}
+                      </Button>
+                    </div>
+                  ) : null}
+                  {batchDownload !== null ? (
+                    <div className="mb-4 h-1 w-full overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-primary transition-all duration-300"
+                        style={{ width: `${batchDownload.total > 0 ? (batchDownload.done / batchDownload.total) * 100 : 0}%` }}
+                      />
+                    </div>
+                  ) : null}
 
                   {/* 集数列表 */}
                   <ul className="divide-y divide-border/60 rounded-2xl border bg-card">

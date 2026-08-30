@@ -32,6 +32,8 @@ export class EpisodeDownloader {
     opts: {
       outputDir: string;
       onProgress?: (progress: DownloadProgress) => void;
+      /** 番剧名：提供时文件名用「番剧名.集名.mp4」，否则只用集名。 */
+      title?: string;
     },
   ): Promise<{ filePath: string }> {
     const concurrency = this.options.concurrency ?? 4;
@@ -165,7 +167,16 @@ export class EpisodeDownloader {
       // ffmpeg 合并成 mp4(ffmpeg 处理 AES-128 解密)
       const outputDir = opts.outputDir;
       mkdirSync(outputDir, { recursive: true });
-      const safeName = episode.name.replace(/[\\/:*?"<>|]/g, "_").slice(0, 100);
+      // 文件名标准化：「番剧名.集名.mp4」（提供剧名时），集名做两位补齐与非法字符清理，
+      // 便于导入到媒体库（如「间谍过家家.第01集.mp4」）。
+      const cleanEpisodeName = normalizeEpisodeName(episode.name);
+      const safeName = (
+        opts.title !== undefined && opts.title !== ""
+          ? `${sanitizeFilename(opts.title)}.${cleanEpisodeName}`
+          : cleanEpisodeName
+      )
+        .replace(/[\\/:*?"<>|]/g, "_")
+        .slice(0, 120);
       const filePath = join(outputDir, `${safeName}.mp4`);
       if (this.ffmpegRun) {
         await this.ffmpegRun([
@@ -282,4 +293,25 @@ function resolveUrl(base: string, raw: string): string {
   } catch {
     return raw;
   }
+}
+
+/** 清理文件名中的非法字符（Windows 路径非法字符 + 控制字符）。 */
+export function sanitizeFilename(name: string): string {
+  return name.replace(/[\\/:*?"<>|\u0000-\u001f]/g, "_").replace(/\s+/g, " ").trim();
+}
+
+/**
+ * 标准化集名：「第3集」→「第03集」（保持两位，方便按字典序排序）、
+ * 「第3话」→「第03话」；已两位的保持不变。
+ */
+export function normalizeEpisodeName(raw: string): string {
+  const trimmed = raw.trim();
+  // 匹配「第 N 集/话/回/章」等，N 补零到两位。
+  const m = /^(第\s*)(\d+)(\s*(?:集|话|回|章|话番|季.*)?)$/.exec(trimmed);
+  if (m !== null) {
+    const num = m[2]!;
+    const zeroPadded = num.length >= 2 ? num : num.padStart(2, "0");
+    return `${m[1]}${zeroPadded}${m[3] ?? ""}`.replace(/\s+/g, "");
+  }
+  return trimmed;
 }
