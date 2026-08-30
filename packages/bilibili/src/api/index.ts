@@ -50,4 +50,5 @@ export {
 export {
   SearchApi,
   type VideoSearchItem,
+  type WeeklyEpisode,
 } from "./search.js";

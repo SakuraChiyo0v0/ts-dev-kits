@@ -159,6 +159,92 @@ export const bilibiliRoutes = new Hono()
       return c.json({ error: "获取热门失败" }, 500);
     }
   })
+  /** GET /api/bilibili/recommend?freshIdx=0&freshIdx1h=0 —— 首页推荐信息流（WBI 签名，支持续拉）。 */
+  .get("/recommend", async (c) => {
+    const freshIdx = Number(c.req.query("freshIdx") ?? 0);
+    const freshIdx1h = Number(c.req.query("freshIdx1h") ?? 0);
+    const keepFollowOnly = c.req.query("keepFollowOnly") === "1";
+    const client = createClient();
+    try {
+      const page = await client.search.recommendFeed({
+        freshIdx: Number.isFinite(freshIdx) ? freshIdx : 0,
+        freshIdx1h: Number.isFinite(freshIdx1h) ? freshIdx1h : 0,
+        ps: 20,
+        ...(keepFollowOnly ? { keepFollowOnly: true } : {}),
+      });
+      return c.json({
+        videos: page.items.map((v) => ({
+          bvid: v.bvid,
+          aid: v.aid,
+          title: v.title,
+          ...(v.cover !== undefined ? { cover: httpsImg(v.cover) } : {}),
+          ...(v.duration !== undefined ? { duration: v.duration } : {}),
+          ...(v.play !== undefined ? { play: v.play } : {}),
+          ...(v.danmaku !== undefined ? { danmaku: v.danmaku } : {}),
+          ...(v.author !== undefined ? { author: v.author } : {}),
+        })),
+        freshIdx: page.freshIdx,
+        freshIdx1h: page.freshIdx1h,
+      });
+    } catch {
+      return c.json({ error: "获取推荐失败" }, 500);
+    }
+  })
+  /** GET /api/bilibili/ranking?rid=0 —— 排行榜（rid 0=全站，其余为分区 tid）。 */
+  .get("/ranking", async (c) => {
+    const ridRaw = c.req.query("rid");
+    const rid = Number(ridRaw ?? 0);
+    const client = createClient();
+    try {
+      const videos = await client.search.ranking({ rid: Number.isFinite(rid) ? rid : 0 });
+      return c.json({
+        videos: videos.map((v) => ({
+          bvid: v.bvid,
+          aid: v.aid,
+          title: v.title,
+          ...(v.cover !== undefined ? { cover: httpsImg(v.cover) } : {}),
+          ...(v.duration !== undefined ? { duration: v.duration } : {}),
+          ...(v.play !== undefined ? { play: v.play } : {}),
+          ...(v.danmaku !== undefined ? { danmaku: v.danmaku } : {}),
+          ...(v.author !== undefined ? { author: v.author } : {}),
+        })),
+      });
+    } catch {
+      return c.json({ error: "获取排行榜失败" }, 500);
+    }
+  })
+  /** GET /api/bilibili/weekly —— 每周必看：返回期数列表（不含内容）。 */
+  .get("/weekly", async (c) => {
+    const client = createClient();
+    try {
+      const episodes = await client.search.weeklyPopularList();
+      return c.json({ episodes });
+    } catch {
+      return c.json({ error: "获取每周必看失败" }, 500);
+    }
+  })
+  /** GET /api/bilibili/weekly/videos?number=xxx —— 每周必看：指定期数的视频列表。 */
+  .get("/weekly/videos", async (c) => {
+    const number = Number(c.req.query("number") ?? 0);
+    if (!Number.isFinite(number) || number <= 0) return c.json({ error: "missing number" }, 400);
+    const client = createClient();
+    try {
+      const videos = await client.search.weeklyPopularVideos({ number });
+      return c.json({
+        videos: videos.map((v) => ({
+          bvid: v.bvid,
+          aid: v.aid,
+          title: v.title,
+          ...(v.cover !== undefined ? { cover: httpsImg(v.cover) } : {}),
+          ...(v.duration !== undefined ? { duration: v.duration } : {}),
+          ...(v.play !== undefined ? { play: v.play } : {}),
+          ...(v.author !== undefined ? { author: v.author } : {}),
+        })),
+      });
+    } catch {
+      return c.json({ error: "获取周榜视频失败" }, 500);
+    }
+  })
   /** GET /api/bilibili/video?bvid=xxx —— 视频详情（含分P）。 */
   .get("/video", async (c) => {
     const bvid = c.req.query("bvid");

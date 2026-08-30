@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  CalendarDays,
   ChevronLeft,
   Clock,
   Download,
@@ -20,9 +21,11 @@ import {
   Search,
   SkipBack,
   SkipForward,
+  Sparkles,
   Star,
   Sun,
   Trash2,
+  Trophy,
   Volume2,
   VolumeX,
   X,
@@ -151,6 +154,8 @@ export default function BilibiliModule({ onBack, active = true }: { onBack: () =
   const [account, setAccount] = useState<BiliAccount | null>(null);
   const [login, setLogin] = useState<LoginView | null>(null);
   const [view, setView] = useState<"home" | "history" | "watchLater" | "fav" | "bangumi" | "popular">("home");
+  // 「发现」视图内的子 tab：推荐流 / 综合热门 / 排行榜 / 每周必看。
+  const [exploreTab, setExploreTab] = useState<"recommend" | "popular" | "ranking" | "weekly">("popular");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<BiliVideo[]>([]);
   const [searching, setSearching] = useState(false);
@@ -375,7 +380,13 @@ export default function BilibiliModule({ onBack, active = true }: { onBack: () =
         ) : view === "bangumi" ? (
           <BangumiView onBack={() => setView("home")} onToast={showToast} />
         ) : view === "popular" ? (
-          <PopularView onBack={() => setView("home")} onToast={showToast} onOpenVideo={(bvid) => void openDetail(bvid)} />
+          <DiscoverView
+            tab={exploreTab}
+            onTabChange={setExploreTab}
+            onBack={() => setView("home")}
+            onToast={showToast}
+            onOpenVideo={(bvid) => void openDetail(bvid)}
+          />
         ) : (
           <HomeView
             account={account}
@@ -389,7 +400,8 @@ export default function BilibiliModule({ onBack, active = true }: { onBack: () =
             onOpenWatchLater={() => setView("watchLater")}
             onOpenFav={() => setView("fav")}
             onOpenBangumi={() => setView("bangumi")}
-            onOpenPopular={() => setView("popular")}
+            onOpenPopular={() => { setExploreTab("popular"); setView("popular"); }}
+            onOpenRecommend={() => { setExploreTab("recommend"); setView("popular"); }}
           />
         )}
       </div>
@@ -440,8 +452,9 @@ function HomeView(props: {
   onOpenFav: () => void;
   onOpenBangumi: () => void;
   onOpenPopular: () => void;
+  onOpenRecommend: () => void;
 }) {
-  const { account, query, setQuery, searching, results, onSearch, onOpenVideo, onOpenHistory, onOpenWatchLater, onOpenFav, onOpenBangumi, onOpenPopular } = props;
+  const { account, query, setQuery, searching, results, onSearch, onOpenVideo, onOpenHistory, onOpenWatchLater, onOpenFav, onOpenBangumi, onOpenPopular, onOpenRecommend } = props;
   const info = account?.account;
   const [avatarError, setAvatarError] = useState(false);
   // 搜索历史（localStorage 持久化，最多 10 条）。
@@ -551,7 +564,8 @@ function HomeView(props: {
           ) : null}
         </div>
 
-        <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <EntryButton icon={<Sparkles />} label="推荐" onClick={onOpenRecommend} />
           <EntryButton icon={<Flame />} label="热门" onClick={onOpenPopular} />
           <EntryButton icon={<History />} label="历史记录" onClick={onOpenHistory} />
           <EntryButton icon={<Clock />} label="稍后再看" onClick={onOpenWatchLater} />
@@ -1310,6 +1324,263 @@ function PopularView(props: { onBack: () => void; onToast: (m: string, type?: "s
         </div>
         <VideoGrid videos={videos} onOpen={onOpenVideo} />
       </div>
+    </div>
+  );
+}
+
+/** 「发现」视图：推荐流 / 综合热门 / 排行榜 / 每周必看 四个子 tab（对齐 Bilibili-Gate 的推荐体系）。 */
+function DiscoverView(props: {
+  tab: "recommend" | "popular" | "ranking" | "weekly";
+  onTabChange: (t: "recommend" | "popular" | "ranking" | "weekly") => void;
+  onBack: () => void;
+  onToast: (m: string, type?: "success" | "error" | "info") => void;
+  onOpenVideo: (bvid: string) => void;
+}) {
+  const { tab, onTabChange, onBack, onToast, onOpenVideo } = props;
+  const tabs: Array<{ id: "recommend" | "popular" | "ranking" | "weekly"; label: string; icon: React.ReactNode }> = [
+    { id: "recommend", label: "推荐", icon: <Sparkles className="h-3.5 w-3.5" /> },
+    { id: "popular", label: "综合热门", icon: <Flame className="h-3.5 w-3.5" /> },
+    { id: "ranking", label: "排行榜", icon: <Trophy className="h-3.5 w-3.5" /> },
+    { id: "weekly", label: "每周必看", icon: <CalendarDays className="h-3.5 w-3.5" /> },
+  ];
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex items-center justify-between border-b border-border/60 px-4 py-3 sm:px-6">
+        <button onClick={onBack} className="flex items-center gap-1 rounded-full px-2 py-1 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">
+          <ChevronLeft className="h-4 w-4" />返回
+        </button>
+        <h1 className="text-lg font-bold">发现</h1>
+        <div className="w-16" />
+      </div>
+      <div className="flex gap-1 border-b border-border/60 px-4 sm:px-6">
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => onTabChange(t.id)}
+            className={`flex items-center gap-1.5 rounded-t-lg border-b-2 px-3 py-2 text-sm transition-colors ${
+              tab === t.id ? "border-primary font-medium text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {t.icon}
+            {t.label}
+          </button>
+        ))}
+      </div>
+      <div className="min-h-0 flex-1 overflow-auto">
+        <div className="mx-auto max-w-6xl px-4 py-6">
+          {tab === "recommend" ? (
+            <RecommendFeed onToast={onToast} onOpenVideo={onOpenVideo} />
+          ) : tab === "popular" ? (
+            <PopularFeed onToast={onToast} onOpenVideo={onOpenVideo} />
+          ) : tab === "ranking" ? (
+            <RankingFeed onToast={onToast} onOpenVideo={onOpenVideo} />
+          ) : (
+            <WeeklyFeed onToast={onToast} onOpenVideo={onOpenVideo} />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** 推荐流：rcmd 信息流，无限滚动续拉（freshIdx/freshIdx1h 游标）。 */
+function RecommendFeed(props: { onToast: (m: string, type?: "success" | "error" | "info") => void; onOpenVideo: (bvid: string) => void }) {
+  const { onToast, onOpenVideo } = props;
+  const [videos, setVideos] = useState<BiliVideo[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const cursorRef = useRef({ freshIdx: 0, freshIdx1h: 0 });
+  const loadingRef = useRef(false);
+
+  const loadMore = useCallback(async () => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
+    setLoading(true);
+    try {
+      const res = await rpc.api.bilibili.recommend.$get({
+        query: { freshIdx: String(cursorRef.current.freshIdx), freshIdx1h: String(cursorRef.current.freshIdx1h) },
+      });
+      const data = (await res.json()) as { videos?: BiliVideo[]; freshIdx?: number; freshIdx1h?: number };
+      const batch = data.videos ?? [];
+      setVideos((prev) => {
+        const seen = new Set(prev.map((v) => v.bvid));
+        return [...prev, ...batch.filter((v) => !seen.has(v.bvid))];
+      });
+      cursorRef.current = {
+        freshIdx: data.freshIdx ?? cursorRef.current.freshIdx,
+        freshIdx1h: data.freshIdx1h ?? cursorRef.current.freshIdx1h,
+      };
+      if (batch.length === 0) setHasMore(false);
+    } catch {
+      onToast("获取推荐失败", "error");
+      setHasMore(false);
+    } finally {
+      loadingRef.current = false;
+      setLoading(false);
+    }
+  }, [onToast]);
+
+  useEffect(() => {
+    void loadMore();
+  }, [loadMore]);
+
+  return (
+    <div className="space-y-4">
+      <VideoGrid videos={videos} onOpen={onOpenVideo} />
+      {hasMore ? (
+        <div className="flex justify-center py-4">
+          <Button variant="outline" size="sm" className="rounded-full" onClick={() => void loadMore()} disabled={loading}>
+            {loading ? "加载中…" : "加载更多"}
+          </Button>
+        </div>
+      ) : videos.length > 0 ? (
+        <p className="py-4 text-center text-xs text-muted-foreground">没有更多了</p>
+      ) : null}
+    </div>
+  );
+}
+
+/** 综合热门（对齐原 PopularView 逻辑）。 */
+function PopularFeed(props: { onToast: (m: string, type?: "success" | "error" | "info") => void; onOpenVideo: (bvid: string) => void }) {
+  const { onToast, onOpenVideo } = props;
+  const [videos, setVideos] = useState<BiliVideo[]>([]);
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await rpc.api.bilibili.popular.$get();
+        const data = (await res.json()) as { videos?: BiliVideo[] };
+        setVideos(data.videos ?? []);
+      } catch {
+        onToast("获取热门失败", "error");
+      }
+    })();
+  }, [onToast]);
+  return <VideoGrid videos={videos} onOpen={onOpenVideo} />;
+}
+
+/** 排行榜：全站/分区切换。 */
+function RankingFeed(props: { onToast: (m: string, type?: "success" | "error" | "info") => void; onOpenVideo: (bvid: string) => void }) {
+  const { onToast, onOpenVideo } = props;
+  const [videos, setVideos] = useState<BiliVideo[]>([]);
+  const [rid, setRid] = useState(0);
+  const [loading, setLoading] = useState(false);
+  // B 站分区 tid：0 全站 + 常用分区。
+  const regions: Array<{ rid: number; label: string }> = [
+    { rid: 0, label: "全站" },
+    { rid: 1, label: "动画" },
+    { rid: 3, label: "音乐" },
+    { rid: 4, label: "游戏" },
+    { rid: 36, label: "科技" },
+    { rid: 160, label: "生活" },
+    { rid: 119, label: "鬼畜" },
+    { rid: 155, label: "娱乐" },
+  ];
+  useEffect(() => {
+    setVideos([]);
+    setLoading(true);
+    void (async () => {
+      try {
+        const res = await rpc.api.bilibili.ranking.$get({ query: { rid: String(rid) } });
+        const data = (await res.json()) as { videos?: BiliVideo[] };
+        setVideos(data.videos ?? []);
+      } catch {
+        onToast("获取排行榜失败", "error");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [rid, onToast]);
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-1.5">
+        {regions.map((r) => (
+          <button
+            key={r.rid}
+            onClick={() => setRid(r.rid)}
+            className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+              rid === r.rid ? "border-primary bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            }`}
+          >
+            {r.label}
+          </button>
+        ))}
+      </div>
+      {loading ? (
+        <p className="py-10 text-center text-sm text-muted-foreground">加载中…</p>
+      ) : (
+        <VideoGrid videos={videos} onOpen={onOpenVideo} />
+      )}
+    </div>
+  );
+}
+
+/** 每周必看：期数列表 → 点选查看该期视频。 */
+function WeeklyFeed(props: { onToast: (m: string, type?: "success" | "error" | "info") => void; onOpenVideo: (bvid: string) => void }) {
+  const { onToast, onOpenVideo } = props;
+  const [episodes, setEpisodes] = useState<Array<{ number: number; title: string; cover?: string }>>([]);
+  const [selected, setSelected] = useState<number | null>(null);
+  const [videos, setVideos] = useState<BiliVideo[]>([]);
+  const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await rpc.api.bilibili.weekly.$get();
+        const data = (await res.json()) as { episodes?: Array<{ number: number; title: string; cover?: string }> };
+        setEpisodes(data.episodes ?? []);
+      } catch {
+        onToast("获取每周必看失败", "error");
+      }
+    })();
+  }, [onToast]);
+  useEffect(() => {
+    if (selected === null) return;
+    setVideos([]);
+    setLoading(true);
+    void (async () => {
+      try {
+        const res = await rpc.api.bilibili.weekly.videos.$get({ query: { number: String(selected) } });
+        const data = (await res.json()) as { videos?: BiliVideo[] };
+        setVideos(data.videos ?? []);
+      } catch {
+        onToast("获取周榜视频失败", "error");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [selected, onToast]);
+  if (selected === null) {
+    return (
+      <div className="space-y-3">
+        {episodes.map((ep) => (
+          <button
+            key={ep.number}
+            onClick={() => setSelected(ep.number)}
+            className="flex w-full items-center gap-3 rounded-2xl border bg-card p-3 text-left transition-colors hover:bg-muted"
+          >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-sm font-bold text-primary">
+              {ep.number}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-medium">{ep.title}</span>
+              <span className="block text-xs text-muted-foreground">第 {ep.number} 期</span>
+            </span>
+            <ChevronLeft className="h-4 w-4 rotate-180 text-muted-foreground" />
+          </button>
+        ))}
+        {episodes.length === 0 ? <p className="py-10 text-center text-sm text-muted-foreground">暂无期数</p> : null}
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-4">
+      <button onClick={() => setSelected(null)} className="flex items-center gap-1 rounded-full px-2 py-1 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">
+        <ChevronLeft className="h-4 w-4" />返回期数列表
+      </button>
+      {loading ? (
+        <p className="py-10 text-center text-sm text-muted-foreground">加载中…</p>
+      ) : (
+        <VideoGrid videos={videos} onOpen={onOpenVideo} />
+      )}
     </div>
   );
 }
