@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import {
   AppWindow,
   Check,
@@ -37,9 +37,15 @@ import {
   Volume2,
   VolumeX,
   X,
+  Tv,
+  Clapperboard,
 } from "lucide-react";
 import { rpc } from "./lib/rpc";
 import { cn } from "@/lib/utils";
+
+// 模块级懒加载：B 站 / 番剧模块（含 hls.js）按需拆 chunk，减小主 bundle。
+const BilibiliModule = lazy(() => import("./BilibiliModule"));
+const KazumiModule = lazy(() => import("./KazumiModule"));
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -1196,6 +1202,14 @@ export default function App() {
           <Launcher
             username={userAuth.username}
             onOpenNetease={() => setActiveModule("netease")}
+            onOpenBilibili={() => {
+              audioRef.current?.pause();
+              setActiveModule("bilibili");
+            }}
+            onOpenKazumi={() => {
+              audioRef.current?.pause();
+              setActiveModule("kazumi");
+            }}
             onLogout={() => void userLogout()}
           />
         ) : activeModule === "netease" ? (
@@ -1234,6 +1248,14 @@ export default function App() {
               onBack={() => setActiveModule(null)}
             />
           )
+        ) : activeModule === "bilibili" ? (
+          <Suspense fallback={<HomeSkeleton />}>
+            <BilibiliModule onBack={() => setActiveModule(null)} />
+          </Suspense>
+        ) : activeModule === "kazumi" ? (
+          <Suspense fallback={<HomeSkeleton />}>
+            <KazumiModule onBack={() => setActiveModule(null)} />
+          </Suspense>
         ) : null}
       </div>
 
@@ -2313,9 +2335,11 @@ function LoginView(props: {
 function Launcher(props: {
   username: string;
   onOpenNetease: () => void;
+  onOpenBilibili: () => void;
+  onOpenKazumi: () => void;
   onLogout: () => void;
 }) {
-  const { username, onOpenNetease, onLogout } = props;
+  const { username, onOpenNetease, onOpenBilibili, onOpenKazumi, onLogout } = props;
   return (
     <div className="flex-1 animate-fade-in overflow-auto">
       <div className="mx-auto max-w-4xl px-4 py-10 sm:px-8">
@@ -2337,15 +2361,31 @@ function Launcher(props: {
             className="group flex aspect-square flex-col items-center justify-center gap-3 rounded-2xl border bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg"
           >
             <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <AppWindow className="h-7 w-7" />
+              <Music2 className="h-7 w-7" />
             </span>
-            <span className="text-sm font-medium">服务 1</span>
-            <span className="text-xs text-muted-foreground">已接入</span>
+            <span className="text-sm font-medium">音乐</span>
+            <span className="text-xs text-muted-foreground">网易云</span>
           </button>
-          <div className="flex aspect-square flex-col items-center justify-center gap-3 rounded-2xl border border-dashed bg-card/50 text-muted-foreground">
-            <span className="text-3xl">+</span>
-            <span className="text-xs">更多服务接入中…</span>
-          </div>
+          <button
+            onClick={onOpenBilibili}
+            className="group flex aspect-square flex-col items-center justify-center gap-3 rounded-2xl border bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg"
+          >
+            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Tv className="h-7 w-7" />
+            </span>
+            <span className="text-sm font-medium">哔哩哔哩</span>
+            <span className="text-xs text-muted-foreground">视频</span>
+          </button>
+          <button
+            onClick={onOpenKazumi}
+            className="group flex aspect-square flex-col items-center justify-center gap-3 rounded-2xl border bg-card shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg"
+          >
+            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Clapperboard className="h-7 w-7" />
+            </span>
+            <span className="text-sm font-medium">番剧</span>
+            <span className="text-xs text-muted-foreground">Kazumi</span>
+          </button>
         </div>
       </div>
     </div>

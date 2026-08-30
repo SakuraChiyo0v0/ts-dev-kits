@@ -137,7 +137,11 @@ export function createAnimeClient(options: AnimeClientOptions = {}): AnimeClient
     }
     const rulesList: AnimeRule[] = [];
     for (const name of names) {
-      rulesList.push(await loader.load(name));
+      try {
+        rulesList.push(await loader.load(name));
+      } catch {
+        // 单个规则损坏/失效（校验失败、JSON 解析失败等）：跳过，不拖垮整体搜索。
+      }
     }
     return rulesList;
   }
@@ -159,16 +163,11 @@ export function createAnimeClient(options: AnimeClientOptions = {}): AnimeClient
             })),
           );
         } catch (error) {
-          if (error instanceof KazumiError) {
-            if (error.code === "CAPTCHA") {
-              captchaBlocked = true;
-              continue;
-            }
-            if (error.code === "NO_RESULT") {
-              continue;
-            }
+          // 单个规则失败（验证码/无结果/网络错误/解析错误）不影响整体：跳过该规则，
+          // 避免某个失效源拖垮全部搜索。engine 内部已记录具体错误日志。
+          if (error instanceof KazumiError && error.code === "CAPTCHA") {
+            captchaBlocked = true;
           }
-          throw error;
         }
       }
       // 全部规则都被验证码挡住 → 明确报 CAPTCHA,而不是空结果

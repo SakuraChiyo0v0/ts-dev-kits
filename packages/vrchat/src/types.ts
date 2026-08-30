@@ -277,7 +277,7 @@ export interface VrchatClientOptions {
   /** AuthStore 自定义路径(缺省用平台默认 <配置根>/amechan/vrchat/auth.json)。 */
   authPath?: string;
   /**
-   * 可选远程登录态命名空间(配置中心加密域,如 createConfigCenter().namespace("auth",{encrypt:true}))。
+   * 可选远程登录态命名空间(配置中心加密域,如 config().namespace("auth",{encrypt:true}))。
    * 登录态双写本地+远程;新机还原:先 await new AuthStore({platform:"vrchat",remote}).load()。
    */
   remote?: ConfigNamespace;

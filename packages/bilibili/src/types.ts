@@ -190,7 +190,7 @@ export interface BilibiliClientOptions {
   /** 登录态存储路径;未显式传 cookie 时自动从该存储加载(默认平台用户配置目录)。 */
   authPath?: string;
   /**
-   * 可选远程登录态命名空间(配置中心加密域,如 createConfigCenter().namespace("auth",{encrypt:true}))。
+   * 可选远程登录态命名空间(配置中心加密域,如 config().namespace("auth",{encrypt:true}))。
    * 登录态双写本地+远程;新机还原:先 await new AuthStore({platform:"bilibili",remote}).load()。
    */
   remote?: import("@sakurachiyo0v0/config").ConfigNamespace;

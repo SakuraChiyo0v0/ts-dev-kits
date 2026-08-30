@@ -32,6 +32,7 @@ import {
   DataApi,
   CreativeApi,
   UserApi,
+  SearchApi,
 } from "./api/index.js";
 import type {
   BilibiliClientOptions,
@@ -74,6 +75,7 @@ export class BilibiliClient {
   #data: DataApi | undefined;
   #creative: CreativeApi | undefined;
   #user: UserApi | undefined;
+  #search: SearchApi | undefined;
 
   constructor(options: BilibiliClientOptions = {}) {
     // 显式 cookie 优先;未传时从登录态存储自动加载(复用 account 底座)。
@@ -213,6 +215,12 @@ export class BilibiliClient {
   get user(): UserApi {
     this.#user ??= new UserApi(this.#session);
     return this.#user;
+  }
+
+  /** 视频搜索 API(按关键词搜索投稿视频)。 */
+  get search(): SearchApi {
+    this.#search ??= new SearchApi(this.#session);
+    return this.#search;
   }
 
   /** 解析任意 B 站链接,返回媒体项列表。 */

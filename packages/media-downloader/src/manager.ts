@@ -37,12 +37,14 @@ export class DownloadManager {
   readonly #root: string;
   readonly #userAgent: string;
   readonly #retries: number;
+  readonly #stateFile: string | undefined;
   #history: DownloadHistoryRecord[] = [];
 
   constructor(config: DownloadManagerConfig) {
     this.#root = config.root;
     this.#userAgent = config.userAgent ?? DEFAULT_USER_AGENT;
     this.#retries = config.retries ?? 2;
+    this.#stateFile = config.stateFile;
     this.#loadHistory();
   }
 
@@ -112,7 +114,7 @@ export class DownloadManager {
   }
 
   #statePath(): string {
-    return join(this.#root, ".download-state.json");
+    return this.#stateFile ?? join(this.#root, ".download-state.json");
   }
 
   #loadHistory(): void {

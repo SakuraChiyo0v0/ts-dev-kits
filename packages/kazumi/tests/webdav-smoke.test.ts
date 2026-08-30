@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { existsSync } from "node:fs";
-import { createConfigCenter } from "@sakurachiyo0v0/config";
+import { createWebdavConfigCenter } from "@sakurachiyo0v0/config";
 import { RuleSync } from "../src/rules/sync.js";
 
 const HAS_GLOBAL = existsSync(
@@ -17,7 +17,7 @@ const describeReal = HAS_GLOBAL ? describe : describe.skip;
 
 describeReal("真实 WebDAV 规则同步冒烟", () => {
   it("add → list → get → remove 端到端", async () => {
-    const center = createConfigCenter();
+    const center = createWebdavConfigCenter();
     const sync = new RuleSync(true, center);
     expect(sync.enabled).toBe(true);
     const name = `smoke-${Date.now()}`;

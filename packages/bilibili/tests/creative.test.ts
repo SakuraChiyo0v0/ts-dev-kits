@@ -102,3 +102,42 @@ describe("CreativeApi season follow", () => {
     expect(req?.body).toMatchObject({ season_id: "41410", csrf: "csrf123" });
   });
 });
+
+describe("CreativeApi list followed seasons", () => {
+  it("lists followed seasons", async () => {
+    await startMock({
+      "/pgc/web/follow/list": () => ({
+        list: [
+          {
+            season_id: 41410,
+            media_id: 28941,
+            title: "某番剧",
+            cover: "https://example.com/bangumi.jpg",
+            url: "https://www.bilibili.com/bangumi/play/ss41410",
+            new_ep: { index_show: "12" },
+            total: 24,
+            season_type: 1,
+            season_type_name: "番剧",
+          },
+        ],
+        total: 1,
+      }),
+    });
+    const { client } = await makeClient();
+    const { list, total } = await client.creative.listFollowedSeasons({ ps: 50 });
+
+    expect(total).toBe(1);
+    expect(list).toHaveLength(1);
+    expect(list[0]).toMatchObject({
+      seasonId: 41410,
+      mediaId: 28941,
+      title: "某番剧",
+      cover: "https://example.com/bangumi.jpg",
+      url: "https://www.bilibili.com/bangumi/play/ss41410",
+      newEp: "12",
+      total: 24,
+      seasonType: 1,
+      seasonTypeName: "番剧",
+    });
+  });
+});
