@@ -6,6 +6,7 @@ import {
   PlaybackResolver,
   extractIframeUrl,
   extractM3u8Url,
+  extractMaccmsEncryptedUrl,
 } from "../src/stream/resolver.js";
 import { KazumiError } from "../src/errors.js";
 
@@ -114,5 +115,39 @@ describe("PlaybackResolver", () => {
     await expect(
       resolver.resolve("https://a.com/1", HEADERS, 5000),
     ).rejects.toThrow(KazumiError);
+  });
+});
+
+describe("MacCMS 加密播放页", () => {
+  it("encrypt=2: base64(URL编码(真实地址)) 双重解码", () => {
+    // "https://cdn.example.com/a.m3u8" → URL 编码 → base64 → 形如 JTY4...
+    const urlEncoded = encodeURIComponent("https://cdn.example.com/a.m3u8");
+    const b64 = Buffer.from(urlEncoded, "utf8").toString("base64");
+    const html = `<script>var player_aaaa={"flag":"play","encrypt":2,"url":"${b64}"};</script>`;
+    const result = extractMaccmsEncryptedUrl(html);
+    expect(result).toBe("https://cdn.example.com/a.m3u8");
+  });
+
+  it("encrypt=2: 多重 URL 编码解码", () => {
+    const twice = encodeURIComponent(encodeURIComponent("https://cdn.example.com/b.m3u8"));
+    const html = `<script>var player_aaaa={"encrypt":2,"url":"${twice}"};</script>`;
+    const result = extractMaccmsEncryptedUrl(html);
+    expect(result).toBe("https://cdn.example.com/b.m3u8");
+  });
+
+  it("VodX 密文 token(非编码串) → null", () => {
+    const html = '<script>var player_aaaa={"encrypt":0,"url":"1071_0bc36mapyaaa6aak"};</script>';
+    expect(extractMaccmsEncryptedUrl(html)).toBeNull();
+  });
+
+  it("无 player_aaaa → null", () => {
+    expect(extractMaccmsEncryptedUrl("<html></html>")).toBeNull();
+  });
+
+  it("嵌套 vod_data 对象不截断 url 提取", () => {
+    const b64 = Buffer.from(encodeURIComponent("https://cdn.example.com/c.m3u8"), "utf8").toString("base64");
+    const html = `<script>var player_aaaa={"encrypt":2,"url":"${b64}","vod_data":{"vod_name":"测试","vod_actor":"x"}};</script>`;
+    const result = extractMaccmsEncryptedUrl(html);
+    expect(result).toBe("https://cdn.example.com/c.m3u8");
   });
 });

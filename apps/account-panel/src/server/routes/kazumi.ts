@@ -293,8 +293,10 @@ export const kazumiRoutes = new Hono()
       return c.json({
         m3u8Url: `/api/kazumi/playlist?url=${encodeURIComponent(resolved.url)}&rule=${encodeURIComponent(rule)}`,
       });
-    } catch {
-      return c.json({ error: "解析播放地址失败" }, 500);
+    } catch (error) {
+      // 透传具体解析失败原因(如该源为 JS 动态取流/加密播放),供前端给出明确提示与手动兜底。
+      const message = error instanceof Error ? error.message : "解析播放地址失败";
+      return c.json({ error: message }, 500);
     }
   })
   /** GET /api/kazumi/playlist?url=xxx&rule=xxx —— 代理 m3u8（master 选 best → media，重写分片/key URI）。 */

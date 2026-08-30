@@ -103,6 +103,7 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
   const [showDownloadHistory, setShowDownloadHistory] = useState(false);
   const [playingEpisode, setPlayingEpisode] = useState<Episode | null>(null);
   const [m3u8Url, setM3u8Url] = useState<string | null>(null);
+  const [playError, setPlayError] = useState<string | null>(null);
   const [playLoading, setPlayLoading] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
@@ -152,18 +153,19 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
     if (selected === null) return;
     setPlayingEpisode(ep);
     setM3u8Url(null);
+    setPlayError(null);
     setPlayLoading(true);
     try {
       const res = await rpc.api.kazumi.stream.$get({ query: { url: ep.url, rule: selected.rule } });
       const data = (await res.json()) as { m3u8Url?: string; error?: string };
       if (data.error !== undefined) {
-        showToast(`播放失败 ${data.error}`, "error");
+        setPlayError(data.error);
         setPlayingEpisode(null);
       } else if (data.m3u8Url !== undefined) {
         setM3u8Url(data.m3u8Url);
       }
     } catch {
-      showToast("播放失败", "error");
+      setPlayError("播放失败");
       setPlayingEpisode(null);
     } finally {
       setPlayLoading(false);
@@ -474,7 +476,7 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
         ) : (
           <div className="flex-1 overflow-auto">
             <div className="mx-auto max-w-4xl px-4 py-6">
-              <button onClick={() => { setSelected(null); setResults([]); setHasSearched(false); }} className="mb-4 flex items-center gap-1 rounded-full px-2 py-1 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">
+              <button onClick={() => setSelected(null)} className="mb-4 flex items-center gap-1 rounded-full px-2 py-1 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">
                 <ChevronLeft className="h-4 w-4" />返回搜索
               </button>
               <h1 className="mb-4 text-xl font-bold">{selected.name}</h1>
@@ -567,8 +569,13 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
           episode={playingEpisode}
           m3u8Url={m3u8Url}
           loading={playLoading}
+          error={playError}
           active={active}
-          onClose={() => { setPlayingEpisode(null); setM3u8Url(null); }}
+          onClose={() => { setPlayingEpisode(null); setM3u8Url(null); setPlayError(null); }}
+          onPlayManual={(url) => {
+            // 用户手动填写的 m3u8 直链：直接经 playlist 代理播放。
+            setM3u8Url(`/api/kazumi/playlist?url=${encodeURIComponent(url)}&rule=${encodeURIComponent(selected?.rule ?? "")}`);
+          }}
         />
       ) : null}
     </div>
@@ -626,11 +633,14 @@ function KazumiPlayer(props: {
   episode: Episode;
   m3u8Url: string | null;
   loading: boolean;
+  error: string | null;
   active?: boolean;
   onClose: () => void;
+  onPlayManual: (url: string) => void;
 }) {
-  const { episode, m3u8Url, loading, active = true, onClose } = props;
+  const { episode, m3u8Url, loading, error, active = true, onClose, onPlayManual } = props;
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [manualUrl, setManualUrl] = useState("");
 
   // 模块失活时暂停播放，避免切走后仍在后台出声。
   useEffect(() => {
@@ -671,6 +681,26 @@ function KazumiPlayer(props: {
         <div className="aspect-video w-full overflow-hidden rounded-xl bg-black">
           {loading ? (
             <div className="flex h-full w-full items-center justify-center text-sm text-white/70">解析播放地址中…</div>
+          ) : error !== null && m3u8Url === null ? (
+            <div className="flex h-full w-full flex-col items-center justify-center gap-3 px-6 text-center">
+              <p className="text-sm text-white/80">{error}</p>
+              <p className="text-xs text-white/50">该源可能使用 JS 动态取流或加密播放，自动解析失败</p>
+              <div className="flex w-full max-w-md gap-2">
+                <Input
+                  value={manualUrl}
+                  onChange={(e) => setManualUrl(e.target.value)}
+                  placeholder="粘贴 m3u8 直链（浏览器抓包获取）"
+                  className="rounded-full bg-white/10 text-white placeholder:text-white/40"
+                  onKeyDown={(e) => { if (e.key === "Enter" && manualUrl.trim() !== "") onPlayManual(manualUrl.trim()); }}
+                />
+                <Button
+                  className="shrink-0 rounded-full"
+                  onClick={() => { if (manualUrl.trim() !== "") onPlayManual(manualUrl.trim()); }}
+                >
+                  播放
+                </Button>
+              </div>
+            </div>
           ) : (
             <video
               ref={videoRef}

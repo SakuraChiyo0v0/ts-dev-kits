@@ -1,0 +1,3 @@
+tests/*.js
+tests/*.d.ts
+tests/helpers/*.js
