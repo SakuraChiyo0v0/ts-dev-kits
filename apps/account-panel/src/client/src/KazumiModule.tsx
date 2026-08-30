@@ -112,6 +112,14 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
   const [hasSearched, setHasSearched] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [searchProgress, setSearchProgress] = useState<{ done: number; total: number } | null>(null);
+  // 源质量排名缓存（rule → 排名信息），搜索结果里直接展示。
+  const [ruleRankings, setRuleRankings] = useState<Map<string, {
+    score: number;
+    successRate: number;
+    downloadSuccessRate: number;
+    avgBandwidth: number;
+    avgSpeed: number;
+  }>>(new Map());
   const [results, setResults] = useState<SearchItem[]>([]);
   const [selected, setSelected] = useState<SearchItem | null>(null);
   const [roads, setRoads] = useState<Road[]>([]);
@@ -179,6 +187,39 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
       if (blurTimerRef.current !== null) window.clearTimeout(blurTimerRef.current);
       searchAbortRef.current?.abort();
     };
+  }, []);
+
+  // 加载源质量排名，搜索结果里直接展示各源分数/码率/成功率。
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await rpc.api.kazumi["rule-rankings"].$get();
+        const data = (await res.json()) as { rankings?: Array<{
+          rule: string;
+          score: number;
+          successRate: number;
+          downloadSuccessRate: number;
+          avgBandwidth: number;
+          avgSpeed: number;
+        }> };
+        if (cancelled) return;
+        const map = new Map<string, { score: number; successRate: number; downloadSuccessRate: number; avgBandwidth: number; avgSpeed: number }>();
+        for (const r of data.rankings ?? []) {
+          map.set(r.rule, {
+            score: r.score,
+            successRate: r.successRate,
+            downloadSuccessRate: r.downloadSuccessRate,
+            avgBandwidth: r.avgBandwidth,
+            avgSpeed: r.avgSpeed,
+          });
+        }
+        setRuleRankings(map);
+      } catch {
+        // 排名加载失败不影响搜索。
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   const playEpisode = useCallback(async (ep: Episode) => {
@@ -552,18 +593,41 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
                     </div>
                   ) : null}
                   <ul className="divide-y divide-border/60 rounded-2xl border bg-card">
-                    {results.map((it, i) => (
-                      <li key={`${it.src}-${it.rule}-${i}`}>
-                        <button onClick={() => void openItem(it)} className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted">
-                          <Play className="h-4 w-4 shrink-0 text-primary" />
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium">{it.name}</p>
-                            <p className="truncate text-xs text-muted-foreground">源：{it.rule}</p>
-                          </div>
-                          <ChevronLeft className="h-4 w-4 rotate-180 text-muted-foreground" />
-                        </button>
-                      </li>
-                    ))}
+                    {[...results]
+                      // 按源排名排序：有排名分的源排前（分数降序），无排名的保持相对顺序。
+                      .sort((a, b) => {
+                        const sa = ruleRankings.get(a.rule)?.score ?? -1;
+                        const sb = ruleRankings.get(b.rule)?.score ?? -1;
+                        return sb - sa;
+                      })
+                      .map((it, i) => {
+                        const rank = ruleRankings.get(it.rule);
+                        return (
+                          <li key={`${it.src}-${it.rule}-${i}`}>
+                            <button onClick={() => void openItem(it)} className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted">
+                              <Play className="h-4 w-4 shrink-0 text-primary" />
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-medium">{it.name}</p>
+                                <p className="flex items-center gap-1.5 truncate text-xs text-muted-foreground">
+                                  源：{it.rule}
+                                  {rank !== undefined ? (
+                                    <span className="ml-1 flex shrink-0 items-center gap-1">
+                                      <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">{rank.score}分</span>
+                                      {rank.avgBandwidth > 0 ? (
+                                        <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px]">{formatBitrate(rank.avgBandwidth)}</span>
+                                      ) : null}
+                                      {rank.downloadSuccessRate > 0 ? (
+                                        <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px]">下载{Math.round(rank.downloadSuccessRate * 100)}%</span>
+                                      ) : null}
+                                    </span>
+                                  ) : null}
+                                </p>
+                              </div>
+                              <ChevronLeft className="h-4 w-4 rotate-180 text-muted-foreground" />
+                            </button>
+                          </li>
+                        );
+                      })}
                   </ul>
                 </>
               ) : searchError !== null ? (
