@@ -183,6 +183,11 @@ export const kazumiRoutes = new Hono()
                 })),
               });
             },
+            onProgress: (doneCount, total) => {
+              if (done) return;
+              // 单独发 progress 事件：无结果源也推进进度，前端可展示「已搜 n/m 源」。
+              send("progress", { done: doneCount, total });
+            },
           });
           if (!done) send("done", {});
         } catch {

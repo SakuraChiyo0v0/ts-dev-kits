@@ -3,12 +3,14 @@
  *
  * 服务端每个事件格式（routes/kazumi.ts 的 send()）：
  *   event: <type>\ndata: <json>\n\n
- * 支持的事件类型：batch（一批搜索结果）/ done（全部结束）/ error（搜索失败，如验证码拦截）。
+ * 支持的事件类型：batch（一批搜索结果）/ done（全部结束）/ error（搜索失败，如验证码拦截）
+ * / progress（搜索进度：已尝试源数 / 规则总数）。
  */
 export type SearchSseEvent =
   | { type: "batch"; items: Array<{ name: string; src: string; rule: string }> }
   | { type: "done" }
   | { type: "error"; message: string }
+  | { type: "progress"; done: number; total: number }
   | { type: "unknown" };
 
 /**
@@ -43,6 +45,19 @@ export function parseSseEvent(text: string): SearchSseEvent {
       return { type: "error", message: parsed.message ?? "搜索失败（可能被验证码拦截）" };
     } catch {
       return { type: "error", message: "搜索失败（可能被验证码拦截）" };
+    }
+  }
+
+  if (event === "progress") {
+    if (jsonStr === "") return { type: "unknown" };
+    try {
+      const parsed = JSON.parse(jsonStr) as { done?: number; total?: number };
+      if (typeof parsed.done === "number" && typeof parsed.total === "number") {
+        return { type: "progress", done: parsed.done, total: parsed.total };
+      }
+      return { type: "unknown" };
+    } catch {
+      return { type: "unknown" };
     }
   }
 

@@ -92,6 +92,7 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
   const [searching, setSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [searchProgress, setSearchProgress] = useState<{ done: number; total: number } | null>(null);
   const [results, setResults] = useState<SearchItem[]>([]);
   const [selected, setSelected] = useState<SearchItem | null>(null);
   const [roads, setRoads] = useState<Road[]>([]);
@@ -183,6 +184,7 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
       setSearching(true);
       setHasSearched(true);
       setSearchError(null);
+      setSearchProgress(null);
       setResults([]);
       setView("result");
       const controller = new AbortController();
@@ -197,7 +199,7 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
-        // SSE 事件解析收口到纯函数 parseSseEvent（batch/done/error 全覆盖，可单测）。
+        // SSE 事件解析收口到纯函数 parseSseEvent（batch/done/error/progress 全覆盖，可单测）。
         for (;;) {
           const { done, value } = await reader.read();
           if (done) break;
@@ -216,6 +218,9 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
               // 验证码/全源失败：明确提示，而不是落入「没有找到」。
               setSearchError(ev.message);
               showToast(ev.message, "error");
+            } else if (ev.type === "progress") {
+              // 展示「已搜 n/m 源」，让用户知道搜索仍在进行。
+              setSearchProgress({ done: ev.done, total: ev.total });
             }
             // done：无动作，循环结束后 setSearching(false) 收尾。
           }
@@ -387,7 +392,19 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
               </div>
               {searching && results.length === 0 ? (
                 <div className="py-16 text-center">
-                  <p className="text-sm text-muted-foreground">正在搜索（逐源返回结果，请稍候）…</p>
+                  <p className="text-sm text-muted-foreground">
+                    {searchProgress !== null
+                      ? `正在搜索（已查 ${searchProgress.done}/${searchProgress.total} 个源）…`
+                      : "正在搜索（逐源返回结果，请稍候）…"}
+                  </p>
+                  {searchProgress !== null && searchProgress.total > 0 ? (
+                    <div className="mx-auto mt-3 h-1.5 w-56 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-primary transition-all duration-300"
+                        style={{ width: `${Math.min(100, (searchProgress.done / searchProgress.total) * 100)}%` }}
+                      />
+                    </div>
+                  ) : null}
                   <button
                     onClick={() => searchAbortRef.current?.abort()}
                     className="mt-3 rounded-full border px-4 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
@@ -399,7 +416,12 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
                 <>
                   <div className="mb-3 flex items-center justify-between">
                     <p className="text-xs text-muted-foreground">
-                      已找到 {results.length} 条结果{searching ? "，继续搜索中…" : ""}
+                      已找到 {results.length} 条结果
+                      {searching
+                        ? searchProgress !== null
+                          ? `，已查 ${searchProgress.done}/${searchProgress.total} 个源…`
+                          : "，继续搜索中…"
+                        : ""}
                     </p>
                     {searching ? (
                       <button
@@ -410,6 +432,14 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
                       </button>
                     ) : null}
                   </div>
+                  {searching && searchProgress !== null && searchProgress.total > 0 ? (
+                    <div className="mb-3 h-1 w-full overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-primary transition-all duration-300"
+                        style={{ width: `${Math.min(100, (searchProgress.done / searchProgress.total) * 100)}%` }}
+                      />
+                    </div>
+                  ) : null}
                   <ul className="divide-y divide-border/60 rounded-2xl border bg-card">
                     {results.map((it, i) => (
                       <li key={`${it.src}-${it.rule}-${i}`}>

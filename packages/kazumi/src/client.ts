@@ -45,13 +45,15 @@ export interface AnimeClient {
   rules: RuleManager;
   /** 按关键词搜索(打全部规则或指定规则),结果带 [规则名] 前缀。 */
   search(keyword: string, opts?: { rules?: string[] }): Promise<SearchItem[]>;
-  /** 流式搜索:每搜到一个源的结果就回调一次(搜到一个返回一个),支持中途取消。 */
+  /** 流式搜索:每搜到一个源的结果就回调一次(搜到一个返回一个),支持中途取消与进度上报。 */
   searchStream(
     keyword: string,
     opts: {
       onBatch: (items: SearchItem[]) => void;
       signal?: AbortSignal;
       rules?: string[];
+      /** 进度回调:每完成一个源调用一次(done 已尝试数 / total 规则总数),用于 UI 展示「已搜 n/m 源」。 */
+      onProgress?: (done: number, total: number) => void;
     },
   ): Promise<SearchItem[]>;
   /** 按搜索结果查线路。 */
@@ -204,6 +206,8 @@ export function createAnimeClient(options: AnimeClientOptions = {}): AnimeClient
         onBatch: (items: SearchItem[]) => void;
         signal?: AbortSignal;
         rules?: string[];
+        /** 进度回调：每完成一个源调用一次（含被黑名单跳过的），用于前端展示「已搜 n/m 源」。 */
+        onProgress?: (done: number, total: number) => void;
       },
     ): Promise<SearchItem[]> {
       const ruleList = await resolveRules(opts);
@@ -215,12 +219,17 @@ export function createAnimeClient(options: AnimeClientOptions = {}): AnimeClient
       const EARLY_STOP_COUNT = 40;
       let next = 0;
       let stopped = false;
+      let doneCount = 0;
       const checkAbort = () => {
         if (opts.signal?.aborted === true) {
           stopped = true;
           return true;
         }
         return false;
+      };
+      const total = ruleList.length;
+      const reportProgress = () => {
+        opts.onProgress?.(doneCount, total);
       };
       async function worker(): Promise<void> {
         while (true) {
@@ -230,7 +239,12 @@ export function createAnimeClient(options: AnimeClientOptions = {}): AnimeClient
           if (index >= ruleList.length) return;
           const rule = ruleList[index];
           if (rule === undefined) return;
-          if (isDeadRule(rule.name)) continue;
+          if (isDeadRule(rule.name)) {
+            // 黑名单跳过也算「已尝试」，进度照常推进。
+            doneCount += 1;
+            reportProgress();
+            continue;
+          }
           try {
             const trace = await engine.search(rule, keyword);
             if (stopped || checkAbort()) return;
@@ -253,12 +267,19 @@ export function createAnimeClient(options: AnimeClientOptions = {}): AnimeClient
             if (error instanceof KazumiError && error.code === "CAPTCHA") {
               captchaBlocked = true;
             }
+          } finally {
+            // 无论成功失败都推进进度（早停时可能来不及逐源上报，只上报已完成的）。
+            if (!stopped) {
+              doneCount += 1;
+              reportProgress();
+            }
           }
         }
       }
       await Promise.all(
         Array.from({ length: Math.min(CONCURRENCY, ruleList.length) }, () => worker()),
       );
+      reportProgress();
       // 全部规则都被验证码挡住 → 明确报 CAPTCHA,而不是空结果
       if (results.length === 0 && captchaBlocked) {
         throw new KazumiError("CAPTCHA", "搜索被验证码拦截(全部规则均需验证码)");

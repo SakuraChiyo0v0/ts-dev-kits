@@ -78,3 +78,22 @@ test("splitSseChunks：空白事件块被过滤", () => {
   const { parts } = splitSseChunks("event: done\ndata: {}\n\n\n\n");
   assert.equal(parts.length, 1);
 });
+
+test("progress：解析已查源数与总数", () => {
+  const ev = parseSseEvent('event: progress\ndata: {"done":17,"total":85}');
+  assert.equal(ev.type, "progress");
+  if (ev.type === "progress") {
+    assert.equal(ev.done, 17);
+    assert.equal(ev.total, 85);
+  }
+});
+
+test("progress：缺字段返回 unknown（不抛错）", () => {
+  const ev = parseSseEvent('event: progress\ndata: {"done":1}');
+  assert.equal(ev.type, "unknown");
+});
+
+test("progress：非法 JSON 返回 unknown（不抛错）", () => {
+  const ev = parseSseEvent("event: progress\ndata: {oops");
+  assert.equal(ev.type, "unknown");
+});
