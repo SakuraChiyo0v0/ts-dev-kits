@@ -11,13 +11,45 @@ import {
   type AnimeRule,
   type Road,
 } from "@sakurachiyo0v0/kazumi";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { basename, join } from "node:path";
 import { getDownloadManager, downloadRoot } from "../downloads.js";
 import { appLogger } from "../logger.js";
 
+const execFileAsync = promisify(execFile);
+
 /** 番剧规则目录（NAS 持久化）。 */
 function rulesDir(): string {
   return join(downloadRoot(), "kazumi", "rules");
+}
+
+/**
+ * 用 ffprobe 分析下载好的视频文件，返回真实分辨率与码率（失败返回 undefined，不阻塞）。
+ * ffprobe 来自系统 PATH（Docker 镜像与 NAS 均预装 ffmpeg）。
+ */
+async function probeFile(filePath: string): Promise<{ resolution?: string; bitrate?: number } | undefined> {
+  try {
+    const { stdout } = await execFileAsync("ffprobe", [
+      "-v", "quiet",
+      "-print_format", "json",
+      "-show_streams",
+      "-select_streams", "v:0",
+      filePath,
+    ], { timeout: 10_000 });
+    const parsed = JSON.parse(stdout) as { streams?: Array<{ width?: number; height?: number; bit_rate?: string }> };
+    const video = parsed.streams?.[0];
+    if (video === undefined) return undefined;
+    const bitrateNum = Number(video.bit_rate);
+    return {
+      ...(video.width !== undefined && video.height !== undefined
+        ? { resolution: `${video.width}x${video.height}` }
+        : {}),
+      ...(Number.isFinite(bitrateNum) && bitrateNum > 0 ? { bitrate: bitrateNum } : {}),
+    };
+  } catch {
+    return undefined;
+  }
 }
 
 /** 构造番剧客户端（规则存 NAS）。 */
@@ -275,9 +307,17 @@ export const kazumiRoutes = new Hono()
         { name, url },
         { outputDir, rule, adFilter: true },
       );
-      getDownloadManager("kazumi").record({ filename: basename(filePath), filePath, status: "done" });
-      appLogger.info("kazumi download ok", { rule, name, dir: safeSub, filePath });
-      return c.json({ filePath });
+      // ffprobe 分析真实分辨率/码率，记录进下载历史并返回。
+      const probe = await probeFile(filePath);
+      getDownloadManager("kazumi").record({
+        filename: basename(filePath),
+        filePath,
+        status: "done",
+        ...(probe?.resolution !== undefined ? { resolution: probe.resolution } : {}),
+        ...(probe?.bitrate !== undefined ? { bitrate: probe.bitrate } : {}),
+      });
+      appLogger.info("kazumi download ok", { rule, name, dir: safeSub, filePath, probe });
+      return c.json({ filePath, ...(probe !== undefined ? { probe } : {}) });
     } catch (error) {
       getDownloadManager("kazumi").record({ filename: name || rule, filePath: "", status: "error" });
       appLogger.error("kazumi download failed", { rule, name, dir: safeSub, error });
@@ -327,11 +367,21 @@ export const kazumiRoutes = new Hono()
         adFilter: true,
         concurrency: 2,
       });
+      // 每集下载成功后 ffprobe 分析分辨率/码率，记录进下载历史。
+      const results: Array<{ filePath: string; resolution?: string; bitrate?: number }> = [];
       for (const { filePath } of files) {
-        getDownloadManager("kazumi").record({ filename: basename(filePath), filePath, status: "done" });
+        const probe = await probeFile(filePath);
+        results.push({ filePath, ...(probe?.resolution !== undefined ? { resolution: probe.resolution } : {}), ...(probe?.bitrate !== undefined ? { bitrate: probe.bitrate } : {}) });
+        getDownloadManager("kazumi").record({
+          filename: basename(filePath),
+          filePath,
+          status: "done",
+          ...(probe?.resolution !== undefined ? { resolution: probe.resolution } : {}),
+          ...(probe?.bitrate !== undefined ? { bitrate: probe.bitrate } : {}),
+        });
       }
       appLogger.info("kazumi download-all ok", { rule, title, count: files.length, dir: safeSub });
-      return c.json({ done: files.length, failed: episodes.length - files.length, files: files.map((f) => f.filePath) });
+      return c.json({ done: files.length, failed: episodes.length - files.length, files: results });
     } catch (error) {
       appLogger.error("kazumi download-all failed", { rule, title, dir: safeSub, error });
       const message =
@@ -349,8 +399,24 @@ export const kazumiRoutes = new Hono()
       const animeRule = await client.rules.load(rule);
       const resolver = new PlaybackResolver();
       const resolved = await resolver.resolve(url, headersFor(animeRule), 30_000);
+      // 读取 m3u8 master playlist 的最高码率变体信息（码率/分辨率），随响应返回供前端展示。
+      let bandwidth: number | undefined;
+      let resolution: string | undefined;
+      try {
+        const content = await fetchText(resolved.url, headersFor(animeRule));
+        const parsed = parseM3u8(content);
+        if (parsed.type === "master" && parsed.variants !== undefined && parsed.variants.length > 0) {
+          const best = parsed.variants.reduce((a, b) => (b.bandwidth > a.bandwidth ? b : a));
+          bandwidth = best.bandwidth;
+          resolution = best.resolution;
+        }
+      } catch {
+        // 读码率失败不影响播放。
+      }
       return c.json({
         m3u8Url: `/api/kazumi/playlist?url=${encodeURIComponent(resolved.url)}&rule=${encodeURIComponent(rule)}`,
+        ...(bandwidth !== undefined ? { bandwidth } : {}),
+        ...(resolution !== undefined ? { resolution } : {}),
       });
     } catch (error) {
       // 透传具体解析失败原因(如该源为 JS 动态取流/加密播放),供前端给出明确提示与手动兜底。

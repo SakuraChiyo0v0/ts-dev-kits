@@ -118,6 +118,8 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
   const [m3u8Url, setM3u8Url] = useState<string | null>(null);
   const [playError, setPlayError] = useState<string | null>(null);
   const [playLoading, setPlayLoading] = useState(false);
+  // 当前播放流的码率/分辨率（服务端从 master playlist 读取）。
+  const [streamQuality, setStreamQuality] = useState<{ bandwidth?: number; resolution?: string } | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   // 流式搜索的取消控制器（换关键词/离开页面时中止上一轮）。
@@ -167,15 +169,19 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
     setPlayingEpisode(ep);
     setM3u8Url(null);
     setPlayError(null);
+    setStreamQuality(null);
     setPlayLoading(true);
     try {
       const res = await rpc.api.kazumi.stream.$get({ query: { url: ep.url, rule: selected.rule } });
-      const data = (await res.json()) as { m3u8Url?: string; error?: string };
+      const data = (await res.json()) as { m3u8Url?: string; error?: string; bandwidth?: number; resolution?: string };
       if (data.error !== undefined) {
         setPlayError(data.error);
         setPlayingEpisode(null);
       } else if (data.m3u8Url !== undefined) {
         setM3u8Url(data.m3u8Url);
+        if (data.bandwidth !== undefined || data.resolution !== undefined) {
+          setStreamQuality({ ...(data.bandwidth !== undefined ? { bandwidth: data.bandwidth } : {}), ...(data.resolution !== undefined ? { resolution: data.resolution } : {}) });
+        }
       }
     } catch {
       setPlayError("播放失败");
@@ -684,8 +690,9 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
           m3u8Url={m3u8Url}
           loading={playLoading}
           error={playError}
+          quality={streamQuality}
           active={active}
-          onClose={() => { setPlayingEpisode(null); setM3u8Url(null); setPlayError(null); }}
+          onClose={() => { setPlayingEpisode(null); setM3u8Url(null); setPlayError(null); setStreamQuality(null); }}
           onPlayManual={(url) => {
             // 用户手动填写的 m3u8 直链：直接经 playlist 代理播放。
             setM3u8Url(`/api/kazumi/playlist?url=${encodeURIComponent(url)}&rule=${encodeURIComponent(selected?.rule ?? "")}`);
@@ -748,13 +755,20 @@ function KazumiPlayer(props: {
   m3u8Url: string | null;
   loading: boolean;
   error: string | null;
+  quality?: { bandwidth?: number; resolution?: string } | null;
   active?: boolean;
   onClose: () => void;
   onPlayManual: (url: string) => void;
 }) {
-  const { episode, m3u8Url, loading, error, active = true, onClose, onPlayManual } = props;
+  const { episode, m3u8Url, loading, error, quality, active = true, onClose, onPlayManual } = props;
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [manualUrl, setManualUrl] = useState("");
+
+  // 码率可读化：1234567 → "1.2 Mbps"。
+  const formatBitrate = (bps: number): string => {
+    if (!Number.isFinite(bps) || bps <= 0) return "";
+    return `${(bps / 1_000_000).toFixed(1)} Mbps`;
+  };
 
   // 模块失活时暂停播放，避免切走后仍在后台出声。
   useEffect(() => {
@@ -788,9 +802,16 @@ function KazumiPlayer(props: {
       <div className="w-full max-w-3xl px-4" onClick={(e) => e.stopPropagation()}>
         <div className="mb-3 flex items-center justify-between text-white">
           <p className="truncate text-sm font-medium">{episode.name}</p>
-          <button onClick={onClose} className="rounded-full p-2 transition-colors hover:bg-white/10" aria-label="关闭播放器">
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            {quality !== undefined && quality !== null && (quality.resolution !== undefined || quality.bandwidth !== undefined) ? (
+              <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-white/80">
+                {[quality.resolution, quality.bandwidth !== undefined ? formatBitrate(quality.bandwidth) : null].filter(Boolean).join(" · ")}
+              </span>
+            ) : null}
+            <button onClick={onClose} className="rounded-full p-2 transition-colors hover:bg-white/10" aria-label="关闭播放器">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
         <div className="aspect-video w-full overflow-hidden rounded-xl bg-black">
           {loading ? (
