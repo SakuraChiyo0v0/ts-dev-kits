@@ -45,6 +45,8 @@ interface Road {
   name: string;
   data: string[];
   identifier: string[];
+  /** 线路质量（服务端从第一集 master playlist 探测），可选。 */
+  quality?: { bandwidth?: number; resolution?: string };
 }
 
 interface Episode {
@@ -91,6 +93,12 @@ function qualityBadge(name: string): string | null {
   if (/(720p|hd|高清|超清)/i.test(name)) return "高清";
   if (/(480p|sd|标清|流畅|普清)/i.test(name)) return "标清";
   return null;
+}
+
+/** 码率可读化：1234567 → "1.2 Mbps"。 */
+function formatBitrate(bps: number): string {
+  if (!Number.isFinite(bps) || bps <= 0) return "";
+  return `${(bps / 1_000_000).toFixed(1)} Mbps`;
 }
 
 // ---------- 主组件 ----------
@@ -574,9 +582,11 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
                         )}
                       >
                         {r.name || `线路${i + 1}`}
-                        {qualityBadge(r.name) !== null ? (
+                        {(r.quality !== undefined && (r.quality.resolution !== undefined || r.quality.bandwidth !== undefined)) || qualityBadge(r.name) !== null ? (
                           <span className={cn("rounded-full px-1.5 py-0.5 text-[10px] leading-none", roadIndex === i ? "bg-primary-foreground/20 text-primary-foreground" : "bg-primary/10 text-primary")}>
-                            {qualityBadge(r.name)}
+                            {r.quality !== undefined && (r.quality.resolution !== undefined || r.quality.bandwidth !== undefined)
+                              ? [r.quality.resolution, r.quality.bandwidth !== undefined ? formatBitrate(r.quality.bandwidth) : null].filter(Boolean).join(" · ")
+                              : qualityBadge(r.name)}
                           </span>
                         ) : null}
                       </button>
@@ -763,12 +773,6 @@ function KazumiPlayer(props: {
   const { episode, m3u8Url, loading, error, quality, active = true, onClose, onPlayManual } = props;
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [manualUrl, setManualUrl] = useState("");
-
-  // 码率可读化：1234567 → "1.2 Mbps"。
-  const formatBitrate = (bps: number): string => {
-    if (!Number.isFinite(bps) || bps <= 0) return "";
-    return `${(bps / 1_000_000).toFixed(1)} Mbps`;
-  };
 
   // 模块失活时暂停播放，避免切走后仍在后台出声。
   useEffect(() => {

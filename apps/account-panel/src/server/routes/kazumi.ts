@@ -83,6 +83,51 @@ async function fetchText(url: string, headers: Record<string, string>): Promise<
   return resp.text();
 }
 
+/** 线路质量探测缓存：key = 规则名|第一集URL，TTL 10 分钟，避免每次打开详情都重复解析。 */
+const roadQualityCache = new Map<string, { quality: RoadQuality | null; expiresAt: number }>();
+const ROAD_QUALITY_TTL_MS = 10 * 60 * 1000;
+
+/** 线路质量（最高码率变体）。 */
+interface RoadQuality {
+  bandwidth?: number;
+  resolution?: string;
+}
+
+/**
+ * 探测线路质量：解析第一集播放页 → master playlist，取最高码率变体的 BANDWIDTH/RESOLUTION。
+ * 失败（加密源/JS 动态取流）返回 null 并缓存，避免反复探测。
+ */
+async function probeRoadQuality(
+  episodeUrl: string,
+  ruleName: string,
+  client: AnimeClient,
+): Promise<RoadQuality | null> {
+  const cacheKey = `${ruleName}|${episodeUrl}`;
+  const cached = roadQualityCache.get(cacheKey);
+  if (cached !== undefined && cached.expiresAt > Date.now()) return cached.quality;
+  try {
+    const animeRule = await client.rules.load(ruleName);
+    const resolver = new PlaybackResolver();
+    const resolved = await resolver.resolve(episodeUrl, headersFor(animeRule), 8_000);
+    const content = await fetchText(resolved.url, headersFor(animeRule));
+    const parsed = parseM3u8(content);
+    if (parsed.type !== "master" || parsed.variants === undefined || parsed.variants.length === 0) {
+      roadQualityCache.set(cacheKey, { quality: null, expiresAt: Date.now() + ROAD_QUALITY_TTL_MS });
+      return null;
+    }
+    const best = parsed.variants.reduce((a, b) => (b.bandwidth > a.bandwidth ? b : a));
+    const quality: RoadQuality = {
+      ...(best.bandwidth > 0 ? { bandwidth: best.bandwidth } : {}),
+      ...(best.resolution !== undefined ? { resolution: best.resolution } : {}),
+    };
+    roadQualityCache.set(cacheKey, { quality, expiresAt: Date.now() + ROAD_QUALITY_TTL_MS });
+    return quality;
+  } catch {
+    roadQualityCache.set(cacheKey, { quality: null, expiresAt: Date.now() + ROAD_QUALITY_TTL_MS });
+    return null;
+  }
+}
+
 /** 重写 media m3u8：segment/key URI 替换为经 /seg 代理的 URL。 */
 function rewriteM3u8(
   media: NonNullable<ReturnType<typeof parseM3u8>["media"]>,
@@ -256,8 +301,22 @@ export const kazumiRoutes = new Hono()
     try {
       // 构造带规则前缀的 SearchItem，供 getRoads 内部推断规则。
       const roads = await client.getRoads({ name: `[${rule}]`, src });
+      // 并发探测各线路质量（第一集播放页 → master playlist 最高码率），
+      // 让用户在选择线路时就能事先看到码率/分辨率。失败（加密源）返回 null。
+      const qualities = await Promise.all(
+        roads.map((r) =>
+          r.data[0] !== undefined && r.data[0] !== ""
+            ? probeRoadQuality(r.data[0], rule, client)
+            : Promise.resolve(null),
+        ),
+      );
       return c.json({
-        roads: roads.map((r) => ({ name: r.name, data: r.data, identifier: r.identifier })),
+        roads: roads.map((r, i) => ({
+          name: r.name,
+          data: r.data,
+          identifier: r.identifier,
+          ...(qualities[i] !== null && qualities[i] !== undefined ? { quality: qualities[i] } : {}),
+        })),
       });
     } catch {
       return c.json({ error: "获取线路失败" }, 500);
