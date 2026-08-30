@@ -12,11 +12,12 @@
  *   downloads           INTEGER —— 下载尝试次数
  *   download_successes  INTEGER —— 下载成功次数
  *   speed_sum           BIGINT  —— 下载累计速率 bps（ffprobe 实测视频码率）
+ *   probe_failures      INTEGER —— 线路质量探测失败次数（加密源/JS 动态取流，无法解析播放）
  *   last_seen           TIMESTAMPTZ —— 最近一次活动
  *
  * 综合分 score（查询时计算，不落库，满分 100）：
  *   搜索成功率*50 + 下载成功率*20 + 平均码率档*20 + 下载速率档*5 + 搜索速度档*5
- *   —— 搜索可用性为主，下载稳定性与画质次之，速度加分。
+ *   - 可播放性惩罚：探测失败（加密源）每 2 次 -5 分（最多 -20），避免加密源排前被优先点到。
  */
 import { Pool } from "pg";
 import { appLogger } from "./logger.js";
@@ -39,12 +40,14 @@ if (pool !== null) {
         downloads INTEGER NOT NULL DEFAULT 0,
         download_successes INTEGER NOT NULL DEFAULT 0,
         speed_sum BIGINT NOT NULL DEFAULT 0,
+        probe_failures INTEGER NOT NULL DEFAULT 0,
         last_seen TIMESTAMPTZ NOT NULL DEFAULT now()
       )`);
       // 老表缺新字段时补列（幂等）。
       await pool.query(`ALTER TABLE rule_rankings ADD COLUMN IF NOT EXISTS downloads INTEGER NOT NULL DEFAULT 0`);
       await pool.query(`ALTER TABLE rule_rankings ADD COLUMN IF NOT EXISTS download_successes INTEGER NOT NULL DEFAULT 0`);
       await pool.query(`ALTER TABLE rule_rankings ADD COLUMN IF NOT EXISTS speed_sum BIGINT NOT NULL DEFAULT 0`);
+      await pool.query(`ALTER TABLE rule_rankings ADD COLUMN IF NOT EXISTS probe_failures INTEGER NOT NULL DEFAULT 0`);
     } catch (error) {
       appLogger.error("rule_rankings 建表失败", { error });
     }
@@ -119,6 +122,26 @@ export async function recordRuleDownload(
   }
 }
 
+/**
+ * 记录一次线路质量探测失败（加密源 / JS 动态取流 / 播放页解析失败）。
+ * 这类源播放与下载都不可用，累计后降低其排名，避免排前被优先点到。
+ */
+export async function recordRuleProbeFailure(rule: string): Promise<void> {
+  if (pool === null) return;
+  try {
+    await pool.query(
+      `INSERT INTO rule_rankings (rule, probe_failures, last_seen)
+       VALUES ($1, 1, now())
+       ON CONFLICT (rule) DO UPDATE SET
+         probe_failures = rule_rankings.probe_failures + 1,
+         last_seen = now()`,
+      [rule],
+    );
+  } catch (error) {
+    appLogger.error("recordRuleProbeFailure 失败", { rule, error });
+  }
+}
+
 /** 一条规则的排名统计。 */
 export interface RuleRanking {
   rule: string;
@@ -154,10 +177,11 @@ export async function listRuleRankings(): Promise<RuleRanking[]> {
       downloads: number;
       download_successes: number;
       speed_sum: string;
+      probe_failures: number;
     }>(`SELECT rule, searches, successes, latency_sum, bandwidth_sum, probes,
-              downloads, download_successes, speed_sum
+              downloads, download_successes, speed_sum, probe_failures
         FROM rule_rankings
-        WHERE searches > 0 OR probes > 0 OR downloads > 0`);
+        WHERE searches > 0 OR probes > 0 OR downloads > 0 OR probe_failures > 0`);
     const ranked = rows.map((row) => {
       const searches = Number(row.searches) || 0;
       const successes = Number(row.successes) || 0;
@@ -179,13 +203,17 @@ export async function listRuleRankings(): Promise<RuleRanking[]> {
       // 搜索速度档：>5s 记 0，<1s 记 1。
       const latencyScore = Math.max(0, Math.min(1, 1 - (avgLatencyMs - 1000) / 4000));
       // 综合分：搜索成功率为主(50)，下载成功率(20)、画质码率(20)次之，下载速率(5)、搜索速度(5)加分。
-      const score = Math.round(
+      let score = Math.round(
         successRate * 50 +
         downloadSuccessRate * 20 +
         bandwidthScore * 20 +
         speedScore * 5 +
         latencyScore * 5,
       );
+      // 可播放性惩罚：探测失败（加密源/JS 取流）每 2 次 -5 分，最多 -20，避免排前被优先点到。
+      const probeFailures = Number(row.probe_failures) || 0;
+      score -= Math.min(20, Math.floor(probeFailures / 2) * 5);
+      score = Math.max(0, score);
       return {
         rule: row.rule,
         searches,

@@ -16,7 +16,7 @@ import { promisify } from "node:util";
 import { basename, join } from "node:path";
 import { getDownloadManager, downloadRoot } from "../downloads.js";
 import { appLogger } from "../logger.js";
-import { recordRuleSearch, recordRuleBandwidth, recordRuleDownload, rankedRuleNames, listRuleRankings } from "../rule-rankings.js";
+import { recordRuleSearch, recordRuleBandwidth, recordRuleDownload, recordRuleProbeFailure, rankedRuleNames, listRuleRankings } from "../rule-rankings.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -114,6 +114,8 @@ async function probeRoadQuality(
     const parsed = parseM3u8(content);
     if (parsed.type !== "master" || parsed.variants === undefined || parsed.variants.length === 0) {
       roadQualityCache.set(cacheKey, { quality: null, expiresAt: Date.now() + ROAD_QUALITY_TTL_MS });
+      // 播放页解析到了但拿不到 master playlist：该源播放/下载可能受限，记探测失败降权。
+      void recordRuleProbeFailure(ruleName);
       return null;
     }
     const best = parsed.variants.reduce((a, b) => (b.bandwidth > a.bandwidth ? b : a));
@@ -127,6 +129,8 @@ async function probeRoadQuality(
     return quality;
   } catch {
     roadQualityCache.set(cacheKey, { quality: null, expiresAt: Date.now() + ROAD_QUALITY_TTL_MS });
+    // 播放页解析失败（加密源/JS 动态取流/网络失败）：记探测失败，降其排名避免被优先点到。
+    void recordRuleProbeFailure(ruleName);
     return null;
   }
 }
@@ -372,10 +376,12 @@ export const kazumiRoutes = new Hono()
       name?: unknown;
       url?: unknown;
       path?: unknown;
+      title?: unknown;
     };
     const rule = typeof body.rule === "string" ? body.rule : "";
     const name = typeof body.name === "string" ? body.name : "";
     const url = typeof body.url === "string" ? body.url : "";
+    const title = typeof body.title === "string" ? body.title.trim() : "";
     if (rule === "" || url === "") return c.json({ error: "参数错误" }, 400);
     const safeSub = safeSubdir(typeof body.path === "string" ? body.path.trim() : "");
 
@@ -384,7 +390,7 @@ export const kazumiRoutes = new Hono()
       const outputDir = safeSub === "" ? downloadRoot() : `${downloadRoot()}/${safeSub}`;
       const { filePath } = await client.download(
         { name, url },
-        { outputDir, rule, adFilter: true },
+        { outputDir, rule, adFilter: true, ...(title !== "" ? { title } : {}) },
       );
       // ffprobe 分析真实分辨率/码率，记录进下载历史并返回；同时回写规则排名（下载成功率/速率）。
       const probe = await probeFile(filePath);

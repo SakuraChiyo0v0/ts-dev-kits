@@ -814,7 +814,13 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
               setDownloading(downloadTarget.url);
               showToast("开始下载到 NAS…", "info");
               const res = await rpc.api.kazumi.download.$post({
-                json: { rule: selected.rule, name: downloadTarget.name, url: downloadTarget.url, ...(path.trim() !== "" ? { path: path.trim() } : {}) },
+                json: {
+                  rule: selected.rule,
+                  name: downloadTarget.name,
+                  url: downloadTarget.url,
+                  title: selected.name.replace(/^\[[^\]]+\]\s*/, "").slice(0, 60),
+                  ...(path.trim() !== "" ? { path: path.trim() } : {}),
+                },
               });
               const data = (await res.json()) as { filePath?: string; error?: string };
               if (data.error !== undefined) {
