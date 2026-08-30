@@ -153,23 +153,36 @@ export function createAnimeClient(options: AnimeClientOptions = {}): AnimeClient
       const ruleList = await resolveRules(opts);
       const results: SearchItem[] = [];
       let captchaBlocked = false;
-      for (const rule of ruleList) {
-        try {
-          const trace = await engine.search(rule, keyword);
-          results.push(
-            ...trace.items.map((item) => ({
-              name: `[${rule.name}] ${item.name}`,
-              src: item.src,
-            })),
-          );
-        } catch (error) {
-          // 单个规则失败（验证码/无结果/网络错误/解析错误）不影响整体：跳过该规则，
-          // 避免某个失效源拖垮全部搜索。engine 内部已记录具体错误日志。
-          if (error instanceof KazumiError && error.code === "CAPTCHA") {
-            captchaBlocked = true;
+      // 并发搜索：限制并发数，避免串行遍历大量失效源拖慢整体（85 个源串行约 160s → 并发约 20s）。
+      const CONCURRENCY = 6;
+      let next = 0;
+      async function worker(): Promise<void> {
+        while (true) {
+          const index = next;
+          next += 1;
+          if (index >= ruleList.length) return;
+          const rule = ruleList[index];
+          if (rule === undefined) return;
+          try {
+            const trace = await engine.search(rule, keyword);
+            results.push(
+              ...trace.items.map((item) => ({
+                name: `[${rule.name}] ${item.name}`,
+                src: item.src,
+              })),
+            );
+          } catch (error) {
+            // 单个规则失败（验证码/无结果/网络错误/解析错误）不影响整体：跳过该规则，
+            // 避免某个失效源拖垮全部搜索。engine 内部已记录具体错误日志。
+            if (error instanceof KazumiError && error.code === "CAPTCHA") {
+              captchaBlocked = true;
+            }
           }
         }
       }
+      await Promise.all(
+        Array.from({ length: Math.min(CONCURRENCY, ruleList.length) }, () => worker()),
+      );
       // 全部规则都被验证码挡住 → 明确报 CAPTCHA,而不是空结果
       if (results.length === 0 && captchaBlocked) {
         throw new KazumiError("CAPTCHA", "搜索被验证码拦截(全部规则均需验证码)");

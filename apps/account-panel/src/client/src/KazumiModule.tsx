@@ -44,6 +44,34 @@ interface RuleItem {
   name: string;
 }
 
+/** 主页热门番剧推荐关键词（点击直接搜索）。 */
+const HOT_ANIME = [
+  "孤独摇滚",
+  "鬼灭之刃",
+  "咒术回战",
+  "葬送的芙莉莲",
+  "进击的巨人",
+  "间谍过家家",
+  "我推的孩子",
+  "无职转生",
+  "电锯人",
+  "赛博朋克：边缘行者",
+];
+
+/** 分类标签（点击按分类搜索）。 */
+const CATEGORIES = [
+  "热血",
+  "恋爱",
+  "搞笑",
+  "异世界",
+  "日常",
+  "治愈",
+  "悬疑",
+  "科幻",
+  "奇幻",
+  "校园",
+];
+
 // ---------- 主组件 ----------
 
 export default function KazumiModule({ onBack }: { onBack: () => void }) {
@@ -91,11 +119,13 @@ export default function KazumiModule({ onBack }: { onBack: () => void }) {
     }
   }, [selected, showToast]);
 
-  const doSearch = useCallback(async () => {
-    if (query.trim() === "") return;
+  const doSearch = useCallback(async (kw?: string) => {
+    const keyword = (kw ?? query).trim();
+    if (keyword === "") return;
+    setQuery(keyword);
     setSearching(true);
     try {
-      const res = await rpc.api.kazumi.search.$get({ query: { q: query.trim() } });
+      const res = await rpc.api.kazumi.search.$get({ query: { q: keyword } });
       const data = (await res.json()) as { items?: SearchItem[] };
       setResults(data.items ?? []);
       setView("result");
@@ -181,7 +211,9 @@ export default function KazumiModule({ onBack }: { onBack: () => void }) {
                   <Search />搜索
                 </Button>
               </div>
-              {results.length > 0 ? (
+              {searching ? (
+                <p className="py-16 text-center text-sm text-muted-foreground">搜索中（遍历多个番剧源，约需 20 秒）…</p>
+              ) : results.length > 0 ? (
                 <ul className="divide-y divide-border/60 rounded-2xl border bg-card">
                   {results.map((it, i) => (
                     <li key={`${it.src}-${i}`}>
@@ -197,7 +229,36 @@ export default function KazumiModule({ onBack }: { onBack: () => void }) {
                   ))}
                 </ul>
               ) : (
-                <p className="py-16 text-center text-sm text-muted-foreground">输入关键词搜索番剧</p>
+                <div className="space-y-8">
+                  <div>
+                    <h2 className="mb-3 text-sm font-semibold text-muted-foreground">🔥 热门番剧</h2>
+                    <div className="flex flex-wrap gap-2">
+                      {HOT_ANIME.map((k) => (
+                        <button
+                          key={k}
+                          onClick={() => void doSearch(k)}
+                          className="rounded-full border bg-card px-3 py-1.5 text-sm transition-colors hover:bg-muted hover:text-foreground"
+                        >
+                          {k}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <h2 className="mb-3 text-sm font-semibold text-muted-foreground">分类</h2>
+                    <div className="flex flex-wrap gap-2">
+                      {CATEGORIES.map((k) => (
+                        <button
+                          key={k}
+                          onClick={() => void doSearch(k)}
+                          className="rounded-full border bg-card px-3 py-1.5 text-sm transition-colors hover:bg-muted hover:text-foreground"
+                        >
+                          {k}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
           </div>
