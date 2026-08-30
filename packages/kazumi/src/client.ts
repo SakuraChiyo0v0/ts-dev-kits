@@ -45,6 +45,15 @@ export interface AnimeClient {
   rules: RuleManager;
   /** 按关键词搜索(打全部规则或指定规则),结果带 [规则名] 前缀。 */
   search(keyword: string, opts?: { rules?: string[] }): Promise<SearchItem[]>;
+  /** 流式搜索:每搜到一个源的结果就回调一次(搜到一个返回一个),支持中途取消。 */
+  searchStream(
+    keyword: string,
+    opts: {
+      onBatch: (items: SearchItem[]) => void;
+      signal?: AbortSignal;
+      rules?: string[];
+    },
+  ): Promise<SearchItem[]>;
   /** 按搜索结果查线路。 */
   getRoads(item: SearchItem): Promise<Road[]>;
   /** 线路 → 集数列表。 */
@@ -73,6 +82,9 @@ export function createAnimeClient(options: AnimeClientOptions = {}): AnimeClient
   const engine = new RuleEngine(
     options.fetchImpl ? new DefaultRuleRequestExecutor(options.fetchImpl) : undefined,
   );
+  // 会话级失效源黑名单：一次会话内失败的源（网络/超时/无结果/损坏）跨多次搜索复用跳过。
+  // 失效源随站点维护会变化，跨会话/重启不持久化（重启后重新探测）。
+  const deadRules = new Set<string>();
 
   const rules: RuleManager = {
     list: () => loader.list(),
@@ -137,7 +149,11 @@ export function createAnimeClient(options: AnimeClientOptions = {}): AnimeClient
     }
     const rulesList: AnimeRule[] = [];
     for (const name of names) {
-      rulesList.push(await loader.load(name));
+      try {
+        rulesList.push(await loader.load(name));
+      } catch {
+        // 单个规则损坏/失效（校验失败、JSON 解析失败等）：跳过，不拖垮整体搜索。
+      }
     }
     return rulesList;
   }
@@ -146,31 +162,74 @@ export function createAnimeClient(options: AnimeClientOptions = {}): AnimeClient
     rules,
 
     async search(keyword: string, opts?: { rules?: string[] }): Promise<SearchItem[]> {
+      const all: SearchItem[] = [];
+      await this.searchStream(keyword, {
+        onBatch: (items) => all.push(...items),
+        ...(opts?.rules !== undefined ? { rules: opts.rules } : {}),
+      });
+      return all;
+    },
+
+    async searchStream(
+      keyword: string,
+      opts: {
+        onBatch: (items: SearchItem[]) => void;
+        signal?: AbortSignal;
+        rules?: string[];
+      },
+    ): Promise<SearchItem[]> {
       const ruleList = await resolveRules(opts);
       const results: SearchItem[] = [];
       let captchaBlocked = false;
-      for (const rule of ruleList) {
-        try {
-          const trace = await engine.search(rule, keyword);
-          results.push(
-            ...trace.items.map((item) => ({
+      // 并发搜索：12 路并发 + 结果早停（收集到足够结果就提前结束慢源等待）。
+      // 流式回调：每搜到一个源的结果立即 onBatch，用户无需等全部渠道返回。
+      const CONCURRENCY = 12;
+      const EARLY_STOP_COUNT = 40;
+      let next = 0;
+      let stopped = false;
+      const checkAbort = () => {
+        if (opts.signal?.aborted === true) {
+          stopped = true;
+          return true;
+        }
+        return false;
+      };
+      async function worker(): Promise<void> {
+        while (true) {
+          if (stopped) return;
+          const index = next;
+          next += 1;
+          if (index >= ruleList.length) return;
+          const rule = ruleList[index];
+          if (rule === undefined) return;
+          if (deadRules.has(rule.name)) continue;
+          try {
+            const trace = await engine.search(rule, keyword);
+            if (stopped || checkAbort()) return;
+            const batch = trace.items.map((item) => ({
               name: `[${rule.name}] ${item.name}`,
               src: item.src,
-            })),
-          );
-        } catch (error) {
-          if (error instanceof KazumiError) {
-            if (error.code === "CAPTCHA") {
-              captchaBlocked = true;
-              continue;
+            }));
+            results.push(...batch);
+            // 搜到一个源就立刻推给调用方（前端实时渲染）。
+            opts.onBatch(batch);
+            if (results.length >= EARLY_STOP_COUNT) {
+              // 已收集到足够结果：通知其他 worker 停止等待慢源。
+              stopped = true;
             }
-            if (error.code === "NO_RESULT") {
-              continue;
+          } catch (error) {
+            // 单个规则失败（验证码/无结果/网络错误/解析错误）不影响整体：跳过该规则，
+            // 并记入黑名单，避免同一失效源在后续搜索中被反复重试拖慢。
+            deadRules.add(rule.name);
+            if (error instanceof KazumiError && error.code === "CAPTCHA") {
+              captchaBlocked = true;
             }
           }
-          throw error;
         }
       }
+      await Promise.all(
+        Array.from({ length: Math.min(CONCURRENCY, ruleList.length) }, () => worker()),
+      );
       // 全部规则都被验证码挡住 → 明确报 CAPTCHA,而不是空结果
       if (results.length === 0 && captchaBlocked) {
         throw new KazumiError("CAPTCHA", "搜索被验证码拦截(全部规则均需验证码)");

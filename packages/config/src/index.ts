@@ -1,4 +1,10 @@
-export { createConfigCenter } from "./config-center.js";
+export {
+  createConfigCenter,
+  createWebdavConfigCenter,
+  initConfig,
+  config,
+  resetConfig,
+} from "./config-center.js";
 export {
   saveGlobalConfig,
   loadGlobalConfig,

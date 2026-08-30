@@ -138,7 +138,7 @@ export interface NeteaseClientOptions {
   /** 未传 cookie 时,从该 AuthStore 加载登录态。 */
   authPath?: string;
   /**
-   * 可选远程登录态命名空间(配置中心加密域,如 createConfigCenter().namespace("auth",{encrypt:true}))。
+   * 可选远程登录态命名空间(配置中心加密域,如 config().namespace("auth",{encrypt:true}))。
    * 登录态双写本地+远程;新机还原:先 await new AuthStore({ platform: "netease-music", remote }).load()。
    */
   remote?: ConfigNamespace;

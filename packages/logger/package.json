@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/logger",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "轻量级日志模块：级别控制、命名空间、子 logger 派生、可替换 transport",
   "license": "UNLICENSED",
   "type": "module",

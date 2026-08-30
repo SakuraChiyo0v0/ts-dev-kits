@@ -181,6 +181,7 @@ cat /tmp/account-panel.tar | sshpass -e ssh -o StrictHostKeyChecking=no AmeChan@
 sshpass -e ssh ... "echo '${P1}${P2}' | sudo -S docker load -i /tmp/account-panel.tar
   && sudo docker rm -f account-panel
   && sudo docker run -d --name account-panel -p 8787:8787 --restart unless-stopped \
+     --network app-net \
      -e DOWNLOAD_DIR=/downloads \
      -v /home/AmeChan/music/downloads:/downloads \
      --env-file /tmp/account-panel.env account-panel:latest"
@@ -218,7 +219,7 @@ sshpass -e ssh ... "echo '${P1}${P2}' | sudo -S docker load -i /tmp/account-pane
 
 按用户之前提过的方向排序：
 
-1. **B站 / 番剧接入**（用户明确要的）：`media-downloader` SDK 已就绪（通用下载），B站 SDK（`@sakurachiyo0v0/bilibili`）和番剧（`@sakurachiyo0v0/kazumi`）已有，把它们的下载也接进统一下载弹窗 + 文件夹选择器 + 下载历史。
+1. ~~**B站 / 番剧接入**~~ ✅ 已完成（见第十二节）：B站（登录绑定/搜索/播放/下载/历史/稍后再看/收藏夹）+ 番剧（规则管理/搜索/线路/集数/下载）已接入统一大应用。
 2. **发现能力补全**：banner、排行榜、歌单分类（往 `netease-music` 的 `api/recommend.ts` 加）。
 3. **日志扩展**：给取流/搜索/歌单操作也加日志（现在只有下载 + 退出登录）。
 4. **前端体验打磨**：更多动效、手势、性能优化。
@@ -253,8 +254,8 @@ sshpass -e ssh ... "echo '${P1}${P2}' | sudo -S docker load -i /tmp/account-pane
 1. `@sakurachiyo0v0/config`（0.6.x）后端可插拔：
    - `ConfigBackend` 接口 + `PrefixBackend`（前缀分域）+ `JsonBackend`（明文 JSON 包装）+ `EncryptedBackend`（AES-256-GCM）+ `PgBackend`（node-postgres 键值，懒建表）。
    - **序列化契约**：底层后端「字符串透明」，JSON/加密统一在上层包装——PG 与 WebDAV 一致。
-   - `createConfigCenter({ backend })`：传 PgBackend 走 PG；不传走 WebDAV（兼容既有）。
-2. `bootstrap.ts`：`PG_URL` 优先（PgBackend **单例**，连接池不泄漏），否则 WebDAV；加密密钥统一 `CONFIG_KEY`。
+   - `initConfig({ backend, key })` / `config()` / `resetConfig()`：存储方式由**上游显式指定**（backend 或 global.url），**无默认 WebDAV**；`createWebdavConfigCenter()` 显式读本地全局配置走 WebDAV（供 CLI）。
+2. `bootstrap.ts`：组合根 `initAppConfig()` 初始化一次（PG 后端 + `CONFIG_KEY`），后续 `config()` 读默认；连接池随 init 天然单例（不泄漏）。
 3. 登录认证（`/api/users`，`routes/users.ts`）：
    - **管理员登录**：校验 `ADMIN_USERNAME` / `ADMIN_PASSWORD`（环境变量，启动时 scrypt 哈希 + timingSafeEqual + 时间侧信道防护）。
    - **httpOnly Cookie**：登录成功 `Set-Cookie: app_session=<token>; HttpOnly; SameSite=Lax; Path=/; Max-Age=604800`。
@@ -276,7 +277,7 @@ sshpass -e ssh ... "echo '${P1}${P2}' | sudo -S docker load -i /tmp/account-pane
   - `CONFIG_KEY=<hex>`（配置加密密钥）
   - `ADMIN_USERNAME=AmeChan` + `ADMIN_PASSWORD=<你的密码>`（管理员账号）
   - `DOWNLOAD_DIR=/downloads`、`PORT=8787`
-- 表：`config_kv`（配置/登录态键值）、`sessions`（会话）、`users`（遗留，未用可清）。
+- 表：`config_kv`（配置/登录态键值）、`sessions`（会话）。
 
 ### 权限管理现状
 - **单一管理员**：登录后所有模块/操作可用，**无多用户/RBAC/操作审计**（用户明确暂不做，后续按需加）。
@@ -291,7 +292,31 @@ sshpass -e ssh ... "echo '${P1}${P2}' | sudo -S docker load -i /tmp/account-pane
 - 测试：backend 契约测试 31 个全过。
 
 ### 下一步
-- 单应用多模块整合（B站/番剧 tab）
+- ~~单应用多模块整合（B站/番剧 tab）~~ ✅ 已完成
 - 平台绑定管理页（查看/解绑已绑平台）
 - 权限管理（多管理员/RBAC/操作审计，用户暂缓）
 - 下载历史/配置按管理员维度组织
+
+---
+
+## 十二、B站 / 番剧模块接入（2026-08 完成）
+
+在统一大应用（account-panel）内新增两个模块，复用网易云的「登录绑定 + 路由分发 + PG 登录态 + NAS 下载」设施。
+
+### B 站（`@sakurachiyo0v0/bilibili`）
+- **登录绑定**：复用 `routes/auth.ts` 扫码流程，`adapters.ts` 增加 `bilibili` → `bilibiliQrAdapter()`（平台登录态存 PG 加密域 `auth` namespace）。
+- **SDK 补充**：新增视频关键词搜索 `SearchApi.searchVideos()`（`api/search.ts`，走 WBI 签名 `/x/web-interface/wbi/search/type`），`BilibiliClient.search` 访问器。
+- **后端** `routes/bilibili.ts`：`/account`（登录态+用户卡片）、`/search`、`/popular`（综合热门）、`/video`（解析详情+分P）、`/stream`（DASH 取流）、`/proxy`（补 Referer 代理视频流绕过防盗链）、`/download`（NAS）、`/history[/clear|/remove]`、`/watch-later[/remove]`、`/fav[/content|/add]`（收藏夹列表/内容/收藏视频）、`/logout`。
+- **前端** `BilibiliModule.tsx`：绑定页、主页（用户卡片+搜索+历史/稍后再看/收藏夹入口）、视频详情（自包含播放器：可见 video + 分离 audio 同步）、下载文件夹选择器。
+
+### 番剧（`@sakurachiyo0v0/kazumi`）
+- **无需平台登录**：靠规则文件聚合番剧源；规则目录持久化到 NAS `DOWNLOAD_DIR/kazumi/rules`。
+- **后端** `routes/kazumi.ts`：`/rules[/add|/validate|/remove]`（规则管理）、`/search`（打全部规则）、`/roads`、`/episodes`、`/download`（NAS）、`/stream`+`/playlist`+`/seg`（在线播放 m3u8 代理：解析播放页 → master 选 best → media 重写分片/key URI 为代理 URL）。
+- **前端** `KazumiModule.tsx`：搜索、线路切换、集数列表、规则管理（粘贴 JSON 添加/校验/删除）、下载、**在线播放**（hls.js 播放代理 m3u8，支持 AES-128 加密流）。
+
+### 关键决策
+- 下载历史统一：新增 `server/downloads.ts` 共享 `DownloadManager` 单例（三平台共用一份 `.download-history.json`）；前端 `DownloadHistoryPanel.tsx` 共享组件，网易云/B站/番剧三模块各有入口。
+- B 站在线播放为 DASH 音视频分离，用「可见 video + 隐藏 audio 双元素同步」实现；视频流经 `/api/bilibili/proxy` 补 Referer 绕过防盗链，**并转发 Range 头（206 Partial Content）支持拖动进度条 seek**。
+- B 站追番：SDK 补 `CreativeApi.listFollowedSeasons()`（`/pgc/web/follow/list`），后端 `/api/bilibili/bangumi` + 前端「追番」入口（封面网格，点击跳 B 站番剧页）。
+- B 站热门：SDK 补 `SearchApi.popularVideos()`（`/x/web-interface/popular`），后端 `/api/bilibili/popular` + 前端「热门」入口。
+- 前端模块拆独立文件（`BilibiliModule.tsx` / `KazumiModule.tsx`），不继续膨胀 `App.tsx`；`Launcher` 新增「哔哩哔哩」「番剧」两张卡片。**模块级 `lazy()` 懒加载**：B 站/番剧模块（含 hls.js）按需拆 chunk，主 bundle 从 ~937KB 降到 ~320KB。

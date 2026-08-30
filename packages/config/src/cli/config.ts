@@ -15,7 +15,7 @@ import {
   parseArgs,
 } from "@sakurachiyo0v0/cli-utils";
 import { WebdavError } from "@sakurachiyo0v0/webdav";
-import { createConfigCenter } from "../config-center.js";
+import { createWebdavConfigCenter } from "../config-center.js";
 import { clearGlobalConfig, loadGlobalConfig, saveGlobalConfig } from "../global-config.js";
 import type { GlobalConfig } from "../types.js";
 
@@ -99,7 +99,7 @@ async function run(): Promise<void> {
     case "set":
     case "list":
     case "remove": {
-      const center = createConfigCenter({ ...(configPath !== undefined ? { configPath } : {}) });
+      const center = createWebdavConfigCenter(configPath);
       const nsName = args.positionals[1];
       if (nsName === undefined) throw new CliError(`${command} 缺少 <namespace> 参数`);
       const encrypt = getBool(args, "encrypt");

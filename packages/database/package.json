@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/database",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Unified data access layer: local SQLite + remote PostgreSQL/MySQL with a single async API",
   "license": "UNLICENSED",
   "publishConfig": {

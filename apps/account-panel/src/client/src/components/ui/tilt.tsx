@@ -13,10 +13,15 @@ export function Tilt({
   className?: string;
 }) {
   const ref = React.useRef<HTMLDivElement>(null);
+  // 尊重「减少动态效果」：用户开启时禁用 3D 倾斜。
+  const reducedMotion = React.useRef(
+    typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+  );
 
   const handleMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const el = ref.current;
-    if (el === null) return;
+    if (el === null || reducedMotion.current) return;
     const rect = el.getBoundingClientRect();
     const x = (e.clientX - rect.left) / rect.width - 0.5;
     const y = (e.clientY - rect.top) / rect.height - 0.5;

@@ -47,4 +47,6 @@ export interface DownloadManagerConfig {
   userAgent?: string;
   /** 下载失败重试次数，默认 2。 */
   retries?: number;
+  /** 下载状态文件路径（历史记录）。缺省 <root>/.download-state.json；多实例按平台隔离历史时传入不同路径。 */
+  stateFile?: string;
 }

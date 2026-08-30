@@ -41,8 +41,13 @@ export {
   CreativeApi,
   type ArchiveVideoPage,
   type CreativeArchive,
+  type FollowedSeason,
 } from "./creative.js";
 export {
   UserApi,
   type UserCard,
 } from "./user.js";
+export {
+  SearchApi,
+  type VideoSearchItem,
+} from "./search.js";

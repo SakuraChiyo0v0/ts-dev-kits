@@ -61,8 +61,9 @@ export {
 } from "./api/index.js";
 export { DynamicApi } from "./api/index.js";
 export { DataApi, type HistoryItem, type ToViewItem } from "./api/index.js";
-export { CreativeApi, type ArchiveVideoPage, type CreativeArchive } from "./api/index.js";
+export { CreativeApi, type ArchiveVideoPage, type CreativeArchive, type FollowedSeason } from "./api/index.js";
 export { UserApi, type UserCard } from "./api/index.js";
+export { SearchApi, type VideoSearchItem } from "./api/index.js";
 export {
   selectBestAudioStream,
   selectBestStream,

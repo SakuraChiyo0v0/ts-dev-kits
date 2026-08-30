@@ -19,7 +19,7 @@ export interface SteamClientOptions {
   /** AuthStore 路径(P2 登录态使用),默认 <配置根>/amechan/steam/auth.json。 */
   sessionPath?: string;
   /**
-   * 可选远程登录态命名空间(配置中心加密域,如 createConfigCenter().namespace("auth",{encrypt:true}))。
+   * 可选远程登录态命名空间(配置中心加密域,如 config().namespace("auth",{encrypt:true}))。
    * 登录态双写本地+远程;新机还原:先 await new AuthStore({platform:"steam",remote}).load()。
    */
   remote?: ConfigNamespace;

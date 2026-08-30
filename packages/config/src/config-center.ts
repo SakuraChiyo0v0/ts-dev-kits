@@ -110,16 +110,23 @@ export class ConfigCenterImpl implements ConfigCenter {
   private readonly backend: ConfigBackend;
   private readonly key?: string;
 
-  constructor(global: GlobalConfig, backend?: ConfigBackend) {
-    if (backend !== undefined) {
-      this.backend = backend;
-      if (global.key !== undefined) this.key = global.key;
+  constructor(options: ConfigCenterOptions) {
+    // 加密密钥正交于后端：顶层 key 优先，回退 global.key（WebDAV 场景）。
+    const key = options.key ?? options.global?.key;
+    if (options.backend !== undefined) {
+      this.backend = options.backend;
+      if (key !== undefined) this.key = key;
+      logger.debug("config center created (explicit backend)");
     } else {
-      if (!global.url || global.url.trim().length === 0) {
-        throw new WebdavError(WebdavErrorCode.VALIDATION, "全局配置缺少 webdav url，或需显式传 backend");
+      const global = options.global;
+      if (global === undefined || global.url === undefined || global.url.trim() === "") {
+        throw new WebdavError(
+          WebdavErrorCode.VALIDATION,
+          "未指定存储后端：请显式传入 backend 或 global.url，或先调用 initConfig()",
+        );
       }
       this.url = global.url;
-      if (global.key !== undefined) this.key = global.key;
+      if (key !== undefined) this.key = key;
       this.backend = createWebdavBackend(global);
       logger.debug("config center created (webdav)", { host: logHost(global.url) });
     }
@@ -138,8 +145,45 @@ export class ConfigCenterImpl implements ConfigCenter {
   }
 }
 
-/** 创建配置中心:优先显式 backend,否则读本地全局配置(WebDAV) */
+/** 进程级默认配置中心：initConfig 设定，config() 读取；测试用 resetConfig 重置。 */
+let defaultCenter: ConfigCenter | null = null;
+
+/**
+ * 创建配置中心：显式 backend（PG 等）或显式 global.url（WebDAV）。
+ * 不再自动读本地全局配置——存储方式必须由上游显式指定（或先 initConfig）。
+ */
 export function createConfigCenter(options: ConfigCenterOptions = {}): ConfigCenter {
-  const global = options.global ?? loadGlobalConfig(options.configPath);
-  return new ConfigCenterImpl(global, options.backend);
+  return new ConfigCenterImpl(options);
+}
+
+/** 读取本地全局配置（WebDAV 连接信息）并创建配置中心 —— 显式工厂，供 CLI / 需要本地全局配置的场景使用。 */
+export function createWebdavConfigCenter(configPath?: string): ConfigCenter {
+  const global = loadGlobalConfig(configPath);
+  return new ConfigCenterImpl({ global });
+}
+
+/** 初始化进程级默认配置中心（组合根入口调用一次）。返回该 center 便于入口直接使用。 */
+export function initConfig(options: ConfigCenterOptions): ConfigCenter {
+  const center = createConfigCenter(options);
+  defaultCenter = center;
+  return center;
+}
+
+/** 获取配置中心：显式传 options 走覆盖路径（新建）；无参走 initConfig 设定的默认。 */
+export function config(options?: ConfigCenterOptions): ConfigCenter {
+  if (options !== undefined) {
+    return createConfigCenter(options);
+  }
+  if (defaultCenter === null) {
+    throw new WebdavError(
+      WebdavErrorCode.VALIDATION,
+      "config 未初始化：请先 initConfig() 或显式传入 options",
+    );
+  }
+  return defaultCenter;
+}
+
+/** 重置进程级默认配置中心（测试隔离用）。 */
+export function resetConfig(): void {
+  defaultCenter = null;
 }

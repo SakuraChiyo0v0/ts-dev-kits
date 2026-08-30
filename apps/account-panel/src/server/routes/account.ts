@@ -7,10 +7,10 @@
 import { Hono } from "hono";
 import { createNeteaseClient, type QualityLevel } from "@sakurachiyo0v0/netease-music";
 import { AuthStore } from "@sakurachiyo0v0/account";
-import { DownloadManager } from "@sakurachiyo0v0/media-downloader";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { createAuthNamespace, warmupAuth } from "../bootstrap.js";
+import { getDownloadManager } from "../downloads.js";
 import { appLogger, logFilePath } from "../logger.js";
 
 /** 构造已预热登录态的网易云客户端。 */
@@ -33,15 +33,6 @@ interface DownloadTask {
   error?: string;
 }
 const downloadTasks = new Map<string, DownloadTask>();
-
-/** 通用下载管理器（root = DOWNLOAD_DIR，管理目录列表与下载历史）。 */
-let downloadManager: DownloadManager | null = null;
-function getDownloadManager(): DownloadManager {
-  if (downloadManager === null) {
-    downloadManager = new DownloadManager({ root: process.env.DOWNLOAD_DIR ?? "/downloads" });
-  }
-  return downloadManager;
-}
 
 /** 已下载歌曲 id 集合（持久化到 .downloaded.json，与下载历史分开）。 */
 const downloadedIds = new Set<string>();

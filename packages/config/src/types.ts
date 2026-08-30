@@ -17,10 +17,12 @@ export interface GlobalConfig {
 export interface ConfigCenterOptions {
   /** 全局配置文件路径(默认 <配置根>/amechan/config.json,可用 AME_CONFIG_PATH 覆盖) */
   configPath?: string;
-  /** 显式传入全局配置(不读文件) */
+  /** 显式传入全局配置(WebDAV 连接信息,不读文件) */
   global?: GlobalConfig;
-  /** 显式传入存储后端(如 PgBackend);不传则读全局配置走 WebDAV(兼容既有部署) */
+  /** 显式传入存储后端(如 PgBackend) */
   backend?: import("./backend.js").ConfigBackend;
+  /** 加密密钥(与 backend 正交;可省略,用 global.key 或环境变量 CONFIG_KEY) */
+  key?: string;
 }
 
 /** 命名空间选项 */

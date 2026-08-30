@@ -1,8 +1,8 @@
 /**
  * 统一认证装配 —— 环境变量 → ConfigCenter → 加密命名空间。
- * 存储后端可插拔：设置 PG_URL 走 PostgreSQL（新建部署），否则走 WebDAV（兼容既有）。
+ * 存储后端：PostgreSQL（PG_URL + CONFIG_KEY）。入口 initAppConfig() 初始化一次，后续 config() 读默认。
  */
-import { createConfigCenter, PgBackend } from "@sakurachiyo0v0/config";
+import { initConfig, config, PgBackend } from "@sakurachiyo0v0/config";
 import type { ConfigCenter, ConfigNamespace } from "@sakurachiyo0v0/config";
 import { AuthStore } from "@sakurachiyo0v0/account";
 
@@ -14,49 +14,18 @@ function env(name: string): string {
   return value;
 }
 
-/** 模块级单例：PgBackend（连接池）只建一次，避免每请求 new Pool 泄漏。 */
-let pgBackendSingleton: PgBackend | null = null;
-
-/** 从环境变量创建配置中心（显式传 global，不读本地文件）。 */
-export function createAppCenter(): ConfigCenter {
-  const pgUrl = process.env.PG_URL;
-  if (pgUrl !== undefined && pgUrl.trim() !== "") {
-    // PostgreSQL 后端：新建部署首选。连接池单例复用。
-    if (pgBackendSingleton === null) {
-      pgBackendSingleton = new PgBackend({ url: pgUrl.trim() });
-      void pgBackendSingleton.init().catch(() => {
-        // 建表失败不阻塞启动（首次连接 PG 未就绪时稍后重试）。
-      });
-    }
-    const key = process.env.CONFIG_KEY;
-    if (key === undefined || key.trim() === "") {
-      throw new Error("缺少环境变量 CONFIG_KEY（加密密钥）");
-    }
-    return createConfigCenter({
-      global: { url: "", key },
-      backend: pgBackendSingleton,
-    });
-  }
-  // WebDAV 兼容路径（无 PG_URL）。
-  return createConfigCenter({
-    global: {
-      url: env("WEBDAV_URL"),
-      ...(process.env.WEBDAV_USERNAME !== undefined && process.env.WEBDAV_USERNAME !== ""
-        ? { username: process.env.WEBDAV_USERNAME }
-        : {}),
-      ...(process.env.WEBDAV_PASSWORD !== undefined && process.env.WEBDAV_PASSWORD !== ""
-        ? { password: process.env.WEBDAV_PASSWORD }
-        : {}),
-      ...(process.env.CONFIG_KEY !== undefined && process.env.CONFIG_KEY !== ""
-        ? { key: process.env.CONFIG_KEY }
-        : {}),
-    },
+/** 初始化进程级配置中心（组合根入口调用一次）：PG 后端 + 加密密钥。 */
+export function initAppConfig(): ConfigCenter {
+  const backend = new PgBackend({ url: env("PG_URL").trim() });
+  void backend.init().catch(() => {
+    // 建表失败不阻塞启动（首次连接 PG 未就绪时稍后重试）。
   });
+  return initConfig({ backend, key: env("CONFIG_KEY") });
 }
 
 /** 统一登录态远程命名空间（所有平台共用这一个加密域）。 */
 export function createAuthNamespace(): ConfigNamespace {
-  return createAppCenter().namespace("auth", { encrypt: true });
+  return config().namespace("auth", { encrypt: true });
 }
 
 /**

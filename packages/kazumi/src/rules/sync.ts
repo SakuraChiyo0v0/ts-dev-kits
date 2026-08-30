@@ -11,7 +11,7 @@
  *     无全局配置的环境(CI/测试)强制要求 WebDAV。
  */
 import { createLogger } from "@sakurachiyo0v0/logger";
-import { createConfigCenter, type ConfigNamespace } from "@sakurachiyo0v0/config";
+import { createWebdavConfigCenter, type ConfigCenter, type ConfigNamespace } from "@sakurachiyo0v0/config";
 import { KazumiError } from "../errors.js";
 
 const logger = createLogger({ namespace: "kazumi" }).child("sync");
@@ -22,15 +22,15 @@ export class RuleSync {
 
   constructor(
     sync: boolean,
-    /** 可注入配置中心(测试用);缺省读全局配置。 */
-    center?: ReturnType<typeof createConfigCenter>,
+    /** 可注入配置中心(测试用);缺省读本地全局配置走 WebDAV。 */
+    center?: ConfigCenter,
   ) {
     if (!sync) {
       this.ns = null;
       return;
     }
     try {
-      const configCenter = center ?? createConfigCenter();
+      const configCenter = center ?? createWebdavConfigCenter();
       this.ns = configCenter.namespace("kazumi");
     } catch (error) {
       // 全局配置未 setup 时,同步不可用(不阻塞本地使用)。

@@ -57,7 +57,7 @@ export class DefaultRuleRequestExecutor implements RuleRequestExecutor {
         method: request.method,
         headers,
         ...(body !== null ? { body } : {}),
-        signal: AbortSignal.timeout(opts?.timeoutMs ?? 30_000),
+        signal: AbortSignal.timeout(opts?.timeoutMs ?? 6_000),
         redirect: "follow",
       });
       if (!response.ok) {

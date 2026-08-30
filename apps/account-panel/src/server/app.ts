@@ -8,10 +8,14 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { authRoutes } from "./routes/auth.js";
 import { accountRoutes } from "./routes/account.js";
 import { userRoutes } from "./routes/users.js";
+import { bilibiliRoutes } from "./routes/bilibili.js";
+import { kazumiRoutes } from "./routes/kazumi.js";
 
 const api = new Hono()
   .route("/auth", authRoutes)
   .route("/users", userRoutes)
+  .route("/bilibili", bilibiliRoutes)
+  .route("/kazumi", kazumiRoutes)
   .route("/", accountRoutes)
   .get("/health", (c) => c.json({ ok: true }));
 

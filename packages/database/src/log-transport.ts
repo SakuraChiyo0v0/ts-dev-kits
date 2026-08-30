@@ -38,7 +38,7 @@ export function defaultLocalLogPath(hostname: string): string {
 /**
  * 解析远程日志库连接串(不硬编码密码,按优先级):
  *   1. 环境变量 LOG_REMOTE_URL(显式覆盖)
- *   2. config 加密域:createConfigCenter().namespace("logs", { encrypt: true }).get("remote")
+ *   2. config 加密域:createWebdavConfigCenter().namespace("logs", { encrypt: true }).get("remote")
  *      → WebDAV /amechan/secrets/logs/remote 加密存储的 { url }
  *   3. 都没有 → undefined(不写远程)
  *
@@ -52,14 +52,14 @@ export async function resolveLogRemoteUrl(): Promise<string | undefined> {
   try {
     // 动态 import 懒加载,避免 database 静态依赖 config(它链上 webdav/cli-utils)。
     const configModule = (await import("@sakurachiyo0v0/config")) as {
-      createConfigCenter: () => {
+      createWebdavConfigCenter: () => {
         namespace: (
           name: string,
           options?: { encrypt?: boolean },
         ) => { get: <T>(key: string) => Promise<T> };
       };
     };
-    const cc = configModule.createConfigCenter();
+    const cc = configModule.createWebdavConfigCenter();
     const logsNs = cc.namespace("logs", { encrypt: true });
     const remote = await logsNs.get<{ url?: string }>("remote");
     const url = remote?.url;

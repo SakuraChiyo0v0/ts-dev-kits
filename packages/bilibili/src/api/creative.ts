@@ -48,6 +48,21 @@ export interface ArchiveVideoPage {
   raw: unknown;
 }
 
+/** 追番/追剧条目。 */
+export interface FollowedSeason {
+  seasonId: number;
+  mediaId?: number;
+  title: string;
+  cover?: string;
+  url?: string;
+  /** 最新集数（如 "12"、"全 12 话"）。 */
+  newEp?: string;
+  total?: number;
+  seasonType?: number;
+  seasonTypeName?: string;
+  raw: unknown;
+}
+
 /** 创作中心与追番 API。 */
 export class CreativeApi {
   readonly #session: ApiSession;
@@ -115,6 +130,50 @@ export class CreativeApi {
       season_id: String(seasonId),
     });
   }
+
+  /**
+   * 追番/追剧列表(分页)。
+   * 注意:旧接口 /pgc/web/follow/list 已失效(-400),现用 /x/space/bangumi/follow/list,
+   * 必填 vmid(当前用户 mid)与 type(1 追番 / 2 追剧)。
+   */
+  async listFollowedSeasons(
+    options: { vmid: number | string; type?: 1 | 2; pn?: number; ps?: number },
+  ): Promise<{ list: FollowedSeason[]; total: number }> {
+    const data = await this.#session.get<{
+      list?: Array<Record<string, unknown>> | null;
+      total?: number;
+    }>(`${this.#session.baseUrl}/x/space/bangumi/follow/list`, {
+      vmid: String(options.vmid),
+      type: options.type ?? 1,
+      pn: options.pn ?? 1,
+      ps: options.ps ?? 30,
+    });
+    return {
+      list: (data.list ?? []).map(toFollowedSeason),
+      total: data.total ?? 0,
+    };
+  }
+}
+
+/** 把追番接口条目映射为 FollowedSeason。 */
+function toFollowedSeason(entry: Record<string, unknown>): FollowedSeason {
+  const newEp = entry.new_ep as Record<string, unknown> | undefined;
+  return {
+    seasonId: Number(entry.season_id ?? 0),
+    ...(entry.media_id !== undefined ? { mediaId: Number(entry.media_id) } : {}),
+    title: String(entry.title ?? ""),
+    ...(typeof entry.cover === "string" && entry.cover !== "" ? { cover: entry.cover } : {}),
+    ...(typeof entry.url === "string" && entry.url !== "" ? { url: entry.url } : {}),
+    ...(typeof newEp?.index_show === "string" && newEp.index_show !== ""
+      ? { newEp: newEp.index_show }
+      : {}),
+    ...(entry.total !== undefined ? { total: Number(entry.total) } : {}),
+    ...(entry.season_type !== undefined ? { seasonType: Number(entry.season_type) } : {}),
+    ...(typeof entry.season_type_name === "string" && entry.season_type_name !== ""
+      ? { seasonTypeName: entry.season_type_name }
+      : {}),
+    raw: entry,
+  };
 }
 
 /** 把创作中心稿件条目映射为 CreativeArchive。 */
