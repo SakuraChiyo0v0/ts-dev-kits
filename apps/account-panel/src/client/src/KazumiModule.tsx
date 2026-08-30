@@ -985,6 +985,8 @@ function KazumiPlayer(props: {
   const { episode, m3u8Url, loading, error, quality, direct = false, active = true, onClose, onPlayManual } = props;
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [manualUrl, setManualUrl] = useState("");
+  // 实时播放质量（hls.js 当前档位 / mp4 实际分辨率），优先于 stream 声明值展示。
+  const [liveQuality, setLiveQuality] = useState<{ resolution?: string; bandwidth?: number } | null>(null);
 
   // 模块失活时暂停播放，避免切走后仍在后台出声。
   useEffect(() => {
@@ -994,21 +996,50 @@ function KazumiPlayer(props: {
   useEffect(() => {
     const video = videoRef.current;
     if (video === null || m3u8Url === null) return;
+    setLiveQuality(null);
     // 直链视频（mp4 代理 URL）：不走 hls.js，直接给 video。
     if (direct) {
       video.src = m3u8Url;
-      return;
+      // mp4 实际分辨率来自 video 元数据；码率回退 stream 声明值。
+      const onMeta = () => {
+        const w = video.videoWidth;
+        const h = video.videoHeight;
+        if (w > 0 && h > 0) {
+          setLiveQuality({
+            resolution: `${w}x${h}`,
+            ...(quality?.bandwidth !== undefined ? { bandwidth: quality.bandwidth } : {}),
+          });
+        }
+      };
+      video.addEventListener("loadedmetadata", onMeta);
+      return () => video.removeEventListener("loadedmetadata", onMeta);
     }
     if (Hls.isSupported()) {
       const hls = new Hls();
       hls.loadSource(m3u8Url);
       hls.attachMedia(video);
-      return () => hls.destroy();
+      // 实时档位：LEVEL_SWITCHED 时读取当前 level 的分辨率/码率。
+      const updateLevel = () => {
+        const level = hls.levels[hls.currentLevel];
+        if (level !== undefined) {
+          setLiveQuality({
+            ...(level.height !== undefined ? { resolution: `${level.width ?? 0}x${level.height}` } : {}),
+            ...(level.bitrate > 0 ? { bandwidth: level.bitrate } : {}),
+          });
+        }
+      };
+      hls.on(Hls.Events.LEVEL_SWITCHED, updateLevel);
+      hls.on(Hls.Events.MANIFEST_PARSED, updateLevel);
+      return () => {
+        hls.off(Hls.Events.LEVEL_SWITCHED, updateLevel);
+        hls.off(Hls.Events.MANIFEST_PARSED, updateLevel);
+        hls.destroy();
+      };
     }
     if (video.canPlayType("application/vnd.apple.mpegurl")) {
       video.src = m3u8Url;
     }
-  }, [m3u8Url, direct]);
+  }, [m3u8Url, direct, quality?.bandwidth]);
 
   // 双击进入/退出全屏（单击交给原生 controls，避免双重触发）。
   const handleVideoDoubleClick = () => {
@@ -1024,11 +1055,21 @@ function KazumiPlayer(props: {
         <div className="mb-3 flex items-center justify-between text-white">
           <p className="truncate text-sm font-medium">{episode.name}</p>
           <div className="flex items-center gap-2">
-            {quality !== undefined && quality !== null && (quality.resolution !== undefined || quality.bandwidth !== undefined) ? (
-              <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-white/80">
-                {[quality.resolution, quality.bandwidth !== undefined ? formatBitrate(quality.bandwidth) : null].filter(Boolean).join(" · ")}
-              </span>
-            ) : null}
+            {/* 实时播放质量：hls 当前档位优先，回退 stream 声明值 */}
+            {(() => {
+              const live = liveQuality !== null && (liveQuality.resolution !== undefined || liveQuality.bandwidth !== undefined);
+              const res = liveQuality?.resolution ?? quality?.resolution;
+              const bw = liveQuality?.bandwidth ?? quality?.bandwidth;
+              if (res === undefined && bw === undefined) return null;
+              return (
+                <span className="flex items-center gap-1.5 rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-white/80">
+                  {live ? (
+                    <span className="flex h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" title="实时档位" />
+                  ) : null}
+                  {[res, bw !== undefined ? formatBitrate(bw) : null].filter(Boolean).join(" · ")}
+                </span>
+              );
+            })()}
             <button onClick={onClose} className="rounded-full p-2 transition-colors hover:bg-white/10" aria-label="关闭播放器">
               <X className="h-4 w-4" />
             </button>
