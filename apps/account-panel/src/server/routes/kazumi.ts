@@ -59,6 +59,72 @@ function createClient(): AnimeClient {
   return createAnimeClient({ rulesDir: rulesDir(), sync: false });
 }
 
+/**
+ * 流式下载 mp4 直链到文件（浏览器兜底解析出的加密源直链）。
+ * 返回文件路径；失败抛错。
+ */
+async function downloadMp4Direct(
+  url: string,
+  filePath: string,
+  headers: Record<string, string>,
+): Promise<string> {
+  const { createWriteStream } = await import("node:fs");
+  const { pipeline } = await import("node:stream/promises");
+  const resp = await fetch(url, { headers, redirect: "follow" });
+  if (!resp.ok || resp.body === null) {
+    throw new Error(`mp4 下载失败 HTTP ${resp.status}`);
+  }
+  await pipeline(resp.body, createWriteStream(filePath));
+  return filePath;
+}
+
+/**
+ * 下载单集：优先 SDK 静态解析（m3u8），失败回退浏览器解析。
+ * 浏览器解析出的 mp4 直链走流式下载；m3u8 走 SDK 分片下载。
+ */
+async function downloadEpisode(options: {
+  client: AnimeClient;
+  rule: string;
+  episode: { name: string; url: string };
+  title: string;
+  outputDir: string;
+}): Promise<string> {
+  const { client, rule, episode, title, outputDir } = options;
+  const animeRule = await client.rules.load(rule);
+  const headers = headersFor(animeRule);
+  // 文件名：剧名.集名.mp4（与整部一致）。
+  const safeTitle = (title !== "" ? `${title}.` : "") + episode.name;
+  const cleanName = safeTitle.replace(/[\\/:*?"<>|]/g, "_").slice(0, 120);
+  const filePath = join(outputDir, `${cleanName}.mp4`);
+  const { mkdirSync } = await import("node:fs");
+  mkdirSync(outputDir, { recursive: true });
+
+  try {
+    // 1. 先试 SDK 静态解析下载（m3u8 分片 + 合并）。
+    const result = await client.download(episode, { outputDir, rule, adFilter: true, ...(title !== "" ? { title } : {}) });
+    return result.filePath;
+  } catch {
+    // 2. 静态失败 → 浏览器解析加密源直链。
+    const browserUrl = await resolveWithBrowser(episode.url, { timeoutMs: 25_000 });
+    if (browserUrl === null) {
+      throw new Error("无法解析播放地址（加密源且浏览器解析失败）");
+    }
+    appLogger.info("kazumi download via browser", { rule, url: browserUrl.slice(0, 120) });
+    // 3. mp4 直链 → 流式下载；m3u8 直链 → 试 SDK 下载。
+    if (/\.mp4(\?|$)/i.test(browserUrl)) {
+      await downloadMp4Direct(browserUrl, filePath, headers);
+      return filePath;
+    }
+    const result = await client.download(episode, {
+      outputDir,
+      rule,
+      adFilter: true,
+      ...(title !== "" ? { title } : {}),
+    });
+    return result.filePath;
+  }
+}
+
 /** 从搜索结果名提取规则名前缀（"[规则名] 标题" → "规则名"）。 */
 function ruleFromName(name: string): string {
   const m = /^\[([^\]]+)\]\s*/.exec(name);
@@ -398,10 +464,13 @@ export const kazumiRoutes = new Hono()
     const client = createClient();
     try {
       const outputDir = safeSub === "" ? downloadRoot() : `${downloadRoot()}/${safeSub}`;
-      const { filePath } = await client.download(
-        { name, url },
-        { outputDir, rule, adFilter: true, ...(title !== "" ? { title } : {}) },
-      );
+      const filePath = await downloadEpisode({
+        client,
+        rule,
+        episode: { name, url },
+        title,
+        outputDir,
+      });
       // ffprobe 分析真实分辨率/码率，记录进下载历史并返回；同时回写规则排名（下载成功率/速率）。
       const probe = await probeFile(filePath);
       void recordRuleDownload(rule, true, probe?.bitrate ?? 0);
@@ -471,44 +540,56 @@ export const kazumiRoutes = new Hono()
         let failCount = 0;
         const failedEpisodes: Array<{ name: string; error: string }> = [];
         try {
-          await client.downloadAll(episodes, {
-            outputDir: baseDir,
-            rule,
-            title,
-            adFilter: true,
-            concurrency: 2,
-            onEpisodeStart: (index, total, episode) => {
-              send("episode-start", { index, total, name: episode.name });
-            },
-            onEpisodeDone: async (index, total, episode, filePath) => {
-              doneCount += 1;
-              // ffprobe 分析分辨率/码率，记录下载历史；回写规则排名（下载成功 + 速率）。
-              const probe = await probeFile(filePath);
-              void recordRuleDownload(rule, true, probe?.bitrate ?? 0);
-              getDownloadManager("kazumi").record({
-                filename: basename(filePath),
-                filePath,
-                status: "done",
-                ...(probe?.resolution !== undefined ? { resolution: probe.resolution } : {}),
-                ...(probe?.bitrate !== undefined ? { bitrate: probe.bitrate } : {}),
-              });
-              send("episode-done", {
-                index,
-                total,
-                name: episode.name,
-                filePath,
-                ...(probe?.resolution !== undefined ? { resolution: probe.resolution } : {}),
-                ...(probe?.bitrate !== undefined ? { bitrate: probe.bitrate } : {}),
-              });
-            },
-            onEpisodeError: (index, total, episode, error) => {
-              failCount += 1;
-              // 回写规则排名（下载失败）。
-              void recordRuleDownload(rule, false, 0);
-              failedEpisodes.push({ name: episode.name, error: error.message });
-              send("episode-fail", { index, total, name: episode.name, error: error.message });
-            },
-          });
+          // 逐集下载（每集内部：SDK 静态解析 → 失败回退浏览器解析），并发 2。
+          const CONCURRENCY = 2;
+          let next = 0;
+          async function worker(): Promise<void> {
+            while (true) {
+              const index = next;
+              next += 1;
+              const episode = episodes[index];
+              if (episode === undefined) return;
+              send("episode-start", { index, total: episodes.length, name: episode.name });
+              try {
+                const filePath = await downloadEpisode({
+                  client,
+                  rule,
+                  episode,
+                  title,
+                  outputDir: baseDir,
+                });
+                doneCount += 1;
+                // ffprobe 分析分辨率/码率，记录下载历史；回写规则排名（下载成功 + 速率）。
+                const probe = await probeFile(filePath);
+                void recordRuleDownload(rule, true, probe?.bitrate ?? 0);
+                getDownloadManager("kazumi").record({
+                  filename: basename(filePath),
+                  filePath,
+                  status: "done",
+                  ...(probe?.resolution !== undefined ? { resolution: probe.resolution } : {}),
+                  ...(probe?.bitrate !== undefined ? { bitrate: probe.bitrate } : {}),
+                });
+                send("episode-done", {
+                  index,
+                  total: episodes.length,
+                  name: episode.name,
+                  filePath,
+                  ...(probe?.resolution !== undefined ? { resolution: probe.resolution } : {}),
+                  ...(probe?.bitrate !== undefined ? { bitrate: probe.bitrate } : {}),
+                });
+              } catch (error) {
+                failCount += 1;
+                // 回写规则排名（下载失败）。
+                void recordRuleDownload(rule, false, 0);
+                const msg = error instanceof Error ? error.message : "下载失败";
+                failedEpisodes.push({ name: episode.name, error: msg });
+                send("episode-fail", { index, total: episodes.length, name: episode.name, error: msg });
+              }
+            }
+          }
+          await Promise.all(
+            Array.from({ length: Math.min(CONCURRENCY, episodes.length) }, () => worker()),
+          );
           send("done", { done: doneCount, failed: failCount, failedEpisodes });
         } catch (error) {
           appLogger.error("kazumi download-all failed", { rule, title, dir: safeSub, error });
