@@ -18,7 +18,7 @@ export const DEFAULT_DOWNLOAD_CONFIG: Required<DownloadConfig> = {
   speedLimitMbps: 0,
   resume: true,
   filterPcdn: true,
-  timeoutSeconds: 10,
+  timeoutSeconds: 30,
 };
 
 /** 过滤劣质 CDN 链接。 */

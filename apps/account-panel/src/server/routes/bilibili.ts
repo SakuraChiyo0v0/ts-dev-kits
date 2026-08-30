@@ -401,8 +401,12 @@ export const bilibiliRoutes = new Hono()
     } catch (error) {
       getDownloadManager("bilibili").record({ filename: bvid, filePath: "", status: "error" });
       appLogger.error("bilibili download failed", { bvid, dir: safeSub, error });
-      void error;
-      return c.json({ error: "下载失败" }, 500);
+      // 透传具体原因（如取流失败/网络超时），前端据此提示而不是笼统的「下载失败」。
+      const message =
+        error instanceof Error && error.message !== ""
+          ? error.message
+          : "下载失败";
+      return c.json({ error: message }, 500);
     }
   })
   /** GET /api/bilibili/history —— 历史记录（B站 history/cursor ps 上限 20）。 */
@@ -496,15 +500,29 @@ export const bilibiliRoutes = new Hono()
     if (!client.isLoggedIn || client.currentMid === undefined) return c.json({ error: "未登录" }, 401);
     try {
       const folders = await client.fav.listCreatedFolders(client.currentMid);
-      return c.json({
-        folders: folders.map((f) => ({
-          id: f.id,
-          fid: f.fid,
-          title: f.title,
-          mediaCount: f.mediaCount,
-          ...(f.cover !== undefined ? { cover: httpsImg(f.cover) } : {}),
-        })),
-      });
+      // B 站 /x/v3/fav/folder/created/list-all 的 cover 字段大多为空，
+      // 对无封面的收藏夹取首条内容的封面补上（保证卡片有图）。
+      const foldersWithCover = await Promise.all(
+        folders.map(async (f) => {
+          let cover = f.cover;
+          if (cover === undefined || cover === "") {
+            try {
+              const page = await client.fav.listResources(f.id, { pn: 1, ps: 1 });
+              cover = page.list[0]?.cover;
+            } catch {
+              // 单个收藏夹取首图失败不影响整体。
+            }
+          }
+          return {
+            id: f.id,
+            fid: f.fid,
+            title: f.title,
+            mediaCount: f.mediaCount,
+            ...(cover !== undefined && cover !== "" ? { cover: httpsImg(cover) } : {}),
+          };
+        }),
+      );
+      return c.json({ folders: foldersWithCover });
     } catch {
       return c.json({ error: "获取收藏夹失败" }, 500);
     }
@@ -517,6 +535,7 @@ export const bilibiliRoutes = new Hono()
     const client = createClient();
     try {
       const page = await client.fav.listResources(id, { pn: 1, ps: 50 });
+      appLogger.info("bilibili fav content", { mediaId: String(id), listLen: page.list.length, hasMore: page.hasMore });
       return c.json({
         items: page.list.map((it) => ({
           aid: it.id,

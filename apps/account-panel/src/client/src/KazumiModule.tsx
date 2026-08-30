@@ -544,12 +544,20 @@ export default function KazumiModule({ onBack, active = true }: { onBack: () => 
           onDownload={async (path) => {
             try {
               setDownloading(downloadTarget.url);
+              showToast("开始下载到 NAS…", "info");
               const res = await rpc.api.kazumi.download.$post({
                 json: { rule: selected.rule, name: downloadTarget.name, url: downloadTarget.url, ...(path.trim() !== "" ? { path: path.trim() } : {}) },
               });
               const data = (await res.json()) as { filePath?: string; error?: string };
-              if (data.error !== undefined) showToast(`下载失败 ${data.error}`, "error");
-              else showToast("已下载到 NAS", "success");
+              if (data.error !== undefined) {
+                // 加密源（JS 动态取流/VodX 密文）无法静态解析，给出可操作提示。
+                showToast(
+                  data.error.includes("m3u8") || data.error.includes("解析")
+                    ? `下载失败：该源加密无法自动下载（${data.error}）`
+                    : `下载失败 ${data.error}`,
+                  "error",
+                );
+              } else showToast("已下载到 NAS", "success");
             } catch {
               showToast("下载失败", "error");
             } finally {

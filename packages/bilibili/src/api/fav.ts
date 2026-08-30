@@ -406,6 +406,7 @@ function toFavResourceItem(entry: Record<string, unknown>): FavResourceItem {
     id,
     bvid,
     title: String(entry.title ?? ""),
+    ...(typeof entry.cover === "string" && entry.cover !== "" ? { cover: entry.cover } : {}),
     ...(typeof entry.pic === "string" && entry.pic !== "" ? { cover: entry.pic } : {}),
     ...(Number.isFinite(duration) && duration > 0 ? { duration } : {}),
     ...(upper !== undefined && typeof upper.mid === "number"

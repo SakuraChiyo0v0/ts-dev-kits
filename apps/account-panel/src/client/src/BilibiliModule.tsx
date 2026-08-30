@@ -427,6 +427,8 @@ async function downloadToNas(
   path: string,
   toast: (m: string, type?: "success" | "error" | "info") => void,
 ): Promise<void> {
+  // 先给即时反馈：大文件下载需要较长时间，不能让用户以为没点中。
+  toast("开始下载到 NAS…", "info");
   try {
     const res = await rpc.api.bilibili.download.$post({
       json: { bvid: video.bvid, ...(video.cid !== undefined ? { cid: video.cid } : {}), ...(path.trim() !== "" ? { path: path.trim() } : {}) },
@@ -435,7 +437,7 @@ async function downloadToNas(
     if (data.error !== undefined) toast(`下载失败 ${data.error}`, "error");
     else toast("已下载到 NAS", "success");
   } catch {
-    toast("下载失败");
+    toast("下载失败", "error");
   }
 }
 
@@ -1215,31 +1217,77 @@ function FavView(props: { onBack: () => void; onToast: (m: string, type?: "succe
           <h1 className="text-lg font-bold">{currentFolder ? currentFolder.title : `收藏夹（${folders.length}）`}</h1>
         </div>
         {currentFolder === null ? (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
             {folders.map((f) => (
-              <button key={f.id} onClick={() => void openFolder(f)} className="rounded-2xl border bg-card p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-md">
-                <p className="truncate text-sm font-medium">{f.title}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{f.mediaCount} 个内容</p>
+              <button
+                key={f.id}
+                onClick={() => void openFolder(f)}
+                className="group overflow-hidden rounded-2xl border bg-card text-left transition-all hover:-translate-y-0.5 hover:shadow-lg"
+              >
+                <div className="relative aspect-video w-full bg-muted">
+                  {f.cover ? (
+                    <img src={f.cover} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy" />
+                  ) : (
+                    <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-gradient-to-br from-primary/10 via-card to-muted">
+                      <Folder className="h-8 w-8 text-primary/50" />
+                    </div>
+                  )}
+                  <div className="absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-black/60 to-transparent" />
+                  <span className="absolute bottom-2 right-2 rounded-full bg-black/50 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur-sm">
+                    {f.mediaCount} 个内容
+                  </span>
+                </div>
+                <p className="truncate px-3 py-2.5 text-sm font-medium">{f.title}</p>
               </button>
             ))}
+            {folders.length === 0 ? (
+              <div className="col-span-full">
+                <EmptyState icon={<Folder className="h-6 w-6" />} title="暂无收藏夹" description="在 B 站收藏视频后，收藏夹会出现在这里" />
+              </div>
+            ) : null}
           </div>
         ) : content === null ? (
           <p className="py-16 text-center text-sm text-muted-foreground">加载中…</p>
         ) : (
-          <ul className="divide-y divide-border/60">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
             {content.map((it) => (
-              <li key={it.aid} className="flex items-center gap-3 py-3">
-                <div className="h-14 w-24 shrink-0 overflow-hidden rounded bg-muted">
-                  {it.cover ? <img src={it.cover} alt="" className="h-full w-full object-cover" /> : null}
+              <button
+                key={it.aid}
+                onClick={() => onOpenVideo(it.bvid)}
+                className="group overflow-hidden rounded-2xl border bg-card text-left transition-all hover:-translate-y-0.5 hover:shadow-lg"
+              >
+                <div className="relative aspect-video w-full bg-muted">
+                  {it.cover ? (
+                    <img src={it.cover} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-muted">
+                      <Play className="h-8 w-8 text-muted-foreground/50" />
+                    </div>
+                  )}
+                  <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/60 to-transparent" />
+                  {it.duration !== undefined ? (
+                    <span className="absolute bottom-2 right-2 rounded bg-black/60 px-1.5 py-0.5 text-[11px] font-medium text-white">
+                      {fmtDuration(it.duration)}
+                    </span>
+                  ) : null}
                 </div>
-                <button onClick={() => onOpenVideo(it.bvid)} className="min-w-0 flex-1 text-left">
-                  <p className="truncate text-sm font-medium">{it.title}</p>
-                  <p className="truncate text-xs text-muted-foreground">{it.owner} · {fmtDuration(it.duration)}</p>
-                </button>
-              </li>
+                <div className="p-3">
+                  <p className="line-clamp-2 text-sm font-medium leading-snug">{it.title}</p>
+                  {it.owner !== undefined ? (
+                    <p className="mt-1 flex items-center gap-1 truncate text-xs text-muted-foreground">
+                      <Play className="h-3 w-3 fill-muted-foreground text-muted-foreground" />
+                      {it.owner}
+                    </p>
+                  ) : null}
+                </div>
+              </button>
             ))}
-            {content.length === 0 ? <li><EmptyState icon={<Folder className="h-6 w-6" />} title="收藏夹为空" description="收藏的视频会出现在这里" /></li> : null}
-          </ul>
+            {content.length === 0 ? (
+              <div className="col-span-full">
+                <EmptyState icon={<Folder className="h-6 w-6" />} title="收藏夹为空" description="收藏的视频会出现在这里" />
+              </div>
+            ) : null}
+          </div>
         )}
       </div>
     </div>

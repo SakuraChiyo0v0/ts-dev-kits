@@ -276,8 +276,12 @@ export const kazumiRoutes = new Hono()
     } catch (error) {
       getDownloadManager("kazumi").record({ filename: name || rule, filePath: "", status: "error" });
       appLogger.error("kazumi download failed", { rule, name, dir: safeSub, error });
-      void error;
-      return c.json({ error: "下载失败" }, 500);
+      // 透传具体原因（如 STREAM_PARSE_FAILED = 加密源无法静态取流），前端据此提示。
+      const message =
+        error instanceof Error && error.message !== ""
+          ? error.message
+          : "下载失败";
+      return c.json({ error: message }, 500);
     }
   })
   /** GET /api/kazumi/stream?url=xxx&rule=xxx —— 解析播放页 → 可播的代理 m3u8 URL。 */

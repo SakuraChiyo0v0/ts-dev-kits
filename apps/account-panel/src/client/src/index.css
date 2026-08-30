@@ -89,10 +89,10 @@
 
 @keyframes danmaku-scroll {
   from {
-    transform: translateX(0);
+    left: 100%;
   }
   to {
-    transform: translateX(calc(-100vw - 100%));
+    left: -100%;
   }
 }
 

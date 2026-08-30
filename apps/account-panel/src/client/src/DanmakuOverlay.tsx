@@ -136,11 +136,13 @@ export function DanmakuOverlay(props: {
           style={{
             color: a.color,
             top: `${((a.lane + 0.5) / LANES) * 100}%`,
-            animation: a.fixed
-              ? undefined
-              : `danmaku-scroll ${a.durationMs}ms linear forwards`,
+            // 普通弹幕：从容器右缘外滚入、滚出容器左缘外（按容器宽度，非视口）。
+            // 用 left 动画（而非 transform+视口宽度），保证与弹幕层容器尺寸一致。
             left: a.fixed ? "50%" : "100%",
             transform: a.fixed ? "translateX(-50%)" : undefined,
+            ...(a.fixed
+              ? {}
+              : { animation: `danmaku-scroll ${a.durationMs}ms linear forwards` }),
             animationPlayState: paused ? "paused" : "running",
           }}
         >
