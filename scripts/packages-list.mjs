@@ -9,6 +9,7 @@ export const PACKAGES = [
   ["@sakurachiyo0v0/cli-utils", "packages/cli-utils"],
   ["@sakurachiyo0v0/chuanshengtong", "packages/chuanshengtong"],
   ["@sakurachiyo0v0/webdav", "packages/webdav"],
+  ["@sakurachiyo0v0/ugreen", "packages/ugreen"],
   ["@sakurachiyo0v0/config", "packages/config"],
   ["@sakurachiyo0v0/account", "packages/account"],
   ["@sakurachiyo0v0/email", "packages/email"],
@@ -25,3 +26,4 @@ export const PACKAGES = [
   ["@sakurachiyo0v0/database", "packages/database"],
   ["@sakurachiyo0v0/dsh-sdk-tools", "packages/dsh-sdk-tools"],
 ];
+
