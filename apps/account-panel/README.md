@@ -1,50 +1,35 @@
 # account-panel
 
-网易云音乐面板 —— `apps/*` 的第一个标杆 demo，验证 Web 应用骨架 + 统一认证装配 + 扫码登录闭环。
+`apps/*` 里的媒体下载整合面板：聚合网易云音乐、B 站、番剧（Kazumi）三类内容源，登录态统一加密存 PostgreSQL，搜索 / 播放 / 下载一条龙，下载产物落到 NAS 目录。作为 ts-dev-kits monorepo 的 Web 应用标杆，端到端复用各 `@sakurachiyo0v0/*` SDK。
 
 ## 功能
 
-- **登录**：扫码登录（SSE 推二维码）→ 写回 WebDAV（双写本地 + 远程），跨实例一次登录全局配好
-- **账号**：昵称 / 头像 / 签名 / VIP 等级 / 歌单列表
-- **歌单**：网格展示、搜索过滤、排序（默认/名称/歌曲数）、新建歌单、分享歌单
-- **搜索**：网易云歌曲搜索（含歌手/专辑/时长）+ 搜索历史
-- **播放**：真实取流播放、进度条点击/拖动跳转、上一首/下一首、循环模式、自动下一首、播放倍速、睡眠定时、音量控制、断点续播、最近播放、播放统计
-- **歌词**：全屏双语歌词、当前句高亮 + 自动滚动、手动滚动暂停、双语/原文/翻译切换、字号调节、点击歌词跳转
-- **收藏**：红心收藏 / 取消（歌单内 + 播放栏）
-- **体验**：Apple Music 风格 UI、深色/浅色主题（跟随系统）、响应式、键盘快捷键、PWA、错误 toast、加载骨架 / 进度条
-
-## 键盘快捷键
-
-| 键 | 动作 |
+| 模块 | 能力 |
 | --- | --- |
-| 空格 | 播放 / 暂停 |
-| ← / → | 快退 / 快进 5 秒 |
-| ↑ / ↓ | 上一首 / 下一首 |
-| M | 静音 / 取消静音 |
-| ? | 显示 / 隐藏快捷键帮助 |
+| 首页 | 服务总览 |
+| 音乐（网易云） | 扫码登录、搜索、歌单 / 收藏 / 红心、播放（真实取流、倍速、全屏歌词、睡眠定时）、单曲与批量下载、下载历史 |
+| 哔哩哔哩 | 登录态、搜索 / 热门 / 排行榜 / 每周必看、稍后再看 / 收藏夹、视频解析与代理取流、下载（ffmpeg 合并）、历史 |
+| 番剧（Kazumi） | 规则源聚合搜索、线路 / 集数选择、整季下载；无需平台账号，规则文件持久化到 `DOWNLOAD_DIR/kazumi/rules` |
 
-## 技术栈
+## 架构
 
-- 后端：Hono + `@hono/node-server`（SSE、静态托管、RPC）
-- 前端：React 19 + Vite 8 + Tailwind CSS 4
-- SDK：`@sakurachiyo0v0/config` + `@sakurachiyo0v0/account` + `@sakurachiyo0v0/netease-music`
-- 类型安全：Hono RPC（`hc<AppType>`）端到端类型安全
+- 后端 Hono + `@hono/node-server`（SSE、静态托管、RPC），前端 React 19 + Vite 8 + Tailwind CSS 4，前后端类型安全走 Hono RPC（`hc<AppType>`）。
+- 平台登录态统一经 `@sakurachiyo0v0/account` 的 `AuthStore` 写入配置中心（`@sakurachiyo0v0/config`，PostgreSQL 后端）的加密命名空间，本地只留缓存；扫码登录的二维码 / 状态经 SSE 推送。
+- 面板本身**没有登录页**（已移除，打开即用）。但 `/api/bilibili/*`、`/api/kazumi/*` 含 proxy / seg 等代理出口且无会话保护，依赖部署边界：**只走内网或门户后面，不要把这个端口直接暴露公网**。
 
 ## 环境变量
 
-复制 `.env.example` 为 `.env` 并填写（`pnpm dev` 会自动加载 `.env`）：
+复制 `.env.example` 为 `.env`（`pnpm dev` 会自动加载）：
 
 | 变量 | 必填 | 说明 |
 | --- | --- | --- |
-| `WEBDAV_URL` | 是 | WebDAV 根地址 |
-| `WEBDAV_USERNAME` | 否 | WebDAV 用户名 |
-| `WEBDAV_PASSWORD` | 否 | WebDAV 密码 |
-| `WEBDAV_CONFIG_KEY` | 是 | 加密密钥（不可丢失，丢了云端密文无法解密） |
+| `PG_URL` | 是 | PostgreSQL 连接串（配置中心：平台登录态 / 配置的存储后端） |
+| `CONFIG_KEY` | 是 | 配置加密密钥。丢失后无法解密已存登录态，务必妥善备份 |
+| `DOWNLOAD_DIR` | 否 | 下载 / 日志 / kazumi 规则根目录，容器内默认 `/downloads`；日志在 `<DOWNLOAD_DIR>/logs/app.log` |
 | `PORT` | 否 | 服务端口，默认 8787 |
+| `USE_SYSTEM_CHROMIUM` | 否 | `=1` 时用容器内系统 chromium（`/usr/bin/chromium-browser`），本地开发不需要 |
 
-> 登录态统一存 WebDAV 加密域 `/amechan/secrets/auth/netease-music`；WebDAV 是唯一事实源，容器本地 `auth.json` 只是缓存，无需持久化。
-
-## 启动
+## 本地开发与运行
 
 ```bash
 # 依赖安装（仓库根）
@@ -54,30 +39,77 @@ pnpm install
 cd apps/account-panel
 pnpm dev
 
-# 生产构建 + 运行
+# 生产构建 + 运行（先配好 .env 的 PG_URL / CONFIG_KEY）
 pnpm build
 NODE_ENV=production pnpm start
 ```
 
 浏览器打开 http://localhost:5173（dev）或 http://localhost:8787（生产）。
 
-## Docker 部署
+## Docker 镜像构建
 
 ```bash
 # 在仓库根构建（构建上下文必须是仓库根，见 Dockerfile 注释）
 docker build -f apps/account-panel/Dockerfile -t account-panel .
 
-# 运行（注入 WebDAV 环境变量）
+# 运行（PG_URL / CONFIG_KEY 必填；下载目录挂到宿主）
 docker run -d -p 8787:8787 \
-  -e WEBDAV_URL=<url> \
-  -e WEBDAV_USERNAME=<user> \
-  -e WEBDAV_PASSWORD=<pass> \
-  -e WEBDAV_CONFIG_KEY=<key> \
+  -e PG_URL=postgres://... \
+  -e CONFIG_KEY=<key> \
+  -e DOWNLOAD_DIR=/downloads \
+  -v /volume1/docker/account-panel/data:/downloads \
   account-panel
 ```
 
-容器无状态：登录态在 WebDAV，本地只是缓存，无需挂卷。
+## NAS 自动部署（push → ghcr → watchtower 自动重建）
 
-## 验证「一次登录、全局配好」
+本 app 已接上 push 自动部署链路，改完代码 `git push` 即可，无需登录 NAS：
 
-两个实例共享同一 WebDAV（同一组环境变量），其一扫码登录后，另一个实例的 `/api/account` 也能读到登录态。
+```
+push 到 GitHub main（命中 apps/account-panel/** 或 packages/**）
+  -> .github/workflows/account-panel-image.yml 构建镜像
+  -> 推 ghcr.io/sakurachiyo0v0/account-panel:{latest, <version>, <sha7>}
+  -> NAS 上全局 watchtower 轮询到 latest digest 变化
+  -> 自动 pull + 重建 account-panel 容器（约 1 分钟内生效）
+```
+
+### 仓库侧（已完成，只需知道）
+
+- `.github/workflows/account-panel-image.yml`：push 到 main 且命中路径时，用 `GITHUB_TOKEN`（`permissions: packages: write`）登录 GHCR 并构建推送，打 `latest`（watchtower 追这个）+ `<version>`（读 `apps/account-panel/package.json`）+ `<sha7>`（回滚用）三个 tag。
+- `apps/account-panel/Dockerfile`：以 monorepo 根为上下文的多阶段构建。
+- `apps/account-panel/docker-compose.nas.yml`：NAS 部署 compose 模板，带 watchtower label。
+
+### NAS 侧（一次性部署）
+
+部署目录约定 `/volume1/docker/account-panel/`（root:root、权限 700，数据挂 `./data`）：
+
+```bash
+# 1. 建标准目录
+sudo mkdir -p /volume1/docker/account-panel/data
+
+# 2. 放入 compose 与 .env（base64 避免转义；.env 内容见 .env.example，chmod 600）
+sudo tee /volume1/docker/account-panel/docker-compose.yaml   # 内容 = docker-compose.nas.yml
+
+# 3. 属主 / 权限标准化（否则 UGOS Docker UI 识别异常）
+sudo chown -R root:root /volume1/docker/account-panel
+sudo chmod 700 /volume1/docker/account-panel
+
+# 4. 启动（目录属 root，AmeChan 进不去，用 --project-directory）
+sudo docker compose --project-directory /volume1/docker/account-panel \
+  -f /volume1/docker/account-panel/docker-compose.yaml up -d
+```
+
+前提：
+
+- **watchtower 只需全局部署一次**（此前 nas-hello 已跑通）。若还没有，用 `nas-hello/watchtower.compose.yml` 部署，**必须**覆盖 `DOCKER_API_VERSION=1.43`（镜像内置 1.25，UGOS dockerd 最低要求 1.40，不覆盖会循环重启）。
+- 镜像仓库需可匿名拉取。首次 push 后 GHCR 包默认可能是私有，若 NAS 拉取报 401，去 GitHub 仓库 → Packages → `account-panel` → Package settings 把可见性改为 public（仓库本身是 public）。
+
+### 验证
+
+```bash
+curl http://<nas>:8787/api/health     # {"ok":true}
+# 改代码 / bump 版本后 git push，约 1 分钟后 watchtower 自动重建；可用
+# sudo docker ps 看容器启动时间，或看 /volume1/docker/account-panel/data/logs/app.log
+```
+
+相关坑（UGOS UI、目录权限、端口暴露边界）详见 NAS 侧运维文档 `docs/ugos-nas-ops.md` 第 9 / 12 节与 `nas-hello/README.md`。

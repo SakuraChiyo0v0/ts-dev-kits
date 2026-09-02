@@ -1,0 +1,63 @@
+# account-panel 镜像自动发布链路（monorepo 里每个 app 一份 <app>-image.yml）：
+#   push 到 main（命中 account-panel 或 SDK 相关路径）
+#     -> GitHub Actions 构建 Docker 镜像
+#     -> 推 ghcr.io/sakurachiyo0v0/account-panel:{latest, <version>, <sha7>}
+#     -> NAS 上全局 watchtower 轮询到 latest digest 变化后自动 pull + 重建
+# 整链路说明与复刻步骤见 NAS 侧文档（nas-hello 为已跑通样例）。
+# 新增 app 镜像：复制本文件改名 <app>-image.yml，替换 image/app 名与 Dockerfile 路径。
+name: account-panel-image
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/account-panel/**"
+      - "packages/**"          # SDK 变更会影响 app 构建产物，一并触发重建
+      - "package.json"
+      - "pnpm-workspace.yaml"
+      - "pnpm-lock.yaml"
+      - "tsconfig.base.json"
+      - ".github/workflows/account-panel-image.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve metadata
+        id: meta
+        run: |
+          VER=$(node -p "require('./apps/account-panel/package.json').version")
+          SHA=${GITHUB_SHA::7}
+          OWNER=$(echo "${{ github.repository_owner }}" | tr 'A-Z' 'a-z')
+          echo "version=${VER}" >> "$GITHUB_OUTPUT"
+          echo "sha=${SHA}" >> "$GITHUB_OUTPUT"
+          echo "image=ghcr.io/${OWNER}/account-panel" >> "$GITHUB_OUTPUT"
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .   # Dockerfile 以 monorepo 根为上下文（见 apps/account-panel/Dockerfile）
+          file: apps/account-panel/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.image }}:latest
+            ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.version }}
+            ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.sha }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
