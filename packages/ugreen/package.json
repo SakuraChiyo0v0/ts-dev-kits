@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/ugreen",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "UGOS/OpenList NAS WebDAV upload SDK: automatic login chain + cookie cache + file upload/list",
   "license": "UNLICENSED",
   "publishConfig": {

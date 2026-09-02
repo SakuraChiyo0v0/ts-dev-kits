@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import https from "node:https";
-import { acquireCookie, resolveConfig } from "../src/session.js";
+import { acquireCookie, inferKind, resolveConfig } from "../src/session.js";
 import { createMemoryCookieStore } from "../src/cookie-store.js";
 import { UgAppError, UgAppErrorCode } from "../src/errors.js";
 import { MockServer, genRsaPem, pushLoginFlow, TEST_CONFIG } from "./helpers/mock-https.js";
@@ -92,3 +92,43 @@ describe("session 登录链路", () => {
 });
 
 
+describe("docker 网关（对外访问容器）", () => {
+  const server = new MockServer();
+
+  beforeEach(() => {
+    server.clear();
+    server.install(vi.mocked(https.request));
+  });
+
+  const DOCKER_CONFIG = {
+    appHost: "app-5244-dxp4800gt-114a.cn30.ugdocker.link",
+    proxyId: "5244",
+    username: "AmeChan",
+    password: "test-password",
+    baseDir: "/DXP4800GT/AmeChan",
+  };
+
+  it("按 appHost 后缀自动识别网关类型", () => {
+    expect(inferKind(DOCKER_CONFIG.appHost)).toBe("ugdocker");
+    expect(inferKind(TEST_CONFIG.appHost)).toBe("ugapp");
+  });
+
+  it("docker 链路走 dockerToken?port= 并拿到会话 cookie", async () => {
+    pushLoginFlow(server, "docker-cookie");
+    const cfg = resolveConfig(DOCKER_CONFIG);
+    const cookie = await acquireCookie(cfg, createMemoryCookieStore());
+
+    expect(cookie).toBe("ugreen-proxy-token=docker-cookie");
+    expect(server.calls.map((x) => `${x.method} ${x.path}`)).toEqual([
+      "POST /ugreen/v1/verify/check",
+      "POST /ugreen/v1/verify/login",
+      "GET /ugreen/v1/gateway/proxy/dockerToken?port=5244",
+      "GET /api/ugreen/auth?token=ot-token",
+    ]);
+  });
+
+  it("显式 kind 可覆盖自动识别", () => {
+    const cfg = resolveConfig({ ...DOCKER_CONFIG, kind: "ugapp" });
+    expect(cfg.kind).toBe("ugapp");
+  });
+});

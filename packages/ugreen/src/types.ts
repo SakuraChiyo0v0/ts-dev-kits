@@ -3,12 +3,17 @@
  * 字段语义以本文件为权威定义。
  */
 
+/** 网关类型：ugapp（UGOS 应用市场的应用）或 ugdocker（Docker「对外访问」容器） */
+export type UgGatewayKind = "ugapp" | "ugdocker";
+
 /** 连接配置：应用网关 + 设备应用 ID + UGOS 账号 */
 export interface UgAppConfig {
-  /** 应用网关地址，形如 app-xxx-yyy.ugapp.link */
+  /** 应用网关地址：ugapp 形如 app-{proxyId}-{host}.ugapp.link；ugdocker 形如 app-{port}-{host}.ugdocker.link */
   appHost: string;
-  /** 应用 ID（appHost 里 app- 与 -主机名 之间的那一段） */
+  /** 应用 ID（ugapp：appHost 里 app- 与 -主机名 之间的那一段；ugdocker：对外访问端口，如 "5244"） */
   proxyId: string;
+  /** 网关类型；默认按 appHost 后缀自动识别（.ugdocker.link → ugdocker，其余 → ugapp） */
+  kind?: UgGatewayKind;
   /** UGOS 用户名 */
   username: string;
   /** 明文密码（仅本地使用，绝不打印/回传） */
@@ -63,3 +68,4 @@ export interface UgAppClient {
   /** 上传文件到默认目录（302/401 自动重登重试一次） */
   upload(filename: string, content: Buffer | string, options?: { dirPath?: string }): Promise<UploadResult>;
 }
+

@@ -1,7 +1,7 @@
 import { rsaEncryptBase64, md5Hex } from "./crypto.js";
 import { UgAppError, UgAppErrorCode } from "./errors.js";
 import { httpRequest } from "./http.js";
-import type { CookieStore, UgAppConfig } from "./types.js";
+import type { CookieStore, UgAppConfig, UgGatewayKind } from "./types.js";
 
 export const DEFAULT_BASE_DIR = "/DXP4800GT/AmeChan/下载";
 export const DEFAULT_COOKIE_TTL_MS = 10 * 60 * 1000;
@@ -11,12 +11,18 @@ export const DEFAULT_TIMEOUT_MS = 30_000;
 export type ResolvedConfig = {
   appHost: string;
   proxyId: string;
+  kind: UgGatewayKind;
   username: string;
   password: string;
   baseDir: string;
   cookieTtlMs: number;
   timeoutMs: number;
 };
+
+/** 按 appHost 后缀自动识别网关类型：.ugdocker.link → ugdocker，其余 → ugapp */
+export function inferKind(appHost: string): UgGatewayKind {
+  return /\.ugdocker\.link$/i.test(appHost) ? "ugdocker" : "ugapp";
+}
 
 export function resolveConfig(cfg: UgAppConfig): ResolvedConfig {
   const missing: string[] = [];
@@ -34,6 +40,7 @@ export function resolveConfig(cfg: UgAppConfig): ResolvedConfig {
   return {
     appHost: cfg.appHost.trim(),
     proxyId: cfg.proxyId.trim(),
+    kind: cfg.kind ?? inferKind(cfg.appHost),
     username: cfg.username.trim(),
     password: cfg.password,
     baseDir,
@@ -42,9 +49,9 @@ export function resolveConfig(cfg: UgAppConfig): ResolvedConfig {
   };
 }
 
-/** 从 appHost + proxyId 推导 UGOS 主机（app-{proxyId}-{host}.ugapp.link → {host}.ug.link） */
+/** 从 appHost + proxyId 推导 UGOS 主机（app-{proxyId}-{host}.ugapp.link / app-{port}-{host}.ugdocker.link → {host}.ug.link） */
 export function deriveUgHost(appHost: string, proxyId: string): string {
-  let h = appHost.replace(/\.ugapp\.link$/i, ".ug.link");
+  let h = appHost.replace(/\.(ugapp|ugdocker)\.link$/i, ".ug.link");
   h = h.replace(new RegExp(`^app-${proxyId}-`, "i"), "");
   return h;
 }
@@ -65,7 +72,8 @@ export async function acquireCookie(cfg: ResolvedConfig, store: CookieStore): Pr
  *   1. POST /ugreen/v1/verify/check        → 响应头 X-Rsa-Token 返回 RSA 公钥
  *   2. 用该公钥按 RSA PKCS#1 v1.5 加密密码
  *   3. POST /ugreen/v1/verify/login        → 会话 cookie + token(api_token) + 第二把公钥
- *   4. GET  /ugreen/v1/gateway/proxy/onceToken?proxy_id=… → 一次性令牌
+ *   4. GET  /ugreen/v1/gateway/proxy/onceToken?proxy_id=…（ugapp）
+ *      或  /ugreen/v1/gateway/proxy/dockerToken?port=…（ugdocker）→ 一次性令牌
  *   5. GET  {appHost}/api/ugreen/auth?token=… → HTML 里带「轮换后的」ugreen-proxy-token
  */
 async function loginFlow(cfg: ResolvedConfig): Promise<string> {
@@ -117,11 +125,15 @@ async function loginFlow(cfg: ResolvedConfig): Promise<string> {
   const apiToken = loginBody.data.token;
   const pub2 = Buffer.from(loginBody.data.public_key ?? "", "base64").toString("utf8");
 
-  // 4. 一次性令牌（开代理应用）
+  // 4. 一次性令牌（开代理应用）；ugdocker 网关按端口取令牌
+  const tokenPath =
+    cfg.kind === "ugdocker"
+      ? `/ugreen/v1/gateway/proxy/dockerToken?port=${encodeURIComponent(cfg.proxyId)}`
+      : `/ugreen/v1/gateway/proxy/onceToken?proxy_id=${encodeURIComponent(cfg.proxyId)}`;
   const ot = await httpRequest(
     ugHost,
     "GET",
-    `/ugreen/v1/gateway/proxy/onceToken?proxy_id=${encodeURIComponent(cfg.proxyId)}`,
+    tokenPath,
     {
       headers: {
         Cookie: ugCookie,

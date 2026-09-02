@@ -1,6 +1,6 @@
 # @sakurachiyo0v0/ugreen
 
-绿联 UGOS / OpenList NAS WebDAV 上传 SDK：自动重放 UGOS 登录链路、缓存网关会话 cookie、把文件上传/列目录到 OpenList 虚拟路径。
+绿联 UGOS / OpenList NAS WebDAV 上传 SDK：自动重放 UGOS 登录链路、缓存网关会话 cookie、把文件上传/列目录到 OpenList 虚拟路径。支持两种网关：**ugapp**（UGOS 应用市场的应用，如 OpenList 应用）与 **ugdocker**（Docker「对外访问」的容器）。
 
 ## 为什么需要它
 
@@ -9,13 +9,14 @@ OpenList 的 WebDAV / API 挂在绿联 app 网关（`ugapp.link`）后面，网�
 1. `POST /ugreen/v1/verify/check` → 响应头 `X-Rsa-Token` 返回 RSA 公钥
 2. 用该公钥按 RSA PKCS#1 v1.5 加密密码
 3. `POST /ugreen/v1/verify/login` → 会话 cookie + `api_token` + 第二把公钥
-4. `GET /ugreen/v1/gateway/proxy/onceToken?proxy_id=…` → 一次性令牌
+4. `GET /ugreen/v1/gateway/proxy/onceToken?proxy_id=…`（ugapp）或 `GET /ugreen/v1/gateway/proxy/dockerToken?port=…`（ugdocker）→ 一次性令牌
 5. `GET {appHost}/api/ugreen/auth?token=…` → HTML 里带「轮换后的」`ugreen-proxy-token`
 6. WebDAV `PUT /dav/{目标路径}` → 201 Created
 
 ## 特性
 
 - 自动登录 + 会话 cookie 缓存（默认内存，TTL 10 分钟，可插拔存储）
+- 同时支持 ugapp / ugdocker 两种网关：按 `appHost` 后缀自动识别，也可显式指定 `kind`
 - 上传时若被网关踢回（302/401），自动清缓存重登并重试一次
 - 文件名非法字符清洗、路径规范化、凭据脱敏（错误消息不泄露密码/token）
 - 带 CLI `sc-ugreen`（test / list / upload）
@@ -60,6 +61,25 @@ const test = await client.test();
 console.log(test);
 ```
 
+### 连 Docker「对外访问」的容器（ugdocker）
+
+Docker 容器开了「对外访问」后也有一个 `app-{port}-…ugdocker.link` 地址。配置一样，`proxyId` 填对外访问的**端口**，网关类型按地址后缀自动识别（也可显式 `kind: "ugdocker"`）：
+
+```ts
+import { createUgAppClient } from "@sakurachiyo0v0/ugreen";
+
+const client = createUgAppClient({
+  appHost: "app-5244-dxp4800gt-114a.cn30.ugdocker.link",
+  proxyId: "5244",            // docker 对外访问端口
+  username: "AmeChan",
+  password: "your-password",
+  baseDir: "/DXP4800GT/AmeChan",
+});
+
+await client.upload("test.png", Buffer.from("..."));
+await client.list();
+```
+
 ### cookie 持久化（可选）
 
 默认使用进程内内存缓存；需要跨进程/重启持久化时传入自定义 `CookieStore`：
@@ -95,6 +115,8 @@ sc-ugreen upload test.png --file ./test.png --app-host <host> --proxy-id <id> --
 ```
 
 密码建议用环境变量（`UGREEN_APP_HOST` / `UGREEN_PROXY_ID` / `UGREEN_USERNAME` / `UGREEN_PASSWORD` / `UGREEN_BASE_DIR`），避免出现在进程列表。
+
+> docker 网关时 `--proxy-id` 填对外访问端口（如 `5244`），网关类型按 `appHost` 后缀自动识别。
 
 ## 安全说明
 
