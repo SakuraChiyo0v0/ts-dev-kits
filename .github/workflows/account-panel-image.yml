@@ -54,6 +54,8 @@ jobs:
           context: .   # Dockerfile 以 monorepo 根为上下文（见 apps/account-panel/Dockerfile）
           file: apps/account-panel/Dockerfile
           push: true
+          cache-from: type=registry,ref=${{ steps.meta.outputs.image }}:buildcache
+          cache-to: type=registry,ref=${{ steps.meta.outputs.image }}:buildcache,mode=max
           tags: |
             ${{ steps.meta.outputs.image }}:latest
             ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.version }}
