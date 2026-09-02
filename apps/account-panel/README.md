@@ -70,7 +70,7 @@ push 到 GitHub main（命中 apps/account-panel/** 或 packages/**）
   -> .github/workflows/account-panel-image.yml 构建镜像
   -> 推 ghcr.io/sakurachiyo0v0/account-panel:{latest, <version>, <sha7>}
   -> NAS 上全局 watchtower 轮询到 latest digest 变化
-  -> 自动 pull + 重建 account-panel 容器（约 1 分钟内生效）
+  -> 自动 pull + 重建 account-panel 容器（镜像约 1.35GB，实测一轮 7–10 分钟；小镜像才是 1 分钟内）
 ```
 
 ### 仓库侧（已完成，只需知道）
@@ -102,13 +102,14 @@ sudo docker compose --project-directory /volume1/docker/account-panel \
 前提：
 
 - **watchtower 只需全局部署一次**（此前 nas-hello 已跑通）。若还没有，用 `nas-hello/watchtower.compose.yml` 部署，**必须**覆盖 `DOCKER_API_VERSION=1.43`（镜像内置 1.25，UGOS dockerd 最低要求 1.40，不覆盖会循环重启）。
-- 镜像仓库需可匿名拉取。首次 push 后 GHCR 包默认可能是私有，若 NAS 拉取报 401，去 GitHub 仓库 → Packages → `account-panel` → Package settings 把可见性改为 public（仓库本身是 public）。
+- （可选加速）ghcr 拉取慢可把 compose 镜像前缀 `ghcr.io/` 换成 `ghcr.nju.edu.cn/` 走南大镜像源（NAS 当前实际部署即如此；实测自动更新一轮 ~10.5min → ~7min，瓶颈在 NAS 本地解压）。CI 永远推官方 ghcr，想回退把前缀改回去即可。详见 NAS 侧 `docs/ugos-nas-ops.md` 第 14 节。
+- 镜像仓库需可匿名拉取。本仓库是 public，GHCR 包实测随仓库公开、匿名可拉（HTTP 200）；若某天报 401，去 GitHub 仓库 → Packages → `account-panel` → Package settings 改 public。
 
 ### 验证
 
 ```bash
 curl http://<nas>:8787/api/health     # {"ok":true}
-# 改代码 / bump 版本后 git push，约 1 分钟后 watchtower 自动重建；可用
+# 改代码 / bump 版本后 git push，watchtower 自动重建（大镜像 7–10 分钟）；可用
 # sudo docker ps 看容器启动时间，或看 /volume1/docker/account-panel/data/logs/app.log
 ```
 
