@@ -17,16 +17,18 @@ COPY packages ./packages
 COPY apps/account-panel ./apps/account-panel
 
 FROM base AS build
-# 只安装 account-panel 及其 workspace 依赖（跳过 database/better-sqlite3 等无关包）。
-# install 会触发依赖包（config/account/netease-music 等）的 prepare 构建。
+# 完整安装（含 devDeps），install 触发 SDK prepare 构建 dist，随后构建 app。
 RUN pnpm install --filter account-panel...
 RUN pnpm --filter account-panel build
 
-# 生产精简：裁剪 devDependencies（react/vite/typescript/tailwind 等前端构建链运行期不需要），
-# 并删除各包源码/测试，只保留 dist 与生产依赖，缩小 runtime 体积（COPY 层 286MB → ~150MB）。
-# --ignore-scripts：各包 prepare/构建在上一步已完成，此处只裁剪不重跑。
-RUN pnpm install --filter account-panel... --prod --ignore-scripts && \
-    rm -rf /repo/packages/*/src /repo/packages/*/tests /repo/packages/*/test \
+# 生产依赖层：全新只装 prod（不装 devDeps，.pnpm 干净无孤儿），保持 pnpm 布局。
+FROM base AS prod
+RUN pnpm install --filter account-panel... --prod --ignore-scripts
+# 从 build 阶段覆盖构建产物：各 SDK dist + app dist（prod 层不带源码里的 dist）。
+COPY --from=build /repo/packages /repo/packages
+COPY --from=build /repo/apps/account-panel/dist /repo/apps/account-panel/dist
+# 删除源码/测试，只留 dist 与生产依赖，缩小 runtime 体积。
+RUN rm -rf /repo/packages/*/src /repo/packages/*/tests /repo/packages/*/test \
            /repo/apps/account-panel/src /repo/apps/account-panel/tests
 
 FROM ${NODE_BASE} AS runtime
@@ -35,8 +37,8 @@ ENV NODE_ENV=production
 # ffmpeg/ffprobe：下载时写入 ID3 标签与内嵌封面所需。
 # chromium：番剧加密源浏览器取流兜底（headless 解析 JS 动态生成的视频地址）。
 RUN apk add --no-cache ffmpeg chromium nss freetype harfbuzz ca-certificates font-noto-cjk
-# 复制裁剪后的 workspace（保持 pnpm 目录结构：符号链接、packages dist、app dist）。
-COPY --from=build /repo /repo
+# 复制 prod 层（生产依赖 + dist），保持 pnpm 目录结构。
+COPY --from=prod /repo /repo
 WORKDIR /repo/apps/account-panel
 
 EXPOSE 8787
