@@ -1,6 +1,7 @@
 packages:
   - packages/*
   - apps/*
+  - '!apps/browser-proxy'
 allowBuilds:
   esbuild: true
   protobufjs: true

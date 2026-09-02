@@ -1,29 +1,47 @@
-# account-panel NAS 部署 compose。复制到 NAS 后作为 /volume1/docker/account-panel/docker-compose.yaml 使用。
+# account-panel NAS 部署 compose（含浏览器 sidecar）。复制到 NAS 后作为 /volume1/docker/account-panel/docker-compose.yaml 使用。
 # 约定（参考 NAS-PROJECTS/docs/nas-project-template/）：
 #   - 部署目录 /volume1/docker/account-panel/（root:root、权限 700，SSH 手动建要 chown/chmod）
 #   - 真实密钥放同目录 .env（chmod 600），本文件用 ${VAR} 引用，不入库
 #   - 数据 bind mount 到 ./data，可见、可备份
-# 自动更新：镜像推 ghcr 后，NAS 上全局 watchtower 发现 latest 变化会自动 pull + 重建
-#   （本容器需带下面 watchtower label；watchtower 若还没部署，见 nas-hello/watchtower.compose.yml，
-#     关键坑：必须覆盖 DOCKER_API_VERSION=1.43，否则 UGOS 上起不来）。
+# 自动更新：两个容器都带 watchtower label，镜像推 ghcr 后自动重建。
+#   watchtower 若还没部署，见 nas-hello/watchtower.compose.yml（关键：必须覆盖 DOCKER_API_VERSION=1.43）。
 services:
   account-panel:
     image: ghcr.io/sakurachiyo0v0/account-panel:latest
     container_name: account-panel
     restart: unless-stopped
+    depends_on:
+      - browser-proxy
     ports:
       - "8787:8787"
+    extra_hosts:
+      # 容器内经宿主网关访问发布到 0.0.0.0:5444 的 sakura-pg，IP 无关
+      - "host.docker.internal:host-gateway"
     environment:
       - TZ=Asia/Hong_Kong
       - NODE_ENV=production
       - PORT=8787
       - DOWNLOAD_DIR=/downloads
-      # 生产容器用系统 chromium（Dockerfile 已装），番剧加密源浏览器取流兜底需要
-      - USE_SYSTEM_CHROMIUM=1
+      # 番剧加密源浏览器兜底：走同 compose 网络内的 browser-proxy
+      - BROWSER_SERVICE_URL=http://browser-proxy:9222
       # 配置中心：PG 连接串 + 加密密钥（密钥丢失将无法解密已保存的平台登录态）
       - PG_URL=${PG_URL:?请在 .env 提供 PG_URL}
       - CONFIG_KEY=${CONFIG_KEY:?请在 .env 提供 CONFIG_KEY}
     volumes:
-      - ./data:/downloads    # 下载文件 + 日志 + kazumi 规则 持久化
+      - ./data:/downloads        # 下载文件 + 日志 + kazumi 规则 持久化
+      - /volume1:/downloads/volume1   # 可选下载目的地：NAS 共享文件夹
+      - /home:/downloads/home         # 可选下载目的地：用户目录
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+
+  browser-proxy:
+    image: ghcr.io/sakurachiyo0v0/browser-proxy:latest
+    container_name: browser-proxy
+    restart: unless-stopped
+    # 仅内网服务，不发布端口到宿主（account-panel 经 compose 网络访问）
+    environment:
+      - TZ=Asia/Hong_Kong
+      - NODE_ENV=production
+      - PORT=9222
     labels:
       - com.centurylinklabs.watchtower.enable=true

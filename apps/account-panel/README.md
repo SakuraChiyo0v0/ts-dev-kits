@@ -15,6 +15,7 @@
 
 - 后端 Hono + `@hono/node-server`（SSE、静态托管、RPC），前端 React 19 + Vite 8 + Tailwind CSS 4，前后端类型安全走 Hono RPC（`hc<AppType>`）。
 - 平台登录态统一经 `@sakurachiyo0v0/account` 的 `AuthStore` 写入配置中心（`@sakurachiyo0v0/config`，PostgreSQL 后端）的加密命名空间，本地只留缓存；扫码登录的二维码 / 状态经 SSE 推送。
+- 番剧加密源 / JS 动态取流的兜底：主服务**不携带 Chromium**，经同仓库独立服务 pps/browser-proxy（HTTP POST /resolve）解析，主镜像因此不含浏览器。
 - 面板本身**没有登录页**（已移除，打开即用）。但 `/api/bilibili/*`、`/api/kazumi/*` 含 proxy / seg 等代理出口且无会话保护，依赖部署边界：**只走内网或门户后面，不要把这个端口直接暴露公网**。
 
 ## 环境变量
@@ -27,7 +28,7 @@
 | `CONFIG_KEY` | 是 | 配置加密密钥。丢失后无法解密已存登录态，务必妥善备份 |
 | `DOWNLOAD_DIR` | 否 | 下载 / 日志 / kazumi 规则根目录，容器内默认 `/downloads`；日志在 `<DOWNLOAD_DIR>/logs/app.log` |
 | `PORT` | 否 | 服务端口，默认 8787 |
-| `USE_SYSTEM_CHROMIUM` | 否 | `=1` 时用容器内系统 chromium（`/usr/bin/chromium-browser`），本地开发不需要 |
+| `BROWSER_SERVICE_URL` | 否 | 番剧加密源浏览器兜底：独立 `browser-proxy` 服务地址（NAS 部署为 `http://browser-proxy:9222`）；不配则加密源解析降级失败 |
 
 ## 本地开发与运行
 

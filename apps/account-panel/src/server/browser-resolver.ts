@@ -1,175 +1,61 @@
 /**
- * 浏览器取流解析器（Playwright headless Chromium）。
+ * 浏览器取流解析器（HTTP 客户端版）。
  *
- * 原理（对齐 Kazumi 客户端的 WebView 方案）：
- * 用 headless Chromium 真正打开播放页，让页面 JS 跑起来，
- * 再通过注入脚本拦截 fetch/XHR 响应与 DOM 中的 video/iframe，
- * 截获页面动态生成的 m3u8 真实地址 —— 覆盖纯静态解析无法处理的加密源。
+ * Chromium 已拆分为独立服务 browser-proxy（apps/browser-proxy）：
+ * 本模块只负责把播放页 URL 交给它解析，取回真实 m3u8/mp4 直链。
+ * 主服务镜像因此不再携带 chromium/playwright（体积与安全面都更小）。
+ *
+ * 未配置 BROWSER_SERVICE_URL 时（本地裸跑等）直接返回 null，
+ * 调用方（kazumi 加密源兜底）会走原有报错/降级逻辑。
  */
-import { chromium, type Browser, type Page } from "playwright";
+const SERVICE_URL = process.env.BROWSER_SERVICE_URL?.trim() || "";
 
-let browserPromise: Promise<Browser> | null = null;
-
-/** 惰性单例浏览器（复用进程，避免每次解析都启动）。 */
-async function getBrowser(): Promise<Browser> {
-  browserPromise ??= chromium.launch({
-    headless: true,
-    // 生产（Docker）用系统 chromium（apk 安装），本地开发用 playwright 自带浏览器。
-    ...(process.env.USE_SYSTEM_CHROMIUM === "1"
-      ? { executablePath: "/usr/bin/chromium-browser" }
-      : {}),
-    args: [
-      "--no-sandbox",
-      "--disable-dev-shm-usage",
-      "--disable-gpu",
-      "--autoplay-policy=no-user-gesture-required",
-    ],
-  });
-  return browserPromise;
-}
-
-/**
- * 解析结果缓存：同一集（播放页 URL）解析一次后 30 分钟内直接复用，
- * 避免重复播放/下载同一集每次都重新开页面等取流（解析慢的主因）。
- */
+/** 解析结果缓存：同一集（播放页 URL）解析一次后 30 分钟内直接复用。 */
 const resolveCache = new Map<string, { url: string; expiresAt: number }>();
 const RESOLVE_CACHE_TTL_MS = 30 * 60 * 1000;
 
-/** 命中缓存返回直链，未命中返回 null。 */
 function cacheGet(key: string): string | null {
   const hit = resolveCache.get(key);
   if (hit !== undefined && hit.expiresAt > Date.now()) return hit.url;
   return null;
 }
-
-/** 写入缓存。 */
 function cacheSet(key: string, url: string): void {
   resolveCache.set(key, { url, expiresAt: Date.now() + RESOLVE_CACHE_TTL_MS });
 }
 
-/** 注入页面的拦截脚本（与 Kazumi 相同的思路：篡改 Response/XHR 拦截视频响应）。 */
-const SNIFF_SCRIPT = `
-  window.__kazumiVideo = null;
-  function isVideoText(t) { return typeof t === 'string' && (t.trim().startsWith('#EXTM3U') || t.trim().startsWith('ID3')); }
-  function isVideoUrl(u) {
-    if (!u) return false;
-    return /\.(m3u8|mp4|m4s|flv)(\\?|$)/i.test(u) || /groupvideo|\.mp4/i.test(u);
-  }
-  function report(url) {
-    if (url && isVideoUrl(url) && !window.__kazumiVideo) {
-      window.__kazumiVideo = url;
-      try { window.__kazumiBridge && window.__kazumiBridge(url); } catch (e) {}
-    }
-  }
-  // 拦截 fetch 响应（m3u8 文本响应 / 视频 URL 响应）
-  const _r_text = window.Response.prototype.text;
-  window.Response.prototype.text = function () {
-    return new Promise((resolve, reject) => {
-      _r_text.call(this).then((text) => {
-        resolve(text);
-        if (isVideoText(text)) report(this.url);
-      }).catch(reject);
-    });
-  };
-  // 拦截 XHR 响应
-  const _open = window.XMLHttpRequest.prototype.open;
-  window.XMLHttpRequest.prototype.open = function (...args) {
-    this.addEventListener('load', () => {
-      try {
-        const content = this.responseText;
-        if (isVideoText(content)) report(args[1]);
-      } catch (e) {}
-    });
-    return _open.apply(this, args);
-  };
-  // 监听 video / source 元素（src 直接是 mp4/m3u8）
-  function processVideo(video) {
-    let src = video.getAttribute('src');
-    if (src && isVideoUrl(src) && !src.startsWith('blob:') && !src.includes('googleads')) { report(src); return true; }
-    const sources = video.getElementsByTagName('source');
-    for (let s of sources) {
-      src = s.getAttribute('src');
-      if (src && isVideoUrl(src) && !src.startsWith('blob:') && !src.includes('googleads')) { report(src); return true; }
-    }
-    return false;
-  }
-  const observer = new MutationObserver((muts) => {
-    for (const m of muts) {
-      if (m.type === 'attributes' && m.target.nodeName === 'VIDEO') { if (processVideo(m.target)) return; continue; }
-      for (const n of m.addedNodes) {
-        if (n.nodeName === 'VIDEO') { if (processVideo(n)) return; }
-        if (n.querySelectorAll) { for (const v of n.querySelectorAll('video')) { if (processVideo(v)) return; } }
-      }
-    }
-  });
-  function setup() {
-    for (const v of document.querySelectorAll('video')) { if (processVideo(v)) return; }
-    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['src'] });
-  }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setup);
-  else setup();
-`;
-
 /**
- * 解析播放页 → m3u8 直链。
+ * 调用 browser-proxy 解析播放页 → 视频直链。
  * @param url 播放页 URL
- * @param userAgent 请求 UA（规则自带，绕过防盗链）
- * @param referer 请求 Referer
- * @param timeoutMs 超时（默认 20s）
- * @returns m3u8 直链；解析失败返回 null（由调用方回退/报错）
+ * @returns 视频直链；未配置服务/解析失败/超时返回 null（由调用方回退/报错）。
  */
 export async function resolveWithBrowser(
   url: string,
   options: { userAgent?: string; referer?: string; timeoutMs?: number } = {},
 ): Promise<string | null> {
-  const { userAgent, timeoutMs = 25_000 } = options;
+  const { userAgent, referer, timeoutMs = 25_000 } = options;
+  if (SERVICE_URL === "") return null;
+
   // 命中缓存直接返回（重复播放/下载同一集秒回）。
   const cached = cacheGet(url);
   if (cached !== null) return cached;
-  const browser = await getBrowser();
-  const context = await browser.newContext({
-    userAgent: userAgent ?? "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-  });
-  const page = await context.newPage();
-  try {
-    // 收集两种信号：注入脚本上报 / 网络层视频请求。
-    let found: string | null = null;
-    await page.exposeFunction("__kazumiBridge", (u: string) => { if (!found) found = u; });
-    await page.addInitScript(SNIFF_SCRIPT);
-    const grab = (u: string): boolean => {
-      if (/\.(m3u8|mp4|m4s|flv)(\?|$)/i.test(u) || u.includes("groupvideo")) {
-        if (!found) found = u;
-        return true;
-      }
-      return false;
-    };
-    page.on("request", (req) => { if (!found) grab(req.url()); });
-    page.on("response", (res) => { if (!found) grab(res.url()); });
 
-    // 打开播放页让 JS 取流；用 domcontentloaded（不等资源加载完，更快进入取流阶段）。
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: Math.min(timeoutMs, 20_000) }).catch(() => {});
-    // 高频轮询信号（网络层 + 注入变量双通道），捕获即返回。
-    const deadline = Date.now() + timeoutMs;
-    while (Date.now() < deadline && found === null) {
-      await page.waitForTimeout(150);
-      if (found) break;
-      const sniffed = await page.evaluate(() => (window as unknown as { __kazumiVideo?: string }).__kazumiVideo ?? null).catch(() => null);
-      if (sniffed) { found = sniffed; break; }
-    }
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs + 5_000);
+  try {
+    const res = await fetch(`${SERVICE_URL}/resolve`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ url, userAgent, referer, timeoutMs }),
+      signal: controller.signal,
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { url?: string | null };
+    const found = data.url ?? null;
     if (found !== null) cacheSet(url, found);
     return found;
   } catch {
     return null;
   } finally {
-    await context.close().catch(() => {});
-  }
-}
-
-/** 释放浏览器进程（应用退出时调用）。 */
-export async function closeBrowserResolver(): Promise<void> {
-  if (browserPromise !== null) {
-    const b = await browserPromise;
-    await b.close().catch(() => {});
-    browserPromise = null;
+    clearTimeout(timer);
   }
 }

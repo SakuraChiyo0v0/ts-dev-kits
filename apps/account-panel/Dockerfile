@@ -35,8 +35,8 @@ FROM ${NODE_BASE} AS runtime
 WORKDIR /repo
 ENV NODE_ENV=production
 # ffmpeg/ffprobe：下载时写入 ID3 标签与内嵌封面所需。
-# chromium：番剧加密源浏览器取流兜底（headless 解析 JS 动态生成的视频地址）。
-RUN apk add --no-cache ffmpeg chromium nss freetype harfbuzz ca-certificates font-noto-cjk
+# chromium 已拆分到独立服务 browser-proxy（apps/browser-proxy），本镜像不再携带。
+RUN apk add --no-cache ffmpeg ca-certificates
 # 复制 prod 层（生产依赖 + dist），保持 pnpm 目录结构。
 COPY --from=prod /repo /repo
 WORKDIR /repo/apps/account-panel

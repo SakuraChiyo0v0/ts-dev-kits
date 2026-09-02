@@ -1,0 +1,60 @@
+# browser-proxy 镜像自动发布（同 account-panel 的链路，独立 app 独立镜像）：
+#   push 到 main（命中 apps/browser-proxy/**）
+#     -> 构建镜像 -> 推 ghcr.io/sakurachiyo0v0/browser-proxy:{latest, <version>, <sha7>}
+#     -> NAS 上 watchtower 自动 pull + 重建
+name: browser-proxy-image
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/browser-proxy/**"
+      - ".github/workflows/browser-proxy-image.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Resolve metadata
+        id: meta
+        run: |
+          VER=$(node -p "require('./apps/browser-proxy/package.json').version")
+          SHA=${GITHUB_SHA::7}
+          OWNER=$(echo "${{ github.repository_owner }}" | tr 'A-Z' 'a-z')
+          echo "version=${VER}" >> "$GITHUB_OUTPUT"
+          echo "sha=${SHA}" >> "$GITHUB_OUTPUT"
+          echo "image=ghcr.io/${OWNER}/browser-proxy" >> "$GITHUB_OUTPUT"
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .   # 仓库根为上下文，Dockerfile 只取 apps/browser-proxy
+          file: apps/browser-proxy/Dockerfile
+          push: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          tags: |
+            ${{ steps.meta.outputs.image }}:latest
+            ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.version }}
+            ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.sha }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
