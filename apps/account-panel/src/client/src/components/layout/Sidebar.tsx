@@ -1,4 +1,4 @@
-import { Clapperboard, LayoutGrid, LogOut, Music2, Tv } from "lucide-react";
+import { Clapperboard, LayoutGrid, Music2, Tv } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type ModuleId = "home" | "netease" | "bilibili" | "kazumi";
@@ -8,12 +8,10 @@ export type ModuleId = "home" | "netease" | "bilibili" | "kazumi";
  * 三模块平级切换，不销毁各自状态（由父组件保持挂载）。
  */
 export function Sidebar(props: {
-  username: string;
   active: ModuleId;
   onSelect: (m: ModuleId) => void;
-  onLogout: () => void;
 }) {
-  const { username, active, onSelect, onLogout } = props;
+  const { active, onSelect } = props;
 
   const items: Array<{ id: ModuleId; label: string; sub: string; icon: React.ReactNode }> = [
     { id: "home", label: "首页", sub: "服务总览", icon: <LayoutGrid className="h-5 w-5" /> },
@@ -31,8 +29,8 @@ export function Sidebar(props: {
             <LayoutGrid className="h-4 w-4" />
           </div>
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold leading-tight">{username}</p>
-            <p className="text-xs text-muted-foreground">统一账号面板</p>
+            <p className="truncate text-sm font-semibold leading-tight">账号面板</p>
+            <p className="text-xs text-muted-foreground">音乐 · 视频 · 番剧</p>
           </div>
         </div>
         <nav className="flex-1 space-y-1 px-3 py-2">
@@ -65,15 +63,6 @@ export function Sidebar(props: {
             </button>
           ))}
         </nav>
-        <div className="border-t border-border/60 p-3">
-          <button
-            onClick={onLogout}
-            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          >
-            <LogOut className="h-4 w-4" />
-            退出登录
-          </button>
-        </div>
       </aside>
 
       {/* 窄屏：底部 Tab 导航 */}

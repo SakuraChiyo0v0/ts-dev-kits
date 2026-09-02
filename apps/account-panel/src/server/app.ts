@@ -7,18 +7,14 @@ import { Hono } from "hono";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { authRoutes } from "./routes/auth.js";
 import { accountRoutes } from "./routes/account.js";
-import { userRoutes } from "./routes/users.js";
 import { bilibiliRoutes } from "./routes/bilibili.js";
 import { kazumiRoutes } from "./routes/kazumi.js";
-import { requireAuth } from "./auth-middleware.js";
 
 const api = new Hono()
   .route("/auth", authRoutes)
-  .route("/users", userRoutes)
-  // bilibili/kazumi 全部端点（含 proxy/seg 等代理出口）要求面板会话。
-  // 此前无任何 cookie/session 校验，/api/bilibili/proxy 是未鉴权 SSRF 出口（见交接文档遗留事项 P0）。
-  .use("/bilibili/*", requireAuth)
-  .use("/kazumi/*", requireAuth)
+  // 面板登录已移除（原 users.ts / auth-middleware.ts 一并删除）。
+  // bilibili/kazumi 含 proxy/seg 等代理出口，无会话保护，依赖部署边界：
+  // 仅内网或绿联门户后访问，切勿把本服务端口直接暴露公网。
   .route("/bilibili", bilibiliRoutes)
   .route("/kazumi", kazumiRoutes)
   .route("/", accountRoutes)

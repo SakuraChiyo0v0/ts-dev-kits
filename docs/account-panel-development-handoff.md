@@ -4,6 +4,18 @@
 
 ---
 
+## ⚠️ 2026-09-03 变更：移除「面板登录」
+
+> 面板管理员登录（`ADMIN_USERNAME` / `ADMIN_PASSWORD` + `/api/users/*` + `requireAuth` 中间件）已在主分支移除：
+> - 后端：删除 `src/server/routes/users.ts`、`src/server/auth-middleware.ts`；`app.ts` 不再挂 `/users` 路由与 bilibili/kazumi 会话校验。
+> - 前端：`App.tsx` 去掉登录门与 `LoginView`，打开即进首页；`Sidebar` 去掉用户名与「退出登录」。
+> - 保留：平台账号（网易云 / B 站 / 番剧）扫码登录与加密存储（PG `config_kv`）不变，`PG_URL` / `CONFIG_KEY` 仍必需。
+> - 安全前提：bilibili/kazumi 的代理出口（proxy / seg 等）不再有会话保护，仅限内网或绿联门户后访问，勿把服务端口直接暴露公网。
+> - 完整旧版见备份分支 `backup/account-panel-before-removal`。
+> 下文「十一」等章节描述的是移除前的旧架构，作为历史记录保留。
+
+---
+
 ## 一、项目是什么
 
 **`ts-dev-kits`** 是一个 pnpm workspace monorepo（GitHub 公开仓库 `SakuraChiyo0v0/ts-dev-kits`），包含：

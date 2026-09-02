@@ -160,7 +160,7 @@ sudo docker run -d --name account-panel -p 8787:8787 --restart unless-stopped \
 
 ### 环境变量（`/tmp/account-panel.env`）
 
-`PG_URL` / `CONFIG_KEY` / `ADMIN_USERNAME` / `ADMIN_PASSWORD` / `PORT` / `DOWNLOAD_DIR`（旧的 `WEBDAV_*` 已无用但保留无害）。
+`PG_URL` / `CONFIG_KEY` / `PORT` / `DOWNLOAD_DIR`（面板登录已移除，不再需要 `ADMIN_USERNAME` / `ADMIN_PASSWORD`；旧的 `WEBDAV_*` 已无用但保留无害）。
 
 ---
 

@@ -186,7 +186,7 @@ sudo docker run -d --name account-panel -p 8787:8787 --restart unless-stopped \
 >
 > 坑 3（环境变量权威存放处）：`/tmp/account-panel.env` 在 tmpfs，**NAS 重启即失**。当前真实 env 只在运行中的容器里（`docker exec account-panel printenv` 可读）。**建议把 env 持久化到 `/home/AmeChan/account-panel.env`（chmod 600）**，`docker run --env-file` 改指该路径——文档只记路径不记值。
 
-环境变量：`PG_URL` / `CONFIG_KEY` / `ADMIN_USERNAME` / `ADMIN_PASSWORD` / `PORT` / `DOWNLOAD_DIR`（`WEBDAV_*` 已无用但保留无害）。
+环境变量：`PG_URL` / `CONFIG_KEY` / `PORT` / `DOWNLOAD_DIR`（面板登录已移除，不再需要 `ADMIN_USERNAME` / `ADMIN_PASSWORD`；`WEBDAV_*` 已无用但保留无害）。
 
 > 部署自动化：整条链路（build → save → cat 管道 → load → run）目前全手动，两个坑都是环境特性而非偶发。建议落成 `scripts/deploy-nas.sh`（含打 tag、验健康、env 持久化检查），比在文档里记命令更抗遗忘。
 

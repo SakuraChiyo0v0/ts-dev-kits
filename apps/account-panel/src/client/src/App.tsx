@@ -255,8 +255,6 @@ export default function App() {
   const [account, setAccount] = useState<AccountPayload | null>(null);
   const [login, setLogin] = useState<LoginView | null>(null);
   const [activeModule, setActiveModule] = useState<ModuleId>("home");
-  // 主账号登录态：由 httpOnly Cookie 承载（浏览器自动携带），这里只存用户名。
-  const [userAuth, setUserAuth] = useState<{ username: string } | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [detail, setDetail] = useState<PlaylistDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -436,18 +434,9 @@ export default function App() {
     void refresh();
   }, [refresh]);
 
-  // 启动时校验主账号 Cookie：有效则恢复登录态（重启/刷新后免登录）。
+  // 首次打开展示引导；看过一次后 localStorage 标记不再打扰。
   useEffect(() => {
-    void (async () => {
-      try {
-        const res = await fetch("/api/users/me");
-        if (res.ok) {
-          setUserAuth({ username: "管理员" });
-        }
-      } catch {
-        // 网络失败保持未登录。
-      }
-    })();
+    setShowOnboarding(shouldShowOnboarding());
   }, []);
 
   // 页面标题随模块切换（歌曲播放时 playAt 已单独更新 title，这里只在无曲时覆盖）。
@@ -468,37 +457,6 @@ export default function App() {
       loginEsRef.current?.close();
     };
   }, []);
-
-  const userLogin = useCallback(
-    async (username: string, password: string) => {
-      try {
-        const res = await rpc.api.users.login.$post({ json: { username, password } });
-        const data = (await res.json()) as { ok?: boolean; username?: string; error?: string };
-        if (data.ok === true && data.username !== undefined) {
-          // session 已通过 httpOnly Cookie 下发，前端只记用户名。
-          setUserAuth({ username: data.username });
-          showToast(`欢迎回来，${data.username}`, "success");
-          setShowOnboarding(shouldShowOnboarding());
-          await refresh();
-        } else {
-          showToast(data.error ?? "登录失败");
-        }
-      } catch {
-        showToast("登录失败", "error");
-      }
-    },
-    [refresh, showToast],
-  );
-
-  const userLogout = useCallback(async () => {
-    try {
-      await fetch("/api/users/logout", { method: "POST" });
-    } catch {
-      // 忽略。
-    }
-    setUserAuth(null);
-    setActiveModule("home");
-  }, [userAuth]);
 
   const startLogin = useCallback(async () => {
     try {
@@ -1151,8 +1109,8 @@ export default function App() {
     <div className="flex h-screen flex-col bg-background">
       {/* 微弱主色渐变背景（左上 → 右下），增强层次感 */}
       <div className="pointer-events-none fixed inset-0 z-0 bg-gradient-to-br from-primary/[0.06] via-transparent to-transparent" />
-      {/* 顶部仅在未登录或首页展示；进入具体模块后完全不展示，由各模块自身 header / 侧边栏负责 */}
-      {userAuth === null || activeModule === "home" ? (
+      {/* 顶部仅在首页展示；进入具体模块后完全不展示，由各模块自身 header / 侧边栏负责 */}
+      {activeModule === "home" ? (
         <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border/60 bg-background/70 px-4 py-3 backdrop-blur-xl sm:px-6">
           <div className="flex items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
@@ -1175,17 +1133,13 @@ export default function App() {
       ) : null}
 
       <div className="flex min-h-0 flex-1">
-        {userAuth !== null ? (
-          <Sidebar
-            username={userAuth.username}
-            active={activeModule}
-            onSelect={(m) => {
-              if (m !== "netease") audioRef.current?.pause();
-              setActiveModule(m);
-            }}
-            onLogout={() => void userLogout()}
-          />
-        ) : null}
+        <Sidebar
+          active={activeModule}
+          onSelect={(m) => {
+            if (m !== "netease") audioRef.current?.pause();
+            setActiveModule(m);
+          }}
+        />
 
         <div
           className={cn(
@@ -1194,19 +1148,14 @@ export default function App() {
             currentTrack !== null && "pb-[5.5rem] sm:pb-24",
           )}
         >
-          {userAuth === null ? (
-            <LoginView onUserLogin={(u, p) => void userLogin(u, p)} />
-          ) : (
-            <>
+          <>
               {/* 首页：服务总览 */}
               <div className={cn("h-full", activeModule !== "home" && "hidden")}>
                 <Launcher
-                  username={userAuth.username}
                   onSelect={(m) => {
                     if (m !== "netease") audioRef.current?.pause();
                     setActiveModule(m);
                   }}
-                  onLogout={() => void userLogout()}
                 />
               </div>
 
@@ -1299,8 +1248,7 @@ export default function App() {
                   <KazumiModule active={activeModule === "kazumi"} onBack={() => setActiveModule("home")} />
                 </Suspense>
               </div>
-            </>
-          )}
+          </>
         </div>
       </div>
 
@@ -2399,74 +2347,11 @@ function BindNeteaseView(props: {
   );
 }
 
-function LoginView(props: {
-  onUserLogin: (username: string, password: string) => void | Promise<void>;
-}) {
-  const { onUserLogin } = props;
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-
-  const submit = async () => {
-    if (username.trim().length < 2 || password.length < 6 || submitting) return;
-    setSubmitting(true);
-    try {
-      await onUserLogin(username.trim(), password);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="flex flex-1 items-center justify-center p-6">
-      <Card className="animate-scale-in w-full max-w-sm border-0 bg-card/70 shadow-lg backdrop-blur-xl">
-        <CardHeader className="items-center text-center">
-          <CardTitle>登录</CardTitle>
-          <CardDescription>统一账号，一个登录入口管理所有服务</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col items-center gap-4">
-          <form
-            className="flex w-full flex-col gap-3"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void submit();
-            }}
-          >
-            <Input
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="用户名"
-              className="rounded-full"
-              autoComplete="username"
-              autoFocus
-              aria-label="用户名"
-            />
-            <Input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="密码"
-              className="rounded-full"
-              autoComplete="current-password"
-              aria-label="密码"
-            />
-            <Button size="lg" className="rounded-full" disabled={username.trim().length < 2 || password.length < 6 || submitting} onClick={() => void submit()}>
-              {submitting ? "登录中…" : "登录"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-/** 首页：服务总览（欢迎 + 三模块入口卡片）。 */
+/** 首页：服务总览（三模块入口卡片）。 */
 function Launcher(props: {
-  username: string;
   onSelect: (m: ModuleId) => void;
-  onLogout: () => void;
 }) {
-  const { username, onSelect, onLogout } = props;
+  const { onSelect } = props;
   const entries: Array<{ id: ModuleId; title: string; sub: string; icon: React.ReactNode }> = [
     { id: "netease", title: "音乐", sub: "网易云 · 听歌 / 歌单 / 下载", icon: <Music2 className="h-7 w-7" /> },
     { id: "bilibili", title: "哔哩哔哩", sub: "视频 · 搜索 / 收藏 / 追番", icon: <Tv className="h-7 w-7" /> },
@@ -2475,17 +2360,9 @@ function Launcher(props: {
   return (
     <div className="h-full animate-fade-in overflow-auto">
       <div className="mx-auto max-w-4xl px-4 py-10 sm:px-8">
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">你好，{username}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">从一个服务开始，或从左侧导航随时切换</p>
-          </div>
-          <button
-            onClick={onLogout}
-            className="rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          >
-            退出登录
-          </button>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold tracking-tight">服务总览</h1>
+          <p className="mt-1 text-sm text-muted-foreground">从一个服务开始，或从左侧导航随时切换</p>
         </div>
         <div className="stagger grid grid-cols-1 gap-4 sm:grid-cols-3">
           {entries.map((e) => (

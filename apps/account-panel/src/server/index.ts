@@ -1,6 +1,6 @@
 /**
  * 服务入口：启动 Hono 服务。
- * 环境变量：PG_URL / CONFIG_KEY / ADMIN_USERNAME / ADMIN_PASSWORD / PORT(默认 8787)。
+ * 环境变量：PG_URL / CONFIG_KEY / PORT(默认 8787)。
  */
 import { serve } from "@hono/node-server";
 import app from "./app.js";
