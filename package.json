@@ -18,12 +18,14 @@
         "verify:kazumi-package": "node scripts/verify-kazumi-package.mjs",
         "verify:published": "node scripts/verify-published-package.mjs",
         "check:boundaries": "node scripts/check-tool-boundaries.mjs",
-        "test:guards": "node --test scripts/check-package-bumps.test.mjs"
+        "test:guards": "node --test scripts/check-package-bumps.test.mjs scripts/release-tools.test.mjs",
+        "verify:consumers": "node scripts/verify-published-package.mjs --representative"
     },
     "devDependencies": {
         "@types/node": "^26.1.2",
         "@types/nodemailer": "^8.0.1",
         "@types/smtp-server": "^3.5.13",
+        "semver": "7.8.5",
         "smtp-server": "^3.19.2",
         "tsx": "^4.23.5",
         "typescript": "^7.0.2",

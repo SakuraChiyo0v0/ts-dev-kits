@@ -23,7 +23,7 @@ pnpm add --save-exact @sakurachiyo0v0/bilibili
 2. 运行 `pnpm check`。
 3. 检查依赖链，确保依赖版本存在或会在本批次先发布。
 4. 经授权推送 `main` 后，现有 `publish.yml` 校验版本、依赖链及工具库，随后发布变化的版本。
-5. 在临时消费项目安装已发布版本，验证 ESM/CJS 导入。
+5. 在临时消费项目安装已发布版本，验证严格类型、ESM/CJS 导入；CI 同时执行三包本地最小调用。
 
 CI 沿用已有 `GH_PACKAGES_TOKEN` secret；需有包读写权限。手动发布也需要有 `write:packages` 权限的认证。仓库 `.npmrc` 仅保存 scope 到 registry 的映射；认证由用户配置或 CI 注入。
 
@@ -31,7 +31,8 @@ CI 沿用已有 `GH_PACKAGES_TOKEN` secret；需有包读写权限。手动发�
 # 仅获发布授权后执行
 node scripts/publish-packages.mjs
 # 发布后验证，不执行发布
-pnpm verify:published @sakurachiyo0v0/email
+pnpm verify:published @sakurachiyo0v0/email@0.2.2
+pnpm verify:consumers
 ```
 
 发布命令显式指定 GitHub registry。相同版本跳过，版本变化才发布。应用镜像构建不属于本仓库发布流程。
@@ -41,3 +42,5 @@ pnpm verify:published @sakurachiyo0v0/email
 本地构建和测试通过不代表 GitHub 上已发布。只有 registry 出现目标版本，且外部项目实际安装与导入成功，才能确认可消费。此次边界整理不执行推送或发布，也不删除历史包。
 
 依据：[GitHub 官方 npm registry 文档](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-npm-registry)。
+
+判定规则、认证继承与验收边界见 [发布检查与消费验证](release-validation.md)。

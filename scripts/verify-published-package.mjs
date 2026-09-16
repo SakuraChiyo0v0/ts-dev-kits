@@ -1,111 +1,45 @@
-#!/usr/bin/env node
-/**
- * scripts/verify-published-package.mjs —— 发布后消费验证
- *
- * 对发布到 GitHub Packages 的包,从全新临时项目安装并验证 ESM/CJS 双模式可导入,
- * 确保开箱即用(依赖从 GitHub Packages 正确解析)。
- *
- * 用法:
- *   pnpm verify:published @sakurachiyo0v0/bilibili
- *
- * 前置:用户目录 .npmrc 已配置 @sakurachiyo0v0:registry 与
- *       //npm.pkg.github.com/:_authToken(发布/消费 GitHub Packages 需要)。
- *
- * 退出码:0=通过;1=失败(安装或导入失败)。
- */
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-
-const pkgName = process.argv[2];
-if (pkgName === undefined || !pkgName.startsWith("@sakurachiyo0v0/")) {
-  console.error("用法: pnpm verify:published @sakurachiyo0v0/<name>");
-  process.exit(1);
-}
-
-const shortName = pkgName.replace("@sakurachiyo0v0/", "");
-const work = mkdtempSync(join(tmpdir(), `sakura-${shortName}-verify-`));
+import { createRegistry, REGISTRY } from "./registry.mjs";
+const representative = process.argv[2] === "--representative";
+const readJson = path => JSON.parse(readFileSync(path, "utf8"));
+const specs = representative ? ["email", "media-downloader", "bilibili"].map(name => {
+  const m = readJson(new URL(`../packages/${name}/package.json`, import.meta.url));
+  return `${m.name}@${m.version}`;
+}) : process.argv.slice(2);
+if (!specs.length) throw new Error("用法: pnpm verify:published @sakurachiyo0v0/<name>[@version] [...]");
+const registry = createRegistry();
+const manifests = specs.map(spec => {
+  const match = /^(@sakurachiyo0v0\/[a-z0-9-]+)(?:@(.+))?$/u.exec(spec);
+  if (!match) throw new Error(`非法包规格: ${spec}`);
+  const m = registry.manifest(match[1], match[2]);
+  if (!m) throw new Error(`目标版本未发布: ${spec}`);
+  return m;
+});
 const pnpmCli = process.env.npm_execpath;
-if (!pnpmCli) {
-  console.error("请通过 pnpm 脚本运行本验证器");
-  process.exit(1);
+if (!pnpmCli) throw new Error("请通过 pnpm 脚本运行本验证器");
+const work = mkdtempSync(join(tmpdir(), "ts-dev-consumer-"));
+console.log(`消费验证目录: ${work}`);
+const run = args => execFileSync(process.execPath, [pnpmCli, ...args], { cwd: work, stdio: "inherit", timeout: 300000 });
+writeFileSync(join(work, "package.json"), JSON.stringify({ name: "published-consumer", private: true, type: "module" }));
+// 只写 registry 映射；认证继承用户配置或 CI 环境，绝不复制凭据。
+writeFileSync(join(work, ".npmrc"), `@sakurachiyo0v0:registry=${REGISTRY}\n`);
+writeFileSync(join(work, "pnpm-workspace.yaml"), "packages:\n  - .\nallowBuilds:\n  better-sqlite3: true\n  esbuild: true\n  protobufjs: true\n  sharp: true\n");
+run(["add", "--save-exact", ...manifests.map(m => `${m.name}@${m.version}`)]);
+const tooling = name => readJson(new URL(`../node_modules/${name}/package.json`, import.meta.url)).version;
+run(["add", "--save-dev", "--save-exact", `typescript@${tooling("typescript")}`, `@types/node@${tooling("@types/node")}`]);
+for (const m of manifests) {
+  const actual = readJson(join(work, "node_modules", ...m.name.split("/"), "package.json")).version;
+  if (actual !== m.version) throw new Error(`${m.name}: 安装版本 ${actual} 不等于 ${m.version}`);
 }
-
-const runNpm = (args) => {
-  execFileSync(process.execPath, [pnpmCli, ...args], {
-    cwd: work,
-    stdio: "inherit",
-  });
-};
-
-// 全新临时项目,不继承仓库 node_modules,强制从 registry 解析。
-writeFileSync(
-  join(work, "package.json"),
-  JSON.stringify(
-    { name: `${shortName}-published-consumer`, private: true, type: "module" },
-    null,
-    2,
-  ),
-);
-
-// pnpm 11 supply-chain 策略默认拦截依赖构建脚本(如 better-sqlite3 等原生模块),
-// 否则安装会报 ERR_PNPM_IGNORED_BUILDS。验证场景放行仓库已知的原生模块:
-// 新增原生依赖时在此追加。
-writeFileSync(
-  join(work, "pnpm-workspace.yaml"),
-  [
-    "packages:",
-    "  - .",
-    "allowBuilds:",
-    "  better-sqlite3: true",
-    "  esbuild: true",
-    "  protobufjs: true",
-    "",
-  ].join("\n"),
-);
-
-// pnpm add @latest 存在解析 bug(可能装到旧版),先显式查 registry 最新版再按版本安装。
-const latest = execFileSync("npm", ["view", pkgName, "version"], {
-  cwd: work,
-  encoding: "utf8",
-})
-  .trim()
-  .split(/\r?\n/u)
-  .at(-1);
-if (latest === undefined || latest === "") {
-  console.error(`✗ 无法从 registry 查询 ${pkgName} 的最新版本`);
-  process.exit(1);
+writeFileSync(join(work, "imports.mts"), manifests.map((m, i) => `import * as m${i} from ${JSON.stringify(m.name)}; console.log(${JSON.stringify(m.name)}, Object.keys(m${i}).length);`).join("\n"));
+writeFileSync(join(work, "imports.cts"), manifests.map((m, i) => `import m${i} = require(${JSON.stringify(m.name)}); console.log(${JSON.stringify(m.name)}, Object.keys(m${i}).length);`).join("\n"));
+if (representative) copyFileSync(new URL("./consumer-fixtures/smoke.mts", import.meta.url), join(work, "smoke.mts"));
+writeFileSync(join(work, "tsconfig.json"), JSON.stringify({ compilerOptions: { target: "ES2022", module: "NodeNext", moduleResolution: "NodeNext", strict: true, skipLibCheck: false, outDir: "dist", types: ["node"] }, include: ["*.mts", "*.cts"] }));
+run(["exec", "tsc", "-p", "tsconfig.json"]);
+for (const file of ["imports.mjs", "imports.cjs", ...(representative ? ["smoke.mjs"] : [])]) {
+  execFileSync(process.execPath, [join("dist", file)], { cwd: work, stdio: "inherit", timeout: 60000 });
 }
-console.log(`registry 最新版: ${latest}`);
-runNpm(["add", `${pkgName}@${latest}`]);
-
-// 打印实际装到的版本,并与 registry 最新版校验一致(避免"验证通过"但装的是旧版)。
-const installedPkg = join(work, "node_modules", ...pkgName.split("/"));
-const installedVersion = JSON.parse(
-  readFileSync(join(installedPkg, "package.json"), "utf8"),
-).version;
-console.log(`已安装版本: ${installedVersion}`);
-if (installedVersion !== latest) {
-  console.error(`✗ 安装版本(${installedVersion})与 registry 最新版(${latest})不一致,验证失败`);
-  process.exit(1);
-}
-console.log("");
-
-console.log("\n=== ESM 导入验证 ===\n");
-writeFileSync(
-  join(work, "esm.mjs"),
-  `import * as mod from ${JSON.stringify(pkgName)};\n` +
-    "console.log(`ESM OK: 导出 ${Object.keys(mod).length} 个符号:`, Object.keys(mod).slice(0, 8).join(\", \"));\n",
-);
-execFileSync(process.execPath, ["esm.mjs"], { cwd: work, stdio: "inherit" });
-
-console.log("\n=== CJS require 验证 ===\n");
-writeFileSync(
-  join(work, "cjs.cjs"),
-  `const mod = require(${JSON.stringify(pkgName)});\n` +
-    `console.log("CJS OK: 导出", Object.keys(mod).length, "个符号");\n`,
-);
-execFileSync(process.execPath, ["cjs.cjs"], { cwd: work, stdio: "inherit" });
-
-console.log(`\n✓ ${pkgName} 发布后消费验证通过(ESM + CJS)`);
+console.log(`PASS: ${manifests.map(m => `${m.name}@${m.version}`).join(", ")} (strict types + ESM + CJS${representative ? " + local API smoke" : ""})`);

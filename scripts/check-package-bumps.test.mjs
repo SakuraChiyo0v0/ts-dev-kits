@@ -19,6 +19,11 @@ const cases = [
   ["published output", ["dist/index.js"], false],
   ["manifest metadata", ["package.json"], false],
   ["source with version bump", ["src/index.ts"], true, "bump"],
+  ["downgrade", ["src/index.ts"], false, "downgrade"],
+  ["invalid manifest", [], false, "invalid-manifest"],
+  ["manifest removed but source retained", [], false, "delete-manifest"],
+  ["new package", [], true, "new-package"],
+  ["whole package removed", [], true, "delete-package"],
   ["deleted test", [], true, "delete-test"],
   ["source moved into tests", [], false, "move-source"],
 ];
@@ -51,6 +56,16 @@ for (const mode of ["staged", "ci"]) {
           ? JSON.stringify({ ...manifest, description: "changed metadata" }) : "// changed\n");
       }
       if (operation === "bump") write("package.json", JSON.stringify({ ...manifest, version: "1.0.1" }));
+      if (operation === "downgrade") write("package.json", JSON.stringify({ ...manifest, version: "0.9.0" }));
+      if (operation === "invalid-manifest") write("package.json", "{broken");
+      if (operation === "delete-manifest") unlinkSync(join(root, "packages/sample/package.json"));
+      if (operation === "new-package") {
+        mkdirSync(join(root, "packages/new"));
+        writeFileSync(join(root, "packages/new/package.json"), JSON.stringify({ name: "new", version: "1.0.0" }));
+      }
+      if (operation === "delete-package") {
+        for (const path of ["package.json", "src/index.ts", "tests/old.test.ts"]) unlinkSync(join(root, "packages/sample", path));
+      }
       if (operation === "delete-test") unlinkSync(join(root, "packages/sample/tests/old.test.ts"));
       if (operation === "move-source") renameSync(
         join(root, "packages/sample/src/index.ts"), join(root, "packages/sample/tests/moved.ts"),
@@ -64,3 +79,12 @@ for (const mode of ["staged", "ci"]) {
     });
   }
 }
+
+test("invalid Git base and non-repository must fail", () => {
+  const invalid = spawnSync(process.execPath, [guard, "nonexistent-review-base"], { encoding: "utf8" });
+  assert.notEqual(invalid.status, 0);
+  assert.match(invalid.stderr, /Git 检查失败/);
+  const root = mkdtempSync(join(tmpdir(), "not-a-repository-"));
+  const outside = spawnSync(process.execPath, [guard], { cwd: root, encoding: "utf8" });
+  assert.notEqual(outside.status, 0);
+});

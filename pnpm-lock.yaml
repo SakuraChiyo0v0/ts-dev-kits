@@ -17,6 +17,9 @@ importers:
       '@types/smtp-server':
         specifier: ^3.5.13
         version: 3.5.13
+      semver:
+        specifier: 7.8.5
+        version: 7.8.5
       smtp-server:
         specifier: ^3.19.2
         version: 3.19.2

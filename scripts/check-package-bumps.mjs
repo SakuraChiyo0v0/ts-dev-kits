@@ -15,41 +15,46 @@
  * 退出码:0=通过;1=有包改了内容但版本未 bump(并打印提示)。
  * 新包(HEAD 无 manifest)不检查;跳过,不算失败。
  */
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
+import semver from "semver";
 
-function run(cmd) {
+function git(...args) {
   try {
-    return execSync(cmd, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+    return execFileSync("git", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
   } catch {
-    return "";
-  }
-}
-
-/** 读取某个 git 对象(ref 形如 HEAD:path 或 :0:path)中 package.json 的 version */
-function versionOf(ref) {
-  const out = run(`git show "${ref}"`);
-  if (!out) return undefined;
-  try {
-    return JSON.parse(out).version;
-  } catch {
-    return undefined;
+    throw new Error(`Git 检查失败: ${args[0]}；请确认基准、仓库和 index 有效`);
   }
 }
 
 const baseArg = process.argv[2];
-
-let changedPaths, versionNow, versionBase;
-if (baseArg) {
-  // CI:该提交/PR 相对 base 改动的 packages/ 文件
-  changedPaths = run(`git diff --no-renames --name-only ${baseArg}...HEAD -- packages/`).split("\n");
-  versionNow = (p) => versionOf(`HEAD:packages/${p}/package.json`);
-  versionBase = (p) => versionOf(`${baseArg}:packages/${p}/package.json`);
-} else {
-  // 本地 hook:本次提交将写入的内容(已暂存)vs HEAD
-  changedPaths = run("git diff --cached --no-renames --name-only HEAD -- packages/").split("\n");
-  versionNow = (p) => versionOf(`:0:packages/${p}/package.json`);
-  versionBase = (p) => versionOf(`HEAD:packages/${p}/package.json`);
+// 先解析为提交哈希，再传给 diff，错误基准不能当作“没有改动”。
+const base = git("rev-parse", "--verify", "--end-of-options", `${baseArg ?? "HEAD"}^{commit}`).trim();
+const current = baseArg ? "HEAD" : "";
+function pathsAt(ref) {
+  return new Set((ref
+    ? git("ls-tree", "-r", "--name-only", "-z", ref, "--", "packages/")
+    : git("ls-files", "--cached", "-z", "--", "packages/")).split("\0").filter(Boolean));
 }
+const before = pathsAt(base);
+const after = pathsAt(current);
+function versionOf(pkg, ref, paths) {
+  const prefix = `packages/${pkg}/`;
+  const path = `${prefix}package.json`;
+  if (!paths.has(path)) {
+    if ([...paths].some(p => p.startsWith(prefix))) throw new Error(`${pkg}: 目录仍存在但缺少 package.json`);
+    return undefined; // 整包新增/删除允许缺少对应侧的 manifest。
+  }
+  const manifest = JSON.parse(git("show", `${ref || ":0"}:${path}`));
+  if (typeof manifest.version !== "string" || !semver.valid(manifest.version)) {
+    throw new Error(`${pkg}: package.json 缺少合法语义化版本`);
+  }
+  return manifest.version;
+}
+const changedPaths = (baseArg
+  ? git("diff", "--no-renames", "--name-only", "-z", `${base}...HEAD`, "--", "packages/")
+  : git("diff", "--cached", "--no-renames", "--name-only", "-z", base, "--", "packages/")).split("\0");
+const versionNow = p => versionOf(p, current, after);
+const versionBase = p => versionOf(p, base, before);
 
 const pkgs = [...new Set(
   changedPaths
@@ -66,8 +71,8 @@ for (const p of pkgs) {
   const vNow = versionNow(p);
   const vBase = versionBase(p);
   if (vNow === undefined || vBase === undefined) continue; // 新包或 HEAD 无 manifest
-  if (vNow === vBase) {
-    console.error(`✖ 包 ${p} 的发布相关内容有改动,但版本号未 bump(${vNow})`);
+  if (!semver.gt(vNow, vBase)) {
+    console.error(`✖ 包 ${p} 的发布相关内容有改动,但版本号未递增(${vBase} -> ${vNow})`);
     fail = 1;
   } else {
     console.log(`✓ ${p}:${vBase} -> ${vNow}`);

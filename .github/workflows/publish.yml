@@ -9,6 +9,11 @@ on:
       - "package.json"
       - "pnpm-workspace.yaml"
       - "scripts/publish-packages.mjs"
+      - "scripts/registry.mjs"
+      - "scripts/dependency-plan.mjs"
+      - "scripts/release-tools.test.mjs"
+      - "scripts/verify-published-package.mjs"
+      - "scripts/consumer-fixtures/**"
       - "scripts/check-package-bumps.mjs"
       - "scripts/check-package-bumps.test.mjs"
       - "scripts/check-dependency-chain.mjs"
@@ -35,13 +40,23 @@ jobs:
         with:
           fetch-depth: 0
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.15.1
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 24
+          registry-url: "https://npm.pkg.github.com"
+          scope: "@sakurachiyo0v0"
 
-      - name: Test version guard
-        run: node --test scripts/check-package-bumps.test.mjs
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
+
+      - name: Test release guards
+        run: pnpm test:guards
 
       - name: Check version bumps
         run: |
@@ -60,7 +75,7 @@ jobs:
       - name: Check dependency chain
         run: node scripts/check-dependency-chain.mjs
         env:
-          GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
 
   validate:
     name: 工具库全量验证
@@ -103,8 +118,15 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
 
       - name: Publish changed packages
         run: node scripts/publish-packages.mjs
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
+
+      - name: Verify published consumers
+        run: pnpm verify:consumers
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}

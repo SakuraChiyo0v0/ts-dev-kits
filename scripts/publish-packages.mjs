@@ -1,80 +1,25 @@
 #!/usr/bin/env node
-/**
- * 按依赖顺序发布版本有变化的 @sakurachiyo0v0 包到 GitHub Packages。
- *
- * 行为:
- *   - 已发布过且版本相同 → 跳过(可重复安全执行,本地/CI 通用)
- *   - 本地 version 与已发布版本不同 → 发布
- *   - 按 scripts/packages-list.mjs 中的依赖顺序
- *
- * 前置:用户目录 .npmrc 已配置 //npm.pkg.github.com/:_authToken(或 CI 注入 NODE_AUTH_TOKEN)。
- *
- * 用法:node scripts/publish-packages.mjs
- */
-import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { PACKAGES } from "./packages-list.mjs";
+import { createRegistry, REGISTRY, runTool } from "./registry.mjs";
 
-const REGISTRY = "https://npm.pkg.github.com/";
-const NPM = process.platform === "win32" ? "npm.cmd" : "npm";
-
-/**
- * 运行命令:参数走数组(不拼接 shell 字符串,避免 DEP0190 与注入风险)。
- * Windows 上 .cmd 包装器需经 cmd /c 显式执行。
- */
-function spawnCommand(command, args, options = {}) {
-  if (process.platform === "win32") {
-    return spawnSync("cmd", ["/c", command, ...args], options);
-  }
-  return spawnSync(command, args, options);
-}
-
-/** 查询包在 registry 上已发布的版本;未发布返回 undefined。 */
-function publishedVersion(name) {
-  const result = spawnCommand(
-    NPM,
-    ["view", name, "version", "--registry", REGISTRY],
-    { encoding: "utf8" },
-  );
-  if (result.status !== 0) {
-    return undefined; // 404:从未发布
-  }
-  const lines = result.stdout.trim().split(/\r?\n/u);
-  return lines[lines.length - 1]?.trim() || undefined;
-}
-
-let published = 0;
+// 先查询全部精确版本；认证/网络错误发生时，不开始任何发布。
+const registry = createRegistry();
+const pending = [];
 for (const [name, directory] of PACKAGES) {
-  const manifest = JSON.parse(readFileSync(`${directory}/package.json`, "utf8"));
-  const local = manifest.version;
-  const remote = publishedVersion(name);
-
-  if (remote === local) {
-    console.log(`SKIP ${name}@${local} (already published)`);
-    continue;
-  }
-
-  console.log(`\n=== publishing ${name}@${local} (remote: ${remote ?? "none"}) ===`);
-  const result = spawnCommand("pnpm", ["--filter", name, "publish", "--no-git-checks", "--registry", REGISTRY], {
-    stdio: "inherit",
-  });
-  if (result.status !== 0) {
-    // 并发竞态:两个 CI run 同时发布同版本,先到者成功、后到者 409。
-    // 复查 registry:若该版本刚被并发发布,视为跳过,不 fail 整个流程。
-    const nowRemote = publishedVersion(name);
-    if (nowRemote === local) {
-      console.log(`SKIP ${name}@${local} (published concurrently, retry found it)`);
-      continue;
-    }
-    console.error(`FAILED: ${name} (exit ${result.status ?? "signal"})`);
-    process.exit(result.status ?? 1);
-  }
-  console.log(`OK: ${name}`);
-  published += 1;
+  const { version } = JSON.parse(readFileSync(`${directory}/package.json`, "utf8"));
+  if (registry.manifest(name, version)) console.log(`SKIP ${name}@${version} (already published)`);
+  else pending.push({ name, version });
 }
-
-if (published === 0) {
-  console.log("\n无版本变化,全部跳过 ✓");
+if (process.argv.includes("--dry-run")) {
+  console.log(JSON.stringify({ publish: pending }, null, 2));
 } else {
-  console.log(`\n发布完成:${published} 个包 ✓`);
+  for (const { name, version } of pending) {
+    const result = runTool("pnpm", ["--filter", name, "publish", "--no-git-checks", "--registry", REGISTRY], { stdio: "inherit" });
+    // 用新查询检查精确版本，不能把别人的 latest 当作本次发布成功。
+    const published = createRegistry().manifest(name, version);
+    if (!published) throw new Error(`${name}@${version} 发布后未查到目标版本 (exit ${result.status ?? "signal"})`);
+    console.log(`OK: ${name}@${version}${result.status === 0 ? "" : " (concurrent publish verified)"}`);
+  }
+  console.log(`发布完成：${pending.length} 个包`);
 }

@@ -50,8 +50,11 @@ pnpm --filter @sakurachiyo0v0/email test
 包内容变化时按语义化版本更新版本号。现有 CI 在推送到 `main` 后通过检查，再发布版本有变化的包。**推送 main 可能触发发布**，提交、推送和发布分别按授权执行。
 
 ```powershell
-pnpm verify:published @sakurachiyo0v0/email
+pnpm verify:published @sakurachiyo0v0/email@0.2.2
+pnpm verify:consumers
 ```
+
+失败判据与自动验收见 [发布检查与消费验证](docs/release-validation.md)。
 
 发布配置、消费认证和验证步骤见 [GitHub Packages 手册](docs/GITHUB_PACKAGES.md)。
 
