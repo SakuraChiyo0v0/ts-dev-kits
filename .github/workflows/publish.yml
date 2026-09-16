@@ -10,6 +10,7 @@ on:
       - "pnpm-workspace.yaml"
       - "scripts/publish-packages.mjs"
       - "scripts/check-package-bumps.mjs"
+      - "scripts/check-package-bumps.test.mjs"
       - "scripts/check-dependency-chain.mjs"
       - "scripts/packages-list.mjs"
       - "scripts/check-tool-boundaries.mjs"
@@ -24,7 +25,7 @@ permissions:
   packages: read
 
 jobs:
-  # 版本守卫:改了包内容但没 bump 版本号 -> 失败,publish 不会执行
+  # 版本守卫:发布相关内容需 bump，纯测试/文档不触发版本要求
   check-versions:
     name: 校验版本 bump
     runs-on: ubuntu-latest
@@ -38,6 +39,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24
+
+      - name: Test version guard
+        run: node --test scripts/check-package-bumps.test.mjs
 
       - name: Check version bumps
         run: |

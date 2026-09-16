@@ -2,7 +2,8 @@
 /**
  * scripts/check-package-bumps.mjs —— 版本 bump 守卫
  *
- * 检测「改了包内容(packages/**)但没 bump package.json 版本号」的情况。
+ * 检测「改了包的发布相关内容但没 bump package.json 版本号」的情况。
+ * 按仓库约定，包根 tests/、docs/ 和 README.md 不单独触发发布；其余路径保守检查。
  * 被依赖方先发布,版本号不变会被 CI 静默跳过 —— 这个守卫把坑堵在提交/合并前。
  *
  * 用法:
@@ -40,12 +41,12 @@ const baseArg = process.argv[2];
 let changedPaths, versionNow, versionBase;
 if (baseArg) {
   // CI:该提交/PR 相对 base 改动的 packages/ 文件
-  changedPaths = run(`git diff --name-only ${baseArg}...HEAD -- packages/`).split("\n");
+  changedPaths = run(`git diff --no-renames --name-only ${baseArg}...HEAD -- packages/`).split("\n");
   versionNow = (p) => versionOf(`HEAD:packages/${p}/package.json`);
   versionBase = (p) => versionOf(`${baseArg}:packages/${p}/package.json`);
 } else {
   // 本地 hook:本次提交将写入的内容(已暂存)vs HEAD
-  changedPaths = run("git diff --cached --name-only HEAD -- packages/").split("\n");
+  changedPaths = run("git diff --cached --no-renames --name-only HEAD -- packages/").split("\n");
   versionNow = (p) => versionOf(`:0:packages/${p}/package.json`);
   versionBase = (p) => versionOf(`HEAD:packages/${p}/package.json`);
 }
@@ -54,6 +55,8 @@ const pkgs = [...new Set(
   changedPaths
     .map((l) => l.trim())
     .filter((l) => l.startsWith("packages/"))
+    // 只排除包根的非发布目录，不放过 src/tests.ts、dist 或构建配置。
+    .filter((l) => !/^packages\/[^/]+\/(?:tests\/|docs\/|README\.md$)/u.test(l))
     .map((l) => l.split("/")[1])
     .filter(Boolean),
 )];
@@ -64,7 +67,7 @@ for (const p of pkgs) {
   const vBase = versionBase(p);
   if (vNow === undefined || vBase === undefined) continue; // 新包或 HEAD 无 manifest
   if (vNow === vBase) {
-    console.error(`✖ 包 ${p} 的内容有改动,但版本号未 bump(${vNow})`);
+    console.error(`✖ 包 ${p} 的发布相关内容有改动,但版本号未 bump(${vNow})`);
     fail = 1;
   } else {
     console.log(`✓ ${p}:${vBase} -> ${vNow}`);
@@ -73,9 +76,9 @@ for (const p of pkgs) {
 
 if (fail) {
   console.error("\n请先按语义化版本 bump 对应包的 version 后再提交;");
-  console.error("确认为非发布性改动(如仅测试/文档且不需发布)可用 git commit --no-verify 跳过。");
+  console.error("仅包根 tests/、docs/ 和 README.md 改动自动豁免；混合源码或构建改动仍需 bump。");
   process.exit(1);
 }
 if (pkgs.length === 0) {
-  console.log("无包改动,版本守卫通过 ✓");
+  console.log("无包发布相关改动,版本守卫通过 ✓");
 }

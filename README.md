@@ -41,7 +41,7 @@ pnpm check
 pnpm --filter @sakurachiyo0v0/email test
 ```
 
-`pnpm check` 依次执行工具库边界检查、按依赖顺序构建、类型检查、测试、CLI 冒烟、skill 同步和包索引检查。先构建确保干净检出也有跨包类型声明。
+`pnpm check` 依次执行版本守卫回归测试、工具库边界检查、按依赖顺序构建、类型检查、测试、CLI 冒烟、skill 同步和包索引检查。先构建确保干净检出也有跨包类型声明。
 
 发布清单的唯一来源是 `scripts/packages-list.mjs`；根构建自动涵盖全部 workspace 工具包。
 

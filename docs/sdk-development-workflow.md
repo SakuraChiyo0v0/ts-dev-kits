@@ -69,12 +69,13 @@
 
 ## 阶段 6:版本 bump
 
-- 改了 `packages/**` 内容就**必须** bump `package.json` 的 `version`:
+- 修改包的源码、构建配置、依赖/元数据、发布产物等发布相关内容时，必须 bump `package.json` 的 `version`:
   - patch:bug 修复;minor:新功能;major:破坏性变更。
+- 仅修改包根 `tests/`、`docs/` 或 `README.md` 不要求 bump；它们与源码混合改动时仍检查。此约定不意味着 README 不被打包，而是纯文档修订不强制发版。
 - 同步更新 `docs/packages-index.md` 总览表里的版本号。
 
 **守卫**:`scripts/check-package-bumps.mjs`(pre-commit 自动跑)
-- 改了包内容但版本没 bump → **阻止提交**。
+- 改了发布相关内容但版本没 bump → **阻止提交**；本地暂存区与 CI 共用同一规则。
 
 ## 阶段 7:全仓验证
 

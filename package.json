@@ -10,14 +10,15 @@
         "build": "pnpm -r --workspace-concurrency=1 build",
         "typecheck": "pnpm -r --if-present typecheck",
         "test": "pnpm -r --if-present --workspace-concurrency=4 test",
-        "check": "pnpm check:boundaries && pnpm build && pnpm typecheck && pnpm test && node scripts/check-cli-smoke.mjs && node scripts/check-skill-staleness.mjs && node scripts/check-package-index.mjs",
+        "check": "pnpm test:guards && pnpm check:boundaries && pnpm build && pnpm typecheck && pnpm test && node scripts/check-cli-smoke.mjs && node scripts/check-skill-staleness.mjs && node scripts/check-package-index.mjs",
         "gen:structure": "node scripts/gen-repo-structure.mjs",
         "verify:email-package": "node scripts/verify-email-package.mjs",
         "verify:email-git-package": "node scripts/verify-email-git-package.mjs",
         "verify:lol-package": "node scripts/verify-lol-package.mjs",
         "verify:kazumi-package": "node scripts/verify-kazumi-package.mjs",
         "verify:published": "node scripts/verify-published-package.mjs",
-        "check:boundaries": "node scripts/check-tool-boundaries.mjs"
+        "check:boundaries": "node scripts/check-tool-boundaries.mjs",
+        "test:guards": "node --test scripts/check-package-bumps.test.mjs"
     },
     "devDependencies": {
         "@types/node": "^26.1.2",
