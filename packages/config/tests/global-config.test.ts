@@ -25,7 +25,8 @@ describe("全局配置(本地文件)", () => {
     });
   });
 
-  it("文件权限 600", () => {
+  // Windows 的访问权限由 ACL 管理，stat.mode 无法验证 POSIX 0600。
+  it.skipIf(process.platform === "win32")("POSIX 文件权限 600", () => {
     path = join(dir, "perm.json");
     saveGlobalConfig({ url: "https://dav.example.com/dav/" }, path);
     const mode = statSync(path).mode & 0o777;

@@ -65,7 +65,7 @@ describe("DownloadManager", () => {
     const m = new DownloadManager({ root });
     const result = await m.download({ url, filename: "a.mp3", dir: "music/2026" });
     expect(readFileSync(result.filePath, "utf8")).toBe("sub");
-    expect(result.filePath).toContain("music/2026/a.mp3");
+    expect(result.filePath).toBe(join(root, "music", "2026", "a.mp3"));
     server.close();
   });
 
