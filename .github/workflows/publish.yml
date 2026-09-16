@@ -12,11 +12,11 @@ on:
       - "scripts/check-package-bumps.mjs"
       - "scripts/check-dependency-chain.mjs"
       - "scripts/packages-list.mjs"
+      - "scripts/check-tool-boundaries.mjs"
+      - "pnpm-lock.yaml"
+      - ".npmrc"
       - ".github/workflows/publish.yml"
   pull_request:
-    paths:
-      - "packages/**"
-      - "!packages/*/README.md"
   workflow_dispatch:
 
 permissions:
@@ -58,8 +58,25 @@ jobs:
         env:
           GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
 
+  validate:
+    name: 工具库全量验证
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.15.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg fonts-noto-cjk
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: pnpm rebuild
+      - run: pnpm check
+
   publish:
-    needs: check-versions
+    needs: [check-versions, validate]
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:

@@ -11,26 +11,26 @@
 
 | 包名 | 版本 | 用途 | 状态 | 引用方式 |
 | --- | --- | --- | --- | --- |
-| `@sakurachiyo0v0/cli-utils` | 0.1.3 | CLI 工具底座(参数解析/输出/错误处理/进度条,所有 SDK CLI 复用) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/cli-utils` |
-| `@sakurachiyo0v0/email` | 0.2.2 | 与供应商解耦的 Node.js 邮件 SDK | 可用（SMTP 适配器） | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/email` |
-| `@sakurachiyo0v0/ffmpeg` | 0.2.3 | FFmpeg/ffprobe 进程封装 + 媒体处理高层函数 | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/ffmpeg` |
-| `@sakurachiyo0v0/bilibili` | 0.6.5 | B 站 SDK:视频下载(解析/取流/下载/ffmpeg 合并)+ 平台控制(收藏夹/关注/分组/互动/动态/稍后再看/历史) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/bilibili` |
-| `@sakurachiyo0v0/chat-platforms` | 0.1.2 | 统一聊天平台接入 SDK(消息模型/适配器注册表,当前飞书) | 可用(飞书, websocket/webhook) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/chat-platforms` |
-| `@sakurachiyo0v0/lol` | 0.1.3 | 英雄联盟 LCU 本地能力 SDK(召唤师/战绩/段位/对局流程/游戏数据/事件) | 可用(查询+对局感知, 国服 SGP) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/lol` |
-| `@sakurachiyo0v0/account` | 0.5.5 | 跨平台账号认证底座(登录态存储/扫码+密码+浏览器登录骨架/错误模型) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/account` |
-| `@sakurachiyo0v0/netease-music` | 0.8.0 | 网易云音乐下载 SDK(weapi 加密/二维码登录/权限感知品质/试听拦截/取流/歌词/搜索) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/netease-music` |
-| `@sakurachiyo0v0/media-downloader` | 0.2.5 | 通用媒体下载 SDK:目录选择/流式下载+重试+进度/元数据封面写入/下载历史 | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/media-downloader` |
-| `@sakurachiyo0v0/booth` | 0.4.3 | BOOTH(booth.pm)领取/购买 SDK:登录态管理/商品解析/免费领取/付费下单/文件下载 | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/booth` |
-| `@sakurachiyo0v0/vrchat` | 0.4.3 | VRChat 官方 REST API SDK(认证/用户/世界/头像/实例/好友/通知/收藏/群组/文件/权限/系统/经济/审核) | 可用(全功能覆盖) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/vrchat` |
-| `@sakurachiyo0v0/steam` | 0.8.3 | Steam SDK(查询向):Web API/Storefront/Community 三套接口,登录态支持,写操作仅激活码兑换一项 | 可用(全阶段交付) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/steam` |
-| `@sakurachiyo0v0/xiaoheihe` | 0.4.3 | 小黑盒 SDK:扫码登录 + hkey/nonce 签名 + 只读查询(帖子/评论/feed/@消息/用户) | 可用(P0 只读) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/xiaoheihe` |
-| `@sakurachiyo0v0/dsh-sdk-tools` | 0.5.4 | DSH host 插件:把 bilibili/netease-music/ffmpeg/email/lol/vrchat/kazumi 包装成 agent 工具,经 Agent 预设按需暴露 | 可用 | `pnpm add @sakurachiyo0v0/dsh-sdk-tools`(GitHub Packages) |
-| `@sakurachiyo0v0/database` | 0.2.4 | 统一数据访问抽象层:一套 API 访问本地 SQLite 与远程 PostgreSQL/MySQL,配置切换后端 | 可用(SQLite 全量,远程可选) | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/database` |
-| `@sakurachiyo0v0/webdav` | 0.3.2 | WebDAV 配置存取 SDK:基础文件操作 + ConfigStore(原子写/自动备份) + 加密存储 + CLI | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/webdav` |
-| `@sakurachiyo0v0/config` | 0.7.0 | 配置中心 SDK:WebDAV+密钥全局一次配置,namespace 按域存取(可选加密),登录态/配置多端同步 | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/config` |
-| `@sakurachiyo0v0/chuanshengtong` | 0.3.2 | 传声筒:输入文字 + 内置图像模板程序化合成图片(CLI + SDK,不依赖 AI,支持富文本) | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/chuanshengtong` |
-| `@sakurachiyo0v0/logger` | 0.2.2 | 轻量级日志模块:级别控制/命名空间/多机主机标识/子 logger 派生/可替换 transport | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/logger` |
-| `@sakurachiyo0v0/kazumi` | 0.2.2 | Kazumi 规则兼容番剧采集下载 SDK:声明式规则引擎(XPath/API 双模式)+ m3u8 下载合并 mp4 + 规则 WebDAV 多端同步 | 可用 | `git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/kazumi` |
+| `@sakurachiyo0v0/cli-utils` | 0.1.3 | CLI 工具底座(参数解析/输出/错误处理/进度条,所有 SDK CLI 复用) | 可用 | `pnpm add @sakurachiyo0v0/cli-utils` |
+| `@sakurachiyo0v0/email` | 0.2.2 | 与供应商解耦的 Node.js 邮件 SDK | 可用（SMTP 适配器） | `pnpm add @sakurachiyo0v0/email` |
+| `@sakurachiyo0v0/ffmpeg` | 0.2.3 | FFmpeg/ffprobe 进程封装 + 媒体处理高层函数 | 可用 | `pnpm add @sakurachiyo0v0/ffmpeg` |
+| `@sakurachiyo0v0/bilibili` | 0.6.5 | B 站 SDK:视频下载(解析/取流/下载/ffmpeg 合并)+ 平台控制(收藏夹/关注/分组/互动/动态/稍后再看/历史) | 可用 | `pnpm add @sakurachiyo0v0/bilibili` |
+| `@sakurachiyo0v0/chat-platforms` | 0.1.2 | 统一聊天平台接入 SDK(消息模型/适配器注册表,当前飞书) | 可用(飞书, websocket/webhook) | `pnpm add @sakurachiyo0v0/chat-platforms` |
+| `@sakurachiyo0v0/lol` | 0.1.3 | 英雄联盟 LCU 本地能力 SDK(召唤师/战绩/段位/对局流程/游戏数据/事件) | 可用(查询+对局感知, 国服 SGP) | `pnpm add @sakurachiyo0v0/lol` |
+| `@sakurachiyo0v0/account` | 0.5.5 | 跨平台账号认证底座(登录态存储/扫码+密码+浏览器登录骨架/错误模型) | 可用 | `pnpm add @sakurachiyo0v0/account` |
+| `@sakurachiyo0v0/netease-music` | 0.8.0 | 网易云音乐下载 SDK(weapi 加密/二维码登录/权限感知品质/试听拦截/取流/歌词/搜索) | 可用 | `pnpm add @sakurachiyo0v0/netease-music` |
+| `@sakurachiyo0v0/media-downloader` | 0.2.5 | 通用媒体下载 SDK:目录选择/流式下载+重试+进度/元数据封面写入/下载历史 | 可用 | `pnpm add @sakurachiyo0v0/media-downloader` |
+| `@sakurachiyo0v0/booth` | 0.4.3 | BOOTH(booth.pm)领取/购买 SDK:登录态管理/商品解析/免费领取/付费下单/文件下载 | 可用 | `pnpm add @sakurachiyo0v0/booth` |
+| `@sakurachiyo0v0/vrchat` | 0.4.3 | VRChat 官方 REST API SDK(认证/用户/世界/头像/实例/好友/通知/收藏/群组/文件/权限/系统/经济/审核) | 可用(全功能覆盖) | `pnpm add @sakurachiyo0v0/vrchat` |
+| `@sakurachiyo0v0/steam` | 0.8.3 | Steam SDK(查询向):Web API/Storefront/Community 三套接口,登录态支持,写操作仅激活码兑换一项 | 可用(全阶段交付) | `pnpm add @sakurachiyo0v0/steam` |
+| `@sakurachiyo0v0/xiaoheihe` | 0.4.3 | 小黑盒 SDK:扫码登录 + hkey/nonce 签名 + 只读查询(帖子/评论/feed/@消息/用户) | 可用(P0 只读) | `pnpm add @sakurachiyo0v0/xiaoheihe` |
+| `@sakurachiyo0v0/database` | 0.2.4 | 统一数据访问抽象层:一套 API 访问本地 SQLite 与远程 PostgreSQL/MySQL,配置切换后端 | 可用(SQLite 全量,远程可选) | `pnpm add @sakurachiyo0v0/database` |
+| `@sakurachiyo0v0/webdav` | 0.3.2 | WebDAV 配置存取 SDK:基础文件操作 + ConfigStore(原子写/自动备份) + 加密存储 + CLI | 可用 | `pnpm add @sakurachiyo0v0/webdav` |
+| `@sakurachiyo0v0/config` | 0.7.0 | 配置中心 SDK:WebDAV+密钥全局一次配置,namespace 按域存取(可选加密),登录态/配置多端同步 | 可用 | `pnpm add @sakurachiyo0v0/config` |
+| `@sakurachiyo0v0/chuanshengtong` | 0.3.2 | 传声筒:输入文字 + 内置图像模板程序化合成图片(CLI + SDK,不依赖 AI,支持富文本) | 可用 | `pnpm add @sakurachiyo0v0/chuanshengtong` |
+| `@sakurachiyo0v0/logger` | 0.2.2 | 轻量级日志模块:级别控制/命名空间/多机主机标识/子 logger 派生/可替换 transport | 可用 | `pnpm add @sakurachiyo0v0/logger` |
+| `@sakurachiyo0v0/kazumi` | 0.2.2 | Kazumi 规则兼容番剧采集下载 SDK:声明式规则引擎(XPath/API 双模式)+ m3u8 下载合并 mp4 + 规则 WebDAV 多端同步 | 可用 | `pnpm add @sakurachiyo0v0/kazumi` |
+| `@sakurachiyo0v0/ugreen` | 0.2.0 | 绿联 NAS 登录、文件上传与列表 | SDK | `pnpm add @sakurachiyo0v0/ugreen` |
 
 ## 包详情
 
@@ -746,52 +746,6 @@ pnpm --filter @sakurachiyo0v0/xiaoheihe build       # 构建 ESM + CJS + d.ts + 
 
 **更多细节:** [`packages/xiaoheihe/README.md`](../packages/xiaoheihe/README.md)
 
-### `@sakurachiyo0v0/dsh-sdk-tools`
-
-DSH(DeepSeek Harness)host 插件,把本仓库功能包包装成 agent 工具,通过 **Agent 预设**按需暴露——选中 `ts-dev-kits` 预设的会话才拥有这些工具,其余会话零污染、0 token 开销。设计文档 [`docs/superpowers/specs/2026-08-23-dsh-sdk-tools-design.md`](superpowers/specs/2026-08-23-dsh-sdk-tools-design.md)。
-
-**适用环境：** Node.js 20+ 且已安装 DSH(`@deepseek-ai/dsh`,对齐 `0.2.0-rc.2`);各功能包真实前置条件依旧生效(lol 需本机客户端、email 需配置 SMTP、bilibili/网易云/vrchat 需登录态)。
-
-**机制：** 插件不设 `dsh.bundle`,是普通 profile 依赖;工具由预设的 `agent.cordis.yml` 声明挂载,注册落在该预设的 scope 层,只有加入该预设的 agent 可见。每包有 `enabled` 开关,未启用即不注册 → 不进 system prompt。
-
-> ⚠️ **消费方式限制:** 本插件只能装进 DSH profile(`dsh plugin --profile <name> add`),**不能独立安装到普通 npm 项目**——其传递依赖 `@deepseek-ai/*` 只有 rc 预发布版,公共 npm 源无法解析(`ERR_PNPM_NO_MATCHING_VERSION`)。DSH 运行时自带完整的 rc 依赖树,是唯一正确的消费环境。
-
-**工具清单：**
-
-- bilibili:`bilibili_parse` / `bilibili_download`
-- netease-music:`netease_parse` / `netease_download` / `netease_status`
-- ffmpeg:`ffmpeg_probe` / `ffmpeg_transcode` / `ffmpeg_extract_audio` / `ffmpeg_thumbnail`
-- email:`email_verify` / `email_send`(默认关,配置 SMTP 后启用)
-- lol:`lol_summoner` / `lol_match_history` / `lol_ranked`
-- vrchat:`vrchat_whoami` / `vrchat_user` / `vrchat_worlds_search`(默认关,需本地 VRChat 登录态 auth.json)
-- logs:`logs_query` — 查询 SDK 日志(等级/设备/命名空间/关键词/时间,默认查远程跨机聚合)
-- kazumi:`kazumi_search` / `kazumi_roads` / `kazumi_download` — 番剧规则采集与下载(搜索/线路/下载 mp4;规则由用户导入规则目录)
-
-**安全与合规：** SMTP 密码等敏感配置只存在于 host 端预设 config;工具返回与错误消息脱敏;netease 的试听拦截/权限拒绝硬规则在 SDK 层强制,工具层不绕过。
-
-**安装方式：**
-
-```powershell
-# 1. .npmrc 配置 @sakurachiyo0v0 指向 GitHub Packages(仓库已公开,无需 token)
-#    @sakurachiyo0v0:registry=https://npm.pkg.github.com/
-# 2. 装进 DSH profile 依赖(需先在 GitHub Packages 发布,见 docs/GITHUB_PACKAGES.md)
-npx -p @deepseek-ai/dsh dsh plugin --profile <name> add @sakurachiyo0v0/dsh-sdk-tools
-# 3. 复制随包分发的预设模板到 DSH 用户预设目录
-Copy-Item -Recurse <profile>/node_modules/@sakurachiyo0v0/dsh-sdk-tools/presets/ts-dev-kits "$env:DSH_HOME/.agent-presets/"
-# 4. 重启 DSH,新建会话选择 ts-dev-kits 预设
-```
-
-仓库内开发时也可用本地路径安装;未发布跨机时用 git 子目录依赖。
-
-**在仓库内的验证方式：**
-
-```powershell
-pnpm --filter @sakurachiyo0v0/dsh-sdk-tools typecheck
-pnpm --filter @sakurachiyo0v0/dsh-sdk-tools test
-pnpm --filter @sakurachiyo0v0/dsh-sdk-tools build
-```
-
-**更多细节：** [`packages/dsh-sdk-tools/README.md`](../packages/dsh-sdk-tools/README.md)
 
 ### `@sakurachiyo0v0/database`
 
@@ -1110,3 +1064,7 @@ pnpm verify:kazumi-package                        # pack 后从临时消费项�
 **合规边界:** SDK 是中立规则引擎,不内置任何站点规则;不做任何站点绕过/伪装;`CAPTCHA` 只感知不规避。
 
 **更多细节:** [`packages/kazumi/README.md`](../packages/kazumi/README.md)
+
+### `@sakurachiyo0v0/ugreen`
+
+绿联 NAS 文件访问工具，完整接口与 CLI 说明见 [包文档](../packages/ugreen/README.md)。

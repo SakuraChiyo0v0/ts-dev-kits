@@ -13,6 +13,9 @@
 
 ## 阶段 0:想法确认
 
+- 遵守 [工具库边界](repository-boundaries.md)：应用、部署服务和宿主专用插件在仓库外维护。
+- 当前未配置 OpenSpec，沿用本仓库已有 spec 流程；已在会话中明确批准的范围无需重复审批。
+
 - 明确:这是「给现有包加功能」还是「新建包」?
   - 加功能:在 `packages/<name>/src/api/` 新增领域模块,接进 `client.ts`。
   - 新包:按 `docs/package-template.md` 建骨架,更新 `docs/packages-index.md`。
@@ -76,7 +79,7 @@
 ## 阶段 7:全仓验证
 
 ```powershell
-pnpm check   # typecheck + test + build + skill 同步校验
+pnpm check   # 边界 + build + typecheck + test + CLI/skill/索引校验
 ```
 
 **守卫**:`pnpm check` 全绿(含 `check-skill-staleness.mjs`)。

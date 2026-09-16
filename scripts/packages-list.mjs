@@ -14,6 +14,7 @@ export const PACKAGES = [
   ["@sakurachiyo0v0/account", "packages/account"],
   ["@sakurachiyo0v0/email", "packages/email"],
   ["@sakurachiyo0v0/ffmpeg", "packages/ffmpeg"],
+  ["@sakurachiyo0v0/media-downloader", "packages/media-downloader"],
   ["@sakurachiyo0v0/kazumi", "packages/kazumi"],
   ["@sakurachiyo0v0/lol", "packages/lol"],
   ["@sakurachiyo0v0/netease-music", "packages/netease-music"],
@@ -24,6 +25,5 @@ export const PACKAGES = [
   ["@sakurachiyo0v0/steam", "packages/steam"],
   ["@sakurachiyo0v0/xiaoheihe", "packages/xiaoheihe"],
   ["@sakurachiyo0v0/database", "packages/database"],
-  ["@sakurachiyo0v0/dsh-sdk-tools", "packages/dsh-sdk-tools"],
 ];
 

@@ -43,7 +43,7 @@ const ROW_RE = /^(\| `(@sakurachiyo0v0\/[^`]+)` \| )([0-9][0-9.]*)( \|.*)$/u;
 
 const versions = collectVersions();
 const text = readFileSync(DOC, "utf8");
-const lines = text.split(/\n/u);
+const lines = text.split(/\r?\n/u);
 
 const fixable = []; // { line, name, docVersion, realVersion }
 const missingRows = []; // 包在 package.json 但文档表没有对应行

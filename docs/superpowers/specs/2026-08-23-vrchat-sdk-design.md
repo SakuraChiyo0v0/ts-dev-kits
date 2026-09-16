@@ -1,5 +1,7 @@
 # `@sakurachiyo0v0/vrchat` VRChat 官方 API SDK 设计
 
+> 2026-09-16 边界变更：本文保留历史设计；其中 DSH 集成已移入 `backup/apps-and-dsh-2026-09-16`，不再属于当前工具库。
+
 状态:用户已批准
 日期:2026-08-23
 

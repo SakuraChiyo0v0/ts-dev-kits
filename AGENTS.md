@@ -6,9 +6,17 @@
 
 个人 TypeScript 开发工具 monorepo,用 pnpm workspace 组织。公开 GitHub 仓库 `SakuraChiyo0v0/ts-dev-kits`;包发布到 GitHub Packages,不发布到公共 npm registry。
 
-- `packages/*` — 可复用依赖包(`@sakurachiyo0v0/<name>`;当前有 `cli-utils`、`account`、`email`、`ffmpeg`、`bilibili`、`netease-music`、`chat-platforms`、`lol`、`dsh-sdk-tools`)
+- `packages/*` — 可复用依赖包(`@sakurachiyo0v0/<name>`;当前有 `cli-utils`、`account`、`email`、`ffmpeg`、`bilibili`、`netease-music`、`chat-platforms`、`lol`)
 - `docs/` — 设计文档、规范、包索引与模板
 - `scripts/` — 仓库级验证脚本
+
+## 工具库边界
+
+- 主分支仅维护供外部项目安装的工具包；具体边界见 `docs/repository-boundaries.md`。
+- 不引入成熟应用、部署服务、产品页面或宿主专用插件；示例只展示 SDK 的最小调用。
+- `packages/*` 必须进入 `scripts/packages-list.mjs`，可通过 GitHub Packages 独立消费。
+- CLI 按需提供；已有 CLI 变更时同步对应 skill，不要求所有包都有 CLI。
+- 应用与 DSH 插件保存在 `backup/apps-and-dsh-2026-09-16`，不重新并回主分支。
 
 ## 常用命令
 
@@ -16,10 +24,10 @@
 
 ```powershell
 pnpm install              # 安装全部 workspace 依赖
-pnpm check                # typecheck + test + build 全仓验证
+pnpm check                # 边界 + build + typecheck + test + CLI/文档检查
 pnpm typecheck            # 递归类型检查
 pnpm test                 # 递归运行测试
-pnpm build                # 构建全部包(email + ffmpeg)
+pnpm build                # 按依赖顺序构建全部工具包
 pnpm --filter @sakurachiyo0v0/email test    # 单包测试
 pnpm --filter @sakurachiyo0v0/email build   # 单包构建
 pnpm --filter @sakurachiyo0v0/ffmpeg test   # ffmpeg 包测试
@@ -83,17 +91,6 @@ pnpm verify:published @sakurachiyo0v0/<name>  # 发布后从 GitHub Packages 消
   - 参数/语义变化(命令名不变)会触发 mtime **警告**,需人工检查。
 - 对照表(如编码 id)以源码 `types.ts` 枚举为权威,skill 只引用不另造。
 - 确认为临时跳过可用 `git commit --no-verify`,但 skill 长期不同步会导致 AI 按旧手册操作出错。
-
-### dsh-sdk-tools 功能清单(四处同步,守卫拦截)
-
-`@sakurachiyo0v0/dsh-sdk-tools` 里每个功能包出现在**四处**,新增/移除包时必须同步:
-
-1. `src/capabilities.ts` — 工具注册分支(`config.<name>.enabled`)
-2. `src/client/settings-page.tsx` — 设置页 FEATURES(`key: "<name>"`) + `SettingsShape` 字段
-3. `presets/ts-dev-kits/agent.cordis.yml` — 顶层 config 键(`<name>:`)
-4. `src/settings.ts` — host settings 文档开关(`SettingsShapeInput` / `SettingsSchema`)
-
-`scripts/check-dsh-tools-consistency.mjs`(已接入 `pnpm check` 与 pre-commit)自动比对四处清单,不一致阻止提交。改 dsh-sdk-tools 功能时先跑 `node scripts/check-dsh-tools-consistency.mjs` 确认。
 
 ## 已知环境注意事项
 

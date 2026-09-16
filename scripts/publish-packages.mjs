@@ -5,7 +5,7 @@
  * 行为:
  *   - 已发布过且版本相同 → 跳过(可重复安全执行,本地/CI 通用)
  *   - 本地 version 与已发布版本不同 → 发布
- *   - 按依赖图单向顺序(cli-utils → account → email → ffmpeg → kazumi → lol → netease-music → booth → bilibili → chat-platforms → vrchat → steam → xiaoheihe → dsh-sdk-tools)
+ *   - 按 scripts/packages-list.mjs 中的依赖顺序
  *
  * 前置:用户目录 .npmrc 已配置 //npm.pkg.github.com/:_authToken(或 CI 注入 NODE_AUTH_TOKEN)。
  *
@@ -55,7 +55,7 @@ for (const [name, directory] of PACKAGES) {
   }
 
   console.log(`\n=== publishing ${name}@${local} (remote: ${remote ?? "none"}) ===`);
-  const result = spawnCommand("pnpm", ["--filter", name, "publish", "--no-git-checks"], {
+  const result = spawnCommand("pnpm", ["--filter", name, "publish", "--no-git-checks", "--registry", REGISTRY], {
     stdio: "inherit",
   });
   if (result.status !== 0) {

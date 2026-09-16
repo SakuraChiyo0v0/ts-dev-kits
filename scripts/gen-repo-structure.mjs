@@ -5,7 +5,7 @@
  * 重新扫描仓库并重写 repo-structure.html(仓库结构总览页)的注入数据:
  *   1. 目录树 TREE_RAW     —— 从实际文件系统扫描(排除 .git / node_modules / dist / pnpm-lock.yaml)
  *   2. 包清单 PACKAGES     —— 读 packages 下各包的 package.json 的 name/version/dependencies
- *   3. 构建顺序 BUILD_ORDER—— 解析根 package.json 的 build 脚本里 --filter 顺序
+ *   3. 构建顺序 BUILD_ORDER—— 读取发布清单中的拓扑顺序
  *   4. 快照时间 GENERATED_AT
  *
  * 依赖图(节点/边/分层/域分组)由 HTML 端 JS 根据 PACKAGES 自算布局,本脚本不注入坐标。
@@ -21,21 +21,25 @@
 import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { PACKAGES as RELEASE_PACKAGES } from './packages-list.mjs';
+import { execFileSync } from 'node:child_process';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const HTML_PATH = join(ROOT, 'repo-structure.html');
 const EXCLUDE_DIRS = new Set(['.git', 'node_modules', 'dist', 'lib']);
 const EXCLUDE_FILES = new Set(['pnpm-lock.yaml']);
+// 排除本机临时脚本、配置和生成缓存。
+const visible = new Set(execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '-z'], { cwd: ROOT, encoding: 'utf8' }).split('\0').filter(p => !p.includes('.tmp.')));
 
 /* ---------- 1. 扫描目录树 ---------- */
 const treeLines = [];
-function walk(dir, indent) {
+function walk(dir, indent, prefix = '') {
   const entries = readdirSync(dir, { withFileTypes: true })
-    .filter((e) => (e.isDirectory() ? !EXCLUDE_DIRS.has(e.name) : !EXCLUDE_FILES.has(e.name)))
+    .filter((e) => { const p = prefix + e.name; return e.isDirectory() ? !EXCLUDE_DIRS.has(e.name) && [...visible].some(f => f.startsWith(p + '/')) : !EXCLUDE_FILES.has(e.name) && visible.has(p); })
     .sort((a, b) => (a.isDirectory() === b.isDirectory() ? a.name.localeCompare(b.name) : a.isDirectory() ? -1 : 1));
   for (const e of entries) {
     treeLines.push(`${indent}${e.isDirectory() ? 'dir' : 'file'}|${e.name}`);
-    if (e.isDirectory()) walk(join(dir, e.name), indent + '  ');
+    if (e.isDirectory()) walk(join(dir, e.name), indent + '  ', prefix + e.name + '/');
   }
 }
 walk(ROOT, '');
@@ -53,7 +57,6 @@ const DESCRIPTIONS = {
   'ffmpeg': 'FFmpeg / ffprobe 进程封装 + 视频 / 音频 / 图片处理高层函数,带进度回调。',
   'bilibili': 'B 站视频下载 SDK:链接解析、DASH 取流、可配置下载器、ffmpeg 合并,内置 WBI 签名。',
   'netease-music': '网易云音乐下载 SDK:自研 weapi 加密、二维码登录、权限感知品质、试听拦截硬规则。',
-  'dsh-sdk-tools': 'DSH host 插件:把各功能包包装成 agent 工具,经 Agent 预设按需暴露,其余会话零污染。',
   'steam': 'Steam SDK(查询向):Web API / Storefront / Community 三套接口,登录态支持,零写操作。',
   'logger': '轻量级日志模块:级别控制、命名空间、多机来源标识、子 logger 派生、可替换 transport,全仓公共底座。',
   'webdav': 'WebDAV 配置存取 SDK:基础文件操作 + 配置文件存储高层 API(原子写 + 自动备份),带 CLI,适合多端同步的轻量配置场景。',
@@ -69,7 +72,7 @@ const COLORS = {
   'cli-utils': '#38bdf8', 'account': '#fb923c',
   'chat-platforms': '#34d399', 'lol': '#a78bfa', 'email': '#f472b6',
   'ffmpeg': '#22d3ee', 'bilibili': '#60a5fa', 'netease-music': '#f87171',
-  'dsh-sdk-tools': '#e879f9', 'steam': '#94a3b8'
+  'steam': '#94a3b8'
 };
 const FALLBACK_COLORS = ['#38bdf8', '#a78bfa', '#34d399', '#fbbf24', '#f472b6', '#22d3ee', '#60a5fa', '#f87171', '#fb923c', '#e879f9'];
 
@@ -88,17 +91,12 @@ for (const e of readdirSync(PKG_DIR, { withFileTypes: true })) {
     deps: Object.entries(pj.dependencies || {})
       .filter(([k]) => k.startsWith('@sakurachiyo0v0/'))
       .map(([k]) => k.replace(/^@sakurachiyo0v0\//, '')),
-    desc: DESCRIPTIONS[id] || '待补充描述(在 scripts/gen-repo-structure.mjs 的 DESCRIPTIONS 中补充)。'
+    desc: DESCRIPTIONS[id] || pj.description || '可复用工具包'
   });
 }
 
-/* ---------- 3. 构建顺序(解析根 build 脚本) ---------- */
-const rootPj = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
-const buildOrder = [];
-const buildScript = rootPj.scripts?.build || '';
-const re = /pnpm --filter @sakurachiyo0v0\/([\w-]+) build/g;
-let mm;
-while ((mm = re.exec(buildScript))) buildOrder.push(mm[1]);
+/* ---------- 3. 构建顺序(发布清单中的拓扑顺序) ---------- */
+const buildOrder = RELEASE_PACKAGES.map(([name]) => name.replace('@sakurachiyo0v0/', ''));
 const seen = new Set(buildOrder);
 // 未进 build 脚本的包按字母序补在末尾,保证列表完整
 found.sort((a, b) => {
@@ -110,6 +108,7 @@ found.sort((a, b) => {
 
 /* ---------- 5. 重写 HTML(全部使用稳定正则,可重复执行) ---------- */
 let html = readFileSync(HTML_PATH, 'utf8');
+if (/^(<{7}|={7}|>{7})/m.test(html)) throw new Error('repo-structure.html 存在未解决的合并冲突');
 const report = { tree: 0, pkg: 0, order: 0, stamp: 0 };
 const noStamp = process.argv.includes('--no-stamp');
 
@@ -129,17 +128,7 @@ if (!noStamp) {
 
 replacements.forEach(([rex, replacement, key]) => {
   if (!rex.test(html)) {
-    console.warn(`  ! 未找到可替换的标记: ${rex}`);
-    return;
-  }
-  html = html.replace(rex, replacement);
-  report[key] = 1;
-});
-
-replacements.forEach(([rex, replacement, key]) => {
-  if (!rex.test(html)) {
-    console.warn(`  ! 未找到可替换的标记: ${rex}`);
-    return;
+    throw new Error(`未找到可替换的标记: ${rex}`);
   }
   html = html.replace(rex, replacement);
   report[key] = 1;

@@ -1,5 +1,7 @@
 # `@sakurachiyo0v0/kazumi` 番剧规则采集下载 SDK 设计
 
+> 2026-09-16 边界变更：本文保留历史设计；其中 DSH 集成已移入 `backup/apps-and-dsh-2026-09-16`，不再属于当前工具库。
+
 状态:用户已批准(2026-08-28;包名定为 `@sakurachiyo0v0/kazumi`;实现已完成,见 `packages/kazumi/`)
 日期:2026-08-28
 

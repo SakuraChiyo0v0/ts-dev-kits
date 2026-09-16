@@ -1,106 +1,64 @@
 # ts-dev-kits
 
-个人 TypeScript 开发工具 monorepo。远程仓库为公开 GitHub 仓库 [`SakuraChiyo0v0/ts-dev-kits`](https://github.com/SakuraChiyo0v0/ts-dev-kits)。
+可复用 TypeScript / Node.js 工具库。各包独立版本，发布到 **GitHub Packages**，由其他项目安装使用。主分支不承载成熟应用、部署服务或宿主专用插件。
 
-## 当前包
+## 工具包
 
-| 名称 | 用途 | 状态 |
-| --- | --- | --- |
-| `@sakurachiyo0v0/cli-utils` | 各 SDK CLI 共享的解析/输出/错误工具 | 可用 |
-| `@sakurachiyo0v0/ffmpeg` | FFmpeg/ffprobe 进程封装与媒体处理函数 | 可用 |
-| `@sakurachiyo0v0/email` | 与供应商解耦的 Node.js 邮件 SDK | SMTP 适配器可用 |
-| `@sakurachiyo0v0/bilibili` | B 站视频下载 SDK(解析/取流/下载/ffmpeg 合并) | 可用(投稿视频) |
-| `@sakurachiyo0v0/chat-platforms` | 统一聊天平台接入 SDK(消息模型/适配器注册表,当前飞书) | 可用 |
-| `@sakurachiyo0v0/lol` | 英雄联盟 LCU 本地能力 SDK | 可用(查询+对局感知,国服 SGP) |
-| `@sakurachiyo0v0/vrchat` | VRChat 官方 REST API SDK(认证/用户/世界/头像/实例/好友/通知/收藏/群组/文件/经济/审核) | 可用(全功能覆盖) |
-| `@sakurachiyo0v0/steam` | Steam SDK(查询向):Web API / Storefront / Community 三套接口,登录态支持(密码+Guard/TOTP/QR/cookie),写操作仅激活码兑换 | 可用(全阶段交付) |
-| `@sakurachiyo0v0/xiaoheihe` | 小黑盒 SDK:扫码登录 + hkey/nonce 签名 + 只读查询(帖子/评论/feed/@消息/用户) | 可用(P0 只读) |
-| `@sakurachiyo0v0/kazumi` | Kazumi 规则兼容番剧采集下载 SDK:声明式规则引擎(XPath/API 双模式)+ m3u8 下载合并 mp4 | 可用 |
+当前共 20 个包，统一使用 `@sakurachiyo0v0/` 前缀。
 
-所有包已发布到 GitHub Packages,详见下方「发布流程」。
+| 职责 | 包 |
+| --- | --- |
+| 基础设施 | `logger`、`cli-utils`、`webdav`、`config`、`database`、`account` |
+| 通用功能 | `ffmpeg`、`media-downloader`、`email`、`chat-platforms`、`chuanshengtong` |
+| 平台接入 | `bilibili`、`netease-music`、`kazumi`、`booth`、`steam`、`vrchat`、`lol`、`xiaoheihe`、`ugreen` |
 
-## 开始使用
+职责分类不等同于构建顺序。版本与接口见 [包索引](docs/packages-index.md) 和各包 README；本地版本不代表该版本已发布。
 
-需要 Node.js 20+ 和 pnpm 11。
+## 在其他项目使用
 
-```powershell
-pnpm install
-pnpm check
-```
-
-常用命令：
-
-```powershell
-pnpm --filter @sakurachiyo0v0/email test
-pnpm --filter @sakurachiyo0v0/email build
-pnpm --filter @sakurachiyo0v0/ffmpeg test
-pnpm --filter @sakurachiyo0v0/ffmpeg build
-pnpm verify:email-package
-pnpm verify:email-git-package
-```
-
-## 使用 `@sakurachiyo0v0/email`
-
-在本 monorepo 的其他 workspace 包中：
-
-```powershell
-pnpm add @sakurachiyo0v0/email@workspace:*
-```
-
-在另一台电脑上（仓库公开，git 子目录依赖无需访问授权），先为 Git 依赖的构建脚本添加精确授权：
-
-```yaml
-# 消费项目的 pnpm-workspace.yaml
-allowBuilds:
-  '@sakurachiyo0v0/email@git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git': true
-```
-
-然后安装 monorepo 子目录：
-
-```powershell
-pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/email"
-```
-
-完整 API、SMTP 配置和固定提交示例见 [`packages/email/README.md`](packages/email/README.md)。
-
-## 发布流程(GitHub Packages + CI 自动发布)
-
-所有包发布到 **GitHub Packages**(`npm.pkg.github.com`,仓库公开,安装方无需 token)。发布由 **CI 自动完成**:push 到 `main` 时,`.github/workflows/publish.yml` 会检测各包本地版本与已发布版本,有变化的按依赖顺序(`cli-utils → webdav → config → account → email → ffmpeg → kazumi → lol → netease-music → booth → bilibili → chat-platforms → vrchat → steam → xiaoheihe → database → dsh-sdk-tools`)自动发布,并把 `workspace:*` 依赖转成实际版本号。
-
-### ⚠️ 更新包必须按需 bump 版本号
-
-**CI 只发布版本有变化的包** —— 版本号不变(哪怕代码改了)也会被跳过,不会重复发布同版本。因此每次更新包内容,务必同步提升该包 `package.json` 的 `version`(语义化版本,如 `0.1.0` → `0.1.1` / `0.2.0`):
-
-```powershell
-# 1. 改 packages/<name>/package.json 的 version
-# 2. 提交并推送
-git add packages/<name>/package.json
-git commit -m "chore: bump <name> to 0.2.0"
-git push origin main     # CI 自动检测并发布
-```
-
-### 消费方安装(任何项目/机器)
+在消费项目 `.npmrc` 配置 registry；令牌通过环境变量提供，不提交实际令牌：
 
 ```ini
-# .npmrc 加一行
 @sakurachiyo0v0:registry=https://npm.pkg.github.com/
+//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
 ```
+
+`NODE_AUTH_TOKEN` 使用具有 `read:packages` 权限的 GitHub classic PAT。公开 npm 包也需要认证，详见 [GitHub 官方说明](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-npm-registry)。
 
 ```powershell
-pnpm add @sakurachiyo0v0/bilibili          # 自动带上 account / cli-utils / ffmpeg
-pnpm add @sakurachiyo0v0/email
+pnpm add --save-exact @sakurachiyo0v0/email
 ```
 
-### 手动发布(CI 之外,可选)
+通过公开入口导入，例如 `import { EmailClient } from "@sakurachiyo0v0/email"`。不要引用本仓库源码路径。原生依赖、外部二进制及运行要求见各包文档。
+
+## 本地维护
+
+需要 Node.js 20+、pnpm 11.15.1；CI 使用 Node.js 24。
 
 ```powershell
-node scripts/publish-packages.mjs
+pnpm install --frozen-lockfile
+pnpm check
+pnpm --filter @sakurachiyo0v0/email test
 ```
 
-脚本可重复执行:已发布且版本相同的包会自动跳过。完整说明见 [`docs/GITHUB_PACKAGES.md`](docs/GITHUB_PACKAGES.md)。
+`pnpm check` 依次执行工具库边界检查、按依赖顺序构建、类型检查、测试、CLI 冒烟、skill 同步和包索引检查。先构建确保干净检出也有跨包类型声明。
 
-## 版本约定
+发布清单的唯一来源是 `scripts/packages-list.mjs`；根构建自动涵盖全部 workspace 工具包。
 
-可复用包遵循语义化版本。跨机器使用时优先把依赖固定到已审核的提交;正式版本使用不可变 Git tag,避免默认分支更新改变既有项目的安装结果。
+## 发布与消费验证
 
-Git 提交、推送、tag 和发布是独立操作:**提交/推送不会自动发布** —— 发布只发生在「push 到 main + 对应包版本有变化」时(CI 触发),或手动运行发布脚本。
+包内容变化时按语义化版本更新版本号。现有 CI 在推送到 `main` 后通过检查，再发布版本有变化的包。**推送 main 可能触发发布**，提交、推送和发布分别按授权执行。
+
+```powershell
+pnpm verify:published @sakurachiyo0v0/email
+```
+
+发布配置、消费认证和验证步骤见 [GitHub Packages 手册](docs/GITHUB_PACKAGES.md)。
+
+## 仓库边界与备份
+
+- [工具库边界](docs/repository-boundaries.md)：哪些内容留在仓库、如何恢复历史应用。
+- [SDK 开发流程](docs/sdk-development-workflow.md)：实现、测试、文档与版本管理。
+- [新包模板](docs/package-template.md)：新增包的结构与约定。
+
+历史应用 `account-panel`、`browser-proxy` 和 DSH 适配包保存在备份分支 `backup/apps-and-dsh-2026-09-16`（已推送到 origin），不在主分支继续开发；暂未建立独立应用仓库。
