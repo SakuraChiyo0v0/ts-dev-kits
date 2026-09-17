@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/kazumi",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Kazumi-rule-compatible anime scraping & download SDK: declarative rule engine (XPath + API modes) + m3u8 download merged to mp4 via ffmpeg",
   "license": "UNLICENSED",
   "publishConfig": {
@@ -41,7 +41,8 @@
     "@sakurachiyo0v0/logger": "workspace:*",
     "@xmldom/xmldom": "^0.9.8",
     "cheerio": "^1.0.0",
-    "xpath": "^0.0.34"
+    "xpath": "^0.0.34",
+    "@sakurachiyo0v0/config-webdav": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^26.1.2",

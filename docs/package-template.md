@@ -126,4 +126,5 @@ pnpm 按依赖解析的是构建产物:`@sakurachiyo0v0/<name>` 的 `exports` �
 - [ ] `pnpm --filter @sakurachiyo0v0/<name> test` 通过
 - [ ] `pnpm --filter @sakurachiyo0v0/<name> build` 产出 `dist/index.js`、`dist/index.cjs`、`dist/index.d.ts`
 - [ ] `pnpm check` 全仓通过
-- [ ] 在 `docs/packages-index.md` 总览表追加一行并补详情
+- [ ] 在 `scripts/packages-list.mjs` 登记发布顺序，在 `scripts/package-groups.mjs` 登记职责分类
+- [ ] 在 README 分类导航及 `docs/packages-index.md` 对应分类表追加包并补详情，运行 `pnpm check:boundaries` 检查依赖方向

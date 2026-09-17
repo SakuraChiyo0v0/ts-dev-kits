@@ -82,10 +82,10 @@ SDK 侧,`createBilibiliClient` 未传 `cookie` 时自动从登录态存储加载
 **登录态多端同步(可选):** 传 `remote`(配置中心加密命名空间)后登录态双写本地+远程,换机可还原:
 
 ```ts
-import { createConfigCenter } from "@sakurachiyo0v0/config";
+import { createWebdavConfigCenter } from "@sakurachiyo0v0/config-webdav";
 import { AuthStore } from "@sakurachiyo0v0/account";
 
-const remote = createConfigCenter().namespace("auth", { encrypt: true }); // /amechan/secrets/auth
+const remote = createWebdavConfigCenter().namespace("auth", { encrypt: true }); // /amechan/secrets/auth
 // 新机还原:先 await new AuthStore({ platform: "bilibili", remote }).load() 拉取回写本地,再构造客户端
 const client = createBilibiliClient({ remote });
 // 远程不可达时自动降级本地,不影响使用
@@ -392,3 +392,7 @@ pnpm --filter @sakurachiyo0v0/bilibili typecheck
 pnpm --filter @sakurachiyo0v0/bilibili test
 pnpm --filter @sakurachiyo0v0/bilibili build
 ```
+
+## 按需远端存储
+
+本地登录态不依赖 config、WebDAV 或 pg。`remote` 只需实现 account 导出的 `AuthRemoteStore`（get/set/remove）；配置命名空间可直接传入。需要 WebDAV 时额外安装 `@sakurachiyo0v0/config-webdav`，需要 PostgreSQL 时安装 `@sakurachiyo0v0/config` 和 `@sakurachiyo0v0/config-pg`，由调用方创建后端并传入命名空间。默认路径、文件格式及远端失败回退本地行为不变。

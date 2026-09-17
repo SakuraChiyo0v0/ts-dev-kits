@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/xiaoheihe",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "description": "Xiaoheihe (xiaoheihe.cn) SDK: QR login + hkey/nonce signature + read-only queries (post/comment/feed/message/user)",
   "license": "UNLICENSED",
   "type": "module",
@@ -34,7 +34,6 @@
   "dependencies": {
     "@sakurachiyo0v0/account": "workspace:*",
     "@sakurachiyo0v0/cli-utils": "workspace:*",
-    "@sakurachiyo0v0/config": "workspace:*",
     "@sakurachiyo0v0/logger": "workspace:*"
   },
   "devDependencies": {
@@ -44,6 +43,8 @@
     "typescript": "^7.0.2",
     "vitest": "^4.1.10",
     "@sakurachiyo0v0/webdav": "workspace:*",
-    "webdav-server": "^2.6.3"
+    "webdav-server": "^2.6.3",
+    "@sakurachiyo0v0/config": "workspace:*",
+    "@sakurachiyo0v0/config-webdav": "workspace:*"
   }
 }

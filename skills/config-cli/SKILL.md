@@ -14,7 +14,7 @@ sc-config help    # 查看命令与选项
 which sc-config   # 确认已安装
 ```
 
-未安装:`npm i -g @sakurachiyo0v0/config`。
+未安装:`npm i -g @sakurachiyo0v0/config-webdav`。
 
 ## 全局配置(一次性)
 
@@ -48,3 +48,5 @@ sc-config get xiaoheihe auth --encrypt                                 # 解密�
 
 - `VALIDATION`:全局配置缺失/非法、namespace 非法。
 - `AUTHENTICATION` / `CONNECTION` / `NOT_FOUND` / `DECRYPTION` / `CONFLICT`:WebDAV 层错误,与 `@sakurachiyo0v0/webdav` 一致,CLI 输出带 `[CODE]`。
+
+新版 CLI 随 config-webdav 提供；基础 config 不再携带 CLI 或 WebDAV/PG 驱动。命令和既有本地配置文件格式不变。

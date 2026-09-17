@@ -18,8 +18,9 @@
         "verify:kazumi-package": "node scripts/verify-kazumi-package.mjs",
         "verify:published": "node scripts/verify-published-package.mjs",
         "check:boundaries": "node scripts/check-tool-boundaries.mjs",
-        "test:guards": "node --test scripts/check-package-bumps.test.mjs scripts/release-tools.test.mjs",
-        "verify:consumers": "node scripts/verify-published-package.mjs --representative"
+        "test:guards": "node --test scripts/check-package-bumps.test.mjs scripts/release-tools.test.mjs scripts/package-groups.test.mjs",
+        "verify:consumers": "node scripts/verify-published-package.mjs --representative",
+        "verify:config-packages": "node scripts/verify-config-packages.mjs"
     },
     "devDependencies": {
         "@types/node": "^26.1.2",

@@ -42,7 +42,7 @@ export function defaultLocalLogPath(hostname: string): string {
  *      → WebDAV /amechan/secrets/logs/remote 加密存储的 { url }
  *   3. 都没有 → undefined(不写远程)
  *
- * config 用动态 import 懒加载,避免 database 静态依赖 config。
+ * WebDAV 适配包在 auto 模式动态加载；本包仍声明其运行依赖。
  */
 export async function resolveLogRemoteUrl(): Promise<string | undefined> {
   const envUrl = process.env.LOG_REMOTE_URL;
@@ -50,8 +50,8 @@ export async function resolveLogRemoteUrl(): Promise<string | undefined> {
     return envUrl;
   }
   try {
-    // 动态 import 懒加载,避免 database 静态依赖 config(它链上 webdav/cli-utils)。
-    const configModule = (await import("@sakurachiyo0v0/config")) as {
+    // auto 模式保留原有 WebDAV 读取行为，使用拆分后的适配包。
+    const configModule = (await import("@sakurachiyo0v0/config-webdav")) as {
       createWebdavConfigCenter: () => {
         namespace: (
           name: string,

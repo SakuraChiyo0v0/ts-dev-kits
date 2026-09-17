@@ -60,7 +60,7 @@ console.log("保存到:", filePath);
 - **双写**:`rules.add` / `rules.remove` 本地 + WebDAV 同时写入,换机器自动拉取;
 - **远端优先**:`rules.load` / 搜索前先同步远端规则到本地缓存;
 - **优雅回退**:无全局配置(`sc-config setup` 未执行)/网络失败时,同步自动关闭,规则仅本地,不报错;
-- 前置:先执行 `sc-config setup` 配置 WebDAV 全局配置(见 `@sakurachiyo0v0/config` README)。
+- 前置:先安装 `@sakurachiyo0v0/config-webdav` 并执行 `sc-config setup` 配置 WebDAV 全局配置(见该包 README)。
 
 ### 规则 JSON 格式(兼容 Kazumi)
 

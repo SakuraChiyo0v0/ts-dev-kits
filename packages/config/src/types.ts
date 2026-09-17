@@ -3,31 +3,15 @@
  * 字段语义以本文件为权威定义。
  */
 
-/** 本地全局配置(chmod600):WebDAV 连接 + 加密密钥(密钥本地保管,不出本机) */
-export interface GlobalConfig {
-  /** WebDAV 根地址,如 https://dav.jianguoyun.com/dav/ */
-  url: string;
-  username?: string;
-  password?: string;
-  /** 加密密钥(可省略,用环境变量 CONFIG_KEY) */
-  key?: string;
-}
-
-/** 配置中心创建选项 */
+/** 配置中心只接受显式后端，后端实现由额外适配包提供。 */
 export interface ConfigCenterOptions {
-  /** 全局配置文件路径(默认 <配置根>/amechan/config.json,可用 AME_CONFIG_PATH 覆盖) */
-  configPath?: string;
-  /** 显式传入全局配置(WebDAV 连接信息,不读文件) */
-  global?: GlobalConfig;
-  /** 显式传入存储后端(如 PgBackend) */
-  backend?: import("./backend.js").ConfigBackend;
-  /** 加密密钥(与 backend 正交;可省略,用 global.key 或环境变量 CONFIG_KEY) */
+  backend: import("./backend.js").ConfigBackend;
   key?: string;
 }
 
 /** 命名空间选项 */
 export interface NamespaceOptions {
-  /** 是否加密存储;默认 false(普通配置),true=加密(敏感配置) */
+  /** 是否加密存储;默认 true；false 为明文配置 */
   encrypt?: boolean;
 }
 
@@ -47,8 +31,6 @@ export interface ConfigNamespace {
 
 /** 配置中心:全局配置一次,按命名空间存取各平台配置 */
 export interface ConfigCenter {
-  /** WebDAV 根地址(仅 WebDAV 后端时存在) */
-  readonly url?: string;
   /** 创建/获取命名空间(encrypt:true 走加密存储) */
   namespace(name: string, options?: NamespaceOptions): ConfigNamespace;
 }

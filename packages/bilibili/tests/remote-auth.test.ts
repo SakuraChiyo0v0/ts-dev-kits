@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { AuthStore } from "@sakurachiyo0v0/account";
-import { createConfigCenter } from "@sakurachiyo0v0/config";
+import { createWebdavConfigCenter } from "@sakurachiyo0v0/config-webdav";
 import { createWebdavClient } from "@sakurachiyo0v0/webdav";
 import { createBilibiliClient } from "../src/client.js";
 import { startTestWebdavServer, type TestWebdavServer } from "../../../shared/test-helpers/webdav-test-server.js";
@@ -12,7 +12,7 @@ const TEST_KEY = "0123456789abcdef0123456789abcdef";
 
 describe("B站远程登录态(配置中心加密域)", () => {
   let srv: TestWebdavServer;
-  let remote: ReturnType<ReturnType<typeof createConfigCenter>["namespace"]>;
+  let remote: ReturnType<ReturnType<typeof createWebdavConfigCenter>["namespace"]>;
 
   beforeAll(async () => {
     srv = await startTestWebdavServer();
@@ -21,9 +21,7 @@ describe("B站远程登录态(配置中心加密域)", () => {
     await raw.mkdir("/amechan/secrets");
     await raw.mkdir("/amechan/secrets/auth");
 
-    const center = createConfigCenter({
-      global: { url: srv.url, username: srv.username, password: srv.password, key: TEST_KEY },
-    });
+    const center = createWebdavConfigCenter({ url: srv.url, username: srv.username, password: srv.password, key: TEST_KEY });
     remote = center.namespace("auth", { encrypt: true });
   });
 
@@ -54,9 +52,7 @@ describe("B站远程登录态(配置中心加密域)", () => {
 
   it("远程不可达时降级:client 构造仍可用(本地缓存)", async () => {
     const dir = mkdtempSync(join(tmpdir(), "bili-remote-fail-"));
-    const badCenter = createConfigCenter({
-      global: { url: srv.url, username: srv.username, password: "wrong", key: TEST_KEY },
-    });
+    const badCenter = createWebdavConfigCenter({ url: srv.url, username: srv.username, password: "wrong", key: TEST_KEY });
     const badNs = badCenter.namespace("auth", { encrypt: true });
     const store = new AuthStore({ platform: "bilibili", path: join(dir, "auth.json"), remote: badNs });
     await store.save({

@@ -1,5 +1,5 @@
 /** 网易云音乐 SDK 核心类型。 */
-import type { ConfigNamespace } from "@sakurachiyo0v0/config";
+import type { AuthRemoteStore } from "@sakurachiyo0v0/account";
 
 /** 音乐品质等级(对应取流接口 level 参数)。 */
 export type QualityLevel = "standard" | "higher" | "exhigh" | "lossless" | "hires";
@@ -141,7 +141,7 @@ export interface NeteaseClientOptions {
    * 可选远程登录态命名空间(配置中心加密域,如 config().namespace("auth",{encrypt:true}))。
    * 登录态双写本地+远程;新机还原:先 await new AuthStore({ platform: "netease-music", remote }).load()。
    */
-  remote?: ConfigNamespace;
+  remote?: AuthRemoteStore;
   /** 下载配置。 */
   download?: DownloadConfig;
   /** 注入 fetch(测试用)。 */

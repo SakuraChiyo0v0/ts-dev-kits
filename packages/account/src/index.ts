@@ -36,3 +36,5 @@ export type {
   BrowserLoginAdapter,
   BrowserLoginOptions,
 } from "./browser-flow.js";
+
+export type { AuthRemoteStore } from "./store.js";

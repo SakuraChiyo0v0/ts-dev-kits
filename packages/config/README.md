@@ -1,102 +1,39 @@
 # @sakurachiyo0v0/config
 
-配置中心 SDK:WebDAV 服务器 + 密钥**全局只配置一次**,各 SDK/平台通过 `namespace("平台名")` 存取自己的配置——路径自动隔离,**默认加密上云**(本机可明文,云端必加密)。换机器配好全局配置即可还原,免重复配置。
+1.0 起为轻量配置核心：后端接口、命名空间、JSON/加密包装和配置根目录解析。仅依赖 logger，不安装 WebDAV 或数据库驱动。Node.js 20+。
 
-## 特性
+## 安装与使用
 
-- 全局配置一次:`config setup` 写本地 `<配置根>/amechan/config.json`(chmod 600,密钥不出本机),之后 `createConfigCenter()` 自动读取
-- namespace 隔离:`cc.namespace("xiaoheihe")` → 默认映射 `/amechan/secrets/xiaoheihe/*`(**加密**);显式 `{ encrypt: false }` 才走明文域 `/amechan/configs/<ns>/*`
-- 加密按域开关:`encrypt` **默认 true(凡是上 WebDAV 的数据一律加密)**,显式 `false` 才明文——"本机可明文,云端必加密"
-- 复用 `@sakurachiyo0v0/webdav`(ConfigStore/EncryptedConfigStore),不重复造轮子
-- CLI `sc-config`:setup / status / get / set / list / remove / clear
-
-## 适用环境
-
-Node.js 20+。依赖已发布的 `@sakurachiyo0v0/webdav`(含加密存储)。
-
-## 安装
-
-```powershell
-pnpm add @sakurachiyo0v0/config@workspace:*   # workspace 内
-pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/config"  # 其他机器
+```sh
+pnpm add @sakurachiyo0v0/config
+# 按实际需要选择一个
+pnpm add @sakurachiyo0v0/config-webdav
+pnpm add @sakurachiyo0v0/config-pg
 ```
-
-## 快速开始
 
 ```ts
 import { createConfigCenter } from "@sakurachiyo0v0/config";
+import { createWebdavBackend } from "@sakurachiyo0v0/config-webdav";
 
-// 1. 一次性设置(也可用 CLI: sc-config setup --url ... --username ... --password ... --key ...)
-//    之后 createConfigCenter() 自动读取本地全局配置
-const cc = createConfigCenter();   // 读 <配置根>/amechan/config.json
-
-// 2. 各平台/模块命名空间
-const xhh = cc.namespace("xiaoheihe", { encrypt: true });   // 敏感域: /amechan/secrets/xiaoheihe/*
-await xhh.set("auth", { cookie: "SID=..." });                // 加密存取
-const auth = await xhh.get<{ cookie: string }>("auth");
-
-const bili = cc.namespace("bilibili");                       // 明文域: /amechan/configs/bilibili/*
-await bili.set("ui", { quality: 80 });
-const names = await bili.list();
-await bili.remove("ui");
+const center = createConfigCenter({
+  backend: createWebdavBackend({ url: process.env.WEBDAV_URL! }),
+  key: process.env.CONFIG_KEY!,
+});
+const ns = center.namespace("auth");
+await ns.set("example", { value: 1 });
+const value = await ns.get<{ value: number }>("example");
 ```
 
-## API
+## 接口
 
-### `createConfigCenter(options?): ConfigCenter`
+- `createConfigCenter({ backend, key? })`：backend 必填，key 不传时加密包装读取 CONFIG_KEY。
+- `namespace(name, { encrypt? })`：encrypt 默认 true；明文需显式 false。命名空间禁止空值、斜杠、反斜杠、冒号和 `..`。
+- 命名空间提供 `get<T>(key)`、`set(key, data)`、`list()`、`remove(key)`，全部异步。
+- `initConfig(options)` 设置进程默认实例；`config()` 读取；`config(options)` 创建独立实例；`resetConfig()` 清除默认实例。
+- `ConfigBackend` 提供 `load<T>/save/list/remove/withPrefix`。存储层保持字符串透明，上层负责 JSON 和加密。
+- `PrefixBackend` 使用冒号隔离键；`JsonBackend` 处理 JSON；`EncryptedBackend` 使用 AES-256-GCM，`encryptedBackend()` 支持环境变量密钥；`deriveKey()` 派生密钥。
+- `resolveConfigRoot(platform?, env?)` 保留配置根目录规则：AMECHAN_CONFIG_HOME 优先，然后平台标准目录。
 
-| 选项 | 说明 |
-| --- | --- |
-| `configPath?` | 全局配置文件路径(默认 `<配置根>/amechan/config.json`,可用 `AME_CONFIG_PATH` 覆盖) |
-| `global?` | 显式传入全局配置(不读文件):`{ url, username?, password?, key? }` |
+`ConfigError.code`：VALIDATION 表示非法配置；NOT_FOUND 表示适配器报告键不存在。底层连接/认证错误由适配器返回。加密格式和 `amechan:secrets/configs:<namespace>` 前缀保持不变。
 
-### `ConfigCenter.namespace(name, options?): ConfigNamespace`
-
-| 选项 | 说明 |
-| --- | --- |
-| `encrypt?` | 是否加密存储,**默认 true**(上 WebDAV 必加密);显式 `false` 走明文域(需全局配置含 key 或环境变量 `WEBDAV_CONFIG_KEY`) |
-
-| 方法 | 说明 |
-| --- | --- |
-| `get<T>(key)` | 读取配置(加密域自动解密) |
-| `set(key, data)` | 写入(原子写 + 自动备份;加密域自动加密) |
-| `list()` | 列出配置名 |
-| `remove(key)` | 删除 |
-
-namespace 不允许路径分隔符/`..`(防越界)。
-
-### 全局配置工具
-
-`saveGlobalConfig(config, path?)` / `loadGlobalConfig(path?)` / `clearGlobalConfig(path?)` / `resolveConfigPath(path?)`——本地全局配置读写(文件 600 权限)。
-
-## 错误处理
-
-- 远端错误透传 `@sakurachiyo0v0/webdav` 的 `WebdavError`:`AUTHENTICATION` / `CONNECTION` / `NOT_FOUND` / `DECRYPTION` / `CONFLICT`。
-- 本地配置缺失/非法抛 `WebdavError(VALIDATION)`(如未 setup)。
-
-## 注意事项
-
-- **远端目录需预先存在**:`/amechan/configs/<ns>`、`/amechan/secrets/<ns>`(坚果云禁 WebDAV 建目录,网页端建;自建服务可用 `wd.mkdir` 建)。
-- **密钥本地保管**:丢失则加密配置无法解密;换机器带同一份 WebDAV+密钥即可还原。
-
-## CLI
-
-```powershell
-sc-config setup --url ... --username ... --password ... --key ...
-sc-config status | clear
-sc-config get|set|list|remove <namespace> <key> [--encrypt] [--json <JSON>|--file <path>]
-```
-
-完整命令速查见 [`skills/config-cli/SKILL.md`](../../skills/config-cli/SKILL.md)。
-
-## 在仓库内的验证方式
-
-```powershell
-pnpm --filter @sakurachiyo0v0/config typecheck   # 类型检查
-pnpm --filter @sakurachiyo0v0/config build       # 构建 ESM + CJS + d.ts + CLI
-pnpm --filter @sakurachiyo0v0/config test        # 单测(本地 webdav-server 真实协议路径)
-```
-
-## 设计文档
-
-[`docs/superpowers/specs/2026-08-24-config-center-design.md`](../../docs/superpowers/specs/2026-08-24-config-center-design.md)
+1.0 不保留旧 WebDAV/PG 导入、global 选项或 CLI。见 [迁移说明](../../docs/config-backends-migration.md)。

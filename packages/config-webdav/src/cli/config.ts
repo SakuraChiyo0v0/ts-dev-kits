@@ -14,6 +14,7 @@ import {
   printHelp,
   parseArgs,
 } from "@sakurachiyo0v0/cli-utils";
+import { ConfigError } from "@sakurachiyo0v0/config";
 import { WebdavError } from "@sakurachiyo0v0/webdav";
 import { createWebdavConfigCenter } from "../config-center.js";
 import { clearGlobalConfig, loadGlobalConfig, saveGlobalConfig } from "../global-config.js";
@@ -158,7 +159,7 @@ function safeLoad(configPath?: string): ReturnType<typeof loadGlobalConfig> | un
 }
 
 run().catch((err: unknown) => {
-  if (err instanceof WebdavError) {
+  if (err instanceof WebdavError || err instanceof ConfigError) {
     outputError(`[${err.code}] ${err.message}`);
     process.exit(1);
   }

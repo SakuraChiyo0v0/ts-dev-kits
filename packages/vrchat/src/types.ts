@@ -2,7 +2,7 @@
  * VRChat API 数据模型。字段语义以 VRChat 官方 OpenAPI 为权威
  * (https://vrchatapi.github.io/)。raw JSON 保持原样透传,类型只做描述不做强制清洗。
  */
-import type { ConfigNamespace } from "@sakurachiyo0v0/config";
+import type { AuthRemoteStore } from "@sakurachiyo0v0/account";
 
 // ---- 认证 ----
 
@@ -280,7 +280,7 @@ export interface VrchatClientOptions {
    * 可选远程登录态命名空间(配置中心加密域,如 config().namespace("auth",{encrypt:true}))。
    * 登录态双写本地+远程;新机还原:先 await new AuthStore({platform:"vrchat",remote}).load()。
    */
-  remote?: ConfigNamespace;
+  remote?: AuthRemoteStore;
   /** 显式会话 cookie 字符串(优先于 AuthStore 加载)。 */
   cookie?: string;
   /** 覆盖 API 基地址(测试用 mock)。 */

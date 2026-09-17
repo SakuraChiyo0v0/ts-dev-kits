@@ -13,12 +13,15 @@ on:
       - "scripts/dependency-plan.mjs"
       - "scripts/release-tools.test.mjs"
       - "scripts/verify-published-package.mjs"
+      - "scripts/verify-config-packages.mjs"
       - "scripts/consumer-fixtures/**"
       - "scripts/check-package-bumps.mjs"
       - "scripts/check-package-bumps.test.mjs"
       - "scripts/check-dependency-chain.mjs"
       - "scripts/packages-list.mjs"
       - "scripts/check-tool-boundaries.mjs"
+      - "scripts/package-groups.mjs"
+      - "scripts/package-groups.test.mjs"
       - "pnpm-lock.yaml"
       - ".npmrc"
       - ".github/workflows/publish.yml"
@@ -93,6 +96,7 @@ jobs:
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: pnpm rebuild
       - run: pnpm check
+      - run: pnpm verify:config-packages
 
   publish:
     needs: [check-versions, validate]

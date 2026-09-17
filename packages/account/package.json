@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/account",
-  "version": "0.5.5",
+  "version": "0.5.6",
   "description": "Cross-platform account auth base: login-state store, QR-code/password/browser login flow skeletons and shared error model",
   "license": "UNLICENSED",
   "publishConfig": {
@@ -33,7 +33,6 @@
   },
   "dependencies": {
     "qrcode": "^1.5.4",
-    "@sakurachiyo0v0/config": "workspace:*",
     "@sakurachiyo0v0/logger": "workspace:*"
   },
   "devDependencies": {
@@ -44,6 +43,8 @@
     "typescript": "^7.0.2",
     "vitest": "^4.1.10",
     "webdav-server": "^2.6.3",
-    "@sakurachiyo0v0/webdav": "workspace:*"
+    "@sakurachiyo0v0/webdav": "workspace:*",
+    "@sakurachiyo0v0/config": "workspace:*",
+    "@sakurachiyo0v0/config-webdav": "workspace:*"
   }
 }

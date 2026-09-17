@@ -1,7 +1,7 @@
 /** 加密后端：包装任意 ConfigBackend，写入时 AES-256-GCM 加密、读取时解密。 */
 
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
-import { WebdavError, WebdavErrorCode } from "@sakurachiyo0v0/webdav";
+import { ConfigError } from "./errors.js";
 import type { ConfigBackend } from "./backend.js";
 
 /** 加密密钥的环境变量名（缺省兜底）。 */
@@ -75,8 +75,8 @@ export class EncryptedBackend implements ConfigBackend {
 export function encryptedBackend(inner: ConfigBackend, key?: string): ConfigBackend {
   const k = key ?? process.env[CONFIG_ENCRYPTION_KEY_ENV];
   if (k === undefined || k === "") {
-    throw new WebdavError(
-      WebdavErrorCode.VALIDATION,
+    throw new ConfigError(
+      "VALIDATION",
       `缺少加密密钥:传 key 或设置环境变量 ${CONFIG_ENCRYPTION_KEY_ENV}`,
     );
   }

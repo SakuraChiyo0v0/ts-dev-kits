@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createConfigStore, createWebdavClient, WebdavErrorCode } from "@sakurachiyo0v0/webdav";
-import { createConfigCenter } from "../src/index.js";
+import { createWebdavConfigCenter } from "../src/index.js";
 import type { ConfigCenter } from "../src/index.js";
 import { startTestWebdavServer, type TestWebdavServer } from "../../../shared/test-helpers/webdav-test-server.js";
 
@@ -27,14 +27,12 @@ describe("配置中心 namespace(真实协议路径)", () => {
     ]) {
       await raw.mkdir(dir);
     }
-    center = createConfigCenter({
-      global: {
+    center = createWebdavConfigCenter({
         url: srv.url,
         username: srv.username,
         password: srv.password,
         key: TEST_KEY,
-      },
-    });
+      });
   });
 
   afterAll(async () => {
@@ -106,9 +104,7 @@ describe("配置中心 namespace(真实协议路径)", () => {
   });
 
   it("加密域缺密钥 → VALIDATION(密钥不从环境变量来时不配置)", () => {
-    const centerNoKey = createConfigCenter({
-      global: { url: srv.url, username: srv.username, password: srv.password },
-    });
+    const centerNoKey = createWebdavConfigCenter({ url: srv.url, username: srv.username, password: srv.password });
     expect(() => centerNoKey.namespace("secret", { encrypt: true })).toThrowError(
       expect.objectContaining({ code: WebdavErrorCode.VALIDATION }),
     );

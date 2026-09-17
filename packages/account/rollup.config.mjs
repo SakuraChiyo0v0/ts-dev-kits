@@ -3,7 +3,6 @@ export default {
   external: (id) =>
     id === "qrcode" ||
     id === "@sakurachiyo0v0/logger" ||
-    id === "@sakurachiyo0v0/config" ||
     id.startsWith("node:"),
   output: [
     {

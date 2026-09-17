@@ -1,6 +1,6 @@
 {
   "name": "@sakurachiyo0v0/bilibili",
-  "version": "0.6.5",
+  "version": "0.6.6",
   "description": "Bilibili video download SDK with pluggable parsers, configurable downloader and ffmpeg merge",
   "license": "UNLICENSED",
   "publishConfig": {
@@ -38,7 +38,6 @@
     "@sakurachiyo0v0/account": "workspace:*",
     "@sakurachiyo0v0/cli-utils": "workspace:*",
     "@sakurachiyo0v0/ffmpeg": "workspace:*",
-    "@sakurachiyo0v0/config": "workspace:*",
     "@sakurachiyo0v0/logger": "workspace:*"
   },
   "devDependencies": {
@@ -48,6 +47,8 @@
     "typescript": "^7.0.2",
     "vitest": "^4.1.10",
     "@sakurachiyo0v0/webdav": "workspace:*",
-    "webdav-server": "^2.6.3"
+    "webdav-server": "^2.6.3",
+    "@sakurachiyo0v0/config": "workspace:*",
+    "@sakurachiyo0v0/config-webdav": "workspace:*"
   }
 }

@@ -1,7 +1,7 @@
 /** PostgreSQL 配置后端：键值存 PG 表（直接用 node-postgres，避免 config↔database 循环依赖）。 */
 
 import { Pool } from "pg";
-import { PrefixBackend, type ConfigBackend } from "./backend.js";
+import { ConfigError, PrefixBackend, type ConfigBackend } from "@sakurachiyo0v0/config";
 
 /** PG 键值后端：key → value(JSON 文本)，单表实现。 */
 export class PgBackend implements ConfigBackend {
@@ -53,7 +53,7 @@ export class PgBackend implements ConfigBackend {
     const raw = rows[0]?.value as string | undefined;
     if (raw === undefined) {
       // 与 WebDAV 后端行为对齐：缺 key 抛 NOT_FOUND。
-      throw new Error("NOT_FOUND");
+      throw new ConfigError("NOT_FOUND", "配置键不存在");
     }
     return raw as T;
   }

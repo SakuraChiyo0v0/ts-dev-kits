@@ -25,7 +25,7 @@ import { join } from "node:path";
 const SKILL_MAP = [
   {
     skill: "config-cli",
-    cli: "packages/config/src/cli/config.ts",
+    cli: "packages/config-webdav/src/cli/config.ts",
     bin: "sc-config",
   },
   {

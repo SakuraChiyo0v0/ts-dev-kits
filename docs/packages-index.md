@@ -2,37 +2,469 @@
 
 本文件是仓库内所有可复用依赖包的总索引。维护原则：
 
-- 新增一个依赖包时，在「总览」表格追加一行，并按照下文格式补一段「包详情」。
+- 新增一个依赖包时，在对应分类的一览表追加一行，并补充同分类下的包详情；同时登记 scripts/package-groups.mjs。
 - 新建包的目录结构约定见 [`package-template.md`](package-template.md)。
 - 表格中的「引用方式」列填写最常用的安装方式；完整选项见对应包的详情。
 - 所有 `@sakurachiyo0v0/*` 包也发布到 GitHub Packages(GitHub npm 仓库,消费方需在 `.npmrc` 配置认证),外部项目配置一次 `.npmrc` 后即可 `pnpm add @sakurachiyo0v0/<name>` 直接安装 —— 见 [`GITHUB_PACKAGES.md`](GITHUB_PACKAGES.md)。
 
-## 总览
+## 分类导航
+
+目录继续平铺；按职责查找包，按 [依赖规则](repository-boundaries.md#依赖方向) 判断能否引用。版本表示本地代码版本，不保证已发布。
+
+- [通用基础](#foundation)：[logger](../packages/logger/README.md)、[cli-utils](../packages/cli-utils/README.md)
+- [存储与配置](#storage)：[config](../packages/config/README.md)、[config-webdav](../packages/config-webdav/README.md)、[config-pg](../packages/config-pg/README.md)、[webdav](../packages/webdav/README.md)、[database](../packages/database/README.md)
+- [账号认证](#auth)：[account](../packages/account/README.md)
+- [媒体与通用工具](#utilities)：[ffmpeg](../packages/ffmpeg/README.md)、[media-downloader](../packages/media-downloader/README.md)、[chuanshengtong](../packages/chuanshengtong/README.md)、[email](../packages/email/README.md)
+- [平台 SDK](#platforms)：[bilibili](../packages/bilibili/README.md)、[netease-music](../packages/netease-music/README.md)、[booth](../packages/booth/README.md)、[steam](../packages/steam/README.md)、[vrchat](../packages/vrchat/README.md)、[xiaoheihe](../packages/xiaoheihe/README.md)、[lol](../packages/lol/README.md)、[ugreen](../packages/ugreen/README.md)、[chat-platforms](../packages/chat-platforms/README.md)、[kazumi](../packages/kazumi/README.md)
+
+<a id="foundation"></a>
+
+### 通用基础一览
 
 | 包名 | 版本 | 用途 | 状态 | 引用方式 |
 | --- | --- | --- | --- | --- |
-| `@sakurachiyo0v0/cli-utils` | 0.1.3 | CLI 工具底座(参数解析/输出/错误处理/进度条,所有 SDK CLI 复用) | 可用 | `pnpm add @sakurachiyo0v0/cli-utils` |
-| `@sakurachiyo0v0/email` | 0.2.2 | 与供应商解耦的 Node.js 邮件 SDK | 可用（SMTP 适配器） | `pnpm add @sakurachiyo0v0/email` |
-| `@sakurachiyo0v0/ffmpeg` | 0.2.3 | FFmpeg/ffprobe 进程封装 + 媒体处理高层函数 | 可用 | `pnpm add @sakurachiyo0v0/ffmpeg` |
-| `@sakurachiyo0v0/bilibili` | 0.6.5 | B 站 SDK:视频下载(解析/取流/下载/ffmpeg 合并)+ 平台控制(收藏夹/关注/分组/互动/动态/稍后再看/历史) | 可用 | `pnpm add @sakurachiyo0v0/bilibili` |
-| `@sakurachiyo0v0/chat-platforms` | 0.1.2 | 统一聊天平台接入 SDK(消息模型/适配器注册表,当前飞书) | 可用(飞书, websocket/webhook) | `pnpm add @sakurachiyo0v0/chat-platforms` |
-| `@sakurachiyo0v0/lol` | 0.1.3 | 英雄联盟 LCU 本地能力 SDK(召唤师/战绩/段位/对局流程/游戏数据/事件) | 可用(查询+对局感知, 国服 SGP) | `pnpm add @sakurachiyo0v0/lol` |
-| `@sakurachiyo0v0/account` | 0.5.5 | 跨平台账号认证底座(登录态存储/扫码+密码+浏览器登录骨架/错误模型) | 可用 | `pnpm add @sakurachiyo0v0/account` |
-| `@sakurachiyo0v0/netease-music` | 0.8.0 | 网易云音乐下载 SDK(weapi 加密/二维码登录/权限感知品质/试听拦截/取流/歌词/搜索) | 可用 | `pnpm add @sakurachiyo0v0/netease-music` |
-| `@sakurachiyo0v0/media-downloader` | 0.2.5 | 通用媒体下载 SDK:目录选择/流式下载+重试+进度/元数据封面写入/下载历史 | 可用 | `pnpm add @sakurachiyo0v0/media-downloader` |
-| `@sakurachiyo0v0/booth` | 0.4.3 | BOOTH(booth.pm)领取/购买 SDK:登录态管理/商品解析/免费领取/付费下单/文件下载 | 可用 | `pnpm add @sakurachiyo0v0/booth` |
-| `@sakurachiyo0v0/vrchat` | 0.4.3 | VRChat 官方 REST API SDK(认证/用户/世界/头像/实例/好友/通知/收藏/群组/文件/权限/系统/经济/审核) | 可用(全功能覆盖) | `pnpm add @sakurachiyo0v0/vrchat` |
-| `@sakurachiyo0v0/steam` | 0.8.3 | Steam SDK(查询向):Web API/Storefront/Community 三套接口,登录态支持,写操作仅激活码兑换一项 | 可用(全阶段交付) | `pnpm add @sakurachiyo0v0/steam` |
-| `@sakurachiyo0v0/xiaoheihe` | 0.4.3 | 小黑盒 SDK:扫码登录 + hkey/nonce 签名 + 只读查询(帖子/评论/feed/@消息/用户) | 可用(P0 只读) | `pnpm add @sakurachiyo0v0/xiaoheihe` |
-| `@sakurachiyo0v0/database` | 0.2.4 | 统一数据访问抽象层:一套 API 访问本地 SQLite 与远程 PostgreSQL/MySQL,配置切换后端 | 可用(SQLite 全量,远程可选) | `pnpm add @sakurachiyo0v0/database` |
-| `@sakurachiyo0v0/webdav` | 0.3.2 | WebDAV 配置存取 SDK:基础文件操作 + ConfigStore(原子写/自动备份) + 加密存储 + CLI | 可用 | `pnpm add @sakurachiyo0v0/webdav` |
-| `@sakurachiyo0v0/config` | 0.7.0 | 配置中心 SDK:WebDAV+密钥全局一次配置,namespace 按域存取(可选加密),登录态/配置多端同步 | 可用 | `pnpm add @sakurachiyo0v0/config` |
-| `@sakurachiyo0v0/chuanshengtong` | 0.3.2 | 传声筒:输入文字 + 内置图像模板程序化合成图片(CLI + SDK,不依赖 AI,支持富文本) | 可用 | `pnpm add @sakurachiyo0v0/chuanshengtong` |
 | `@sakurachiyo0v0/logger` | 0.2.2 | 轻量级日志模块:级别控制/命名空间/多机主机标识/子 logger 派生/可替换 transport | 可用 | `pnpm add @sakurachiyo0v0/logger` |
-| `@sakurachiyo0v0/kazumi` | 0.2.2 | Kazumi 规则兼容番剧采集下载 SDK:声明式规则引擎(XPath/API 双模式)+ m3u8 下载合并 mp4 + 规则 WebDAV 多端同步 | 可用 | `pnpm add @sakurachiyo0v0/kazumi` |
-| `@sakurachiyo0v0/ugreen` | 0.2.0 | 绿联 NAS 登录、文件上传与列表 | SDK | `pnpm add @sakurachiyo0v0/ugreen` |
+| `@sakurachiyo0v0/cli-utils` | 0.1.3 | CLI 工具底座(参数解析/输出/错误处理/进度条,所有 SDK CLI 复用) | 可用 | `pnpm add @sakurachiyo0v0/cli-utils` |
 
-## 包详情
+<a id="storage"></a>
+
+### 存储与配置一览
+
+| 包名 | 版本 | 用途 | 状态 | 引用方式 |
+| --- | --- | --- | --- | --- |
+| `@sakurachiyo0v0/config` | 1.0.0 | 配置核心:后端契约、命名空间和加密，驱动由额外适配包提供 | 可用 | `pnpm add @sakurachiyo0v0/config` |
+| `@sakurachiyo0v0/config-webdav` | 0.1.0 | WebDAV 配置后端、全局连接配置与 sc-config CLI | 待发布 | `pnpm add @sakurachiyo0v0/config-webdav` |
+| `@sakurachiyo0v0/config-pg` | 0.1.0 | PostgreSQL 配置后端 | 待发布 | `pnpm add @sakurachiyo0v0/config-pg` |
+| `@sakurachiyo0v0/webdav` | 0.3.2 | WebDAV 配置存取 SDK:基础文件操作 + ConfigStore(原子写/自动备份) + 加密存储 + CLI | 可用 | `pnpm add @sakurachiyo0v0/webdav` |
+| `@sakurachiyo0v0/database` | 0.2.5 | 统一数据访问抽象层:一套 API 访问本地 SQLite 与远程 PostgreSQL/MySQL,配置切换后端 | 可用(SQLite 全量,远程可选) | `pnpm add @sakurachiyo0v0/database` |
+
+<a id="auth"></a>
+
+### 账号认证一览
+
+| 包名 | 版本 | 用途 | 状态 | 引用方式 |
+| --- | --- | --- | --- | --- |
+| `@sakurachiyo0v0/account` | 0.5.6 | 跨平台账号认证底座(登录态存储/扫码+密码+浏览器登录骨架/错误模型) | 可用 | `pnpm add @sakurachiyo0v0/account` |
+
+<a id="utilities"></a>
+
+### 媒体与通用工具一览
+
+| 包名 | 版本 | 用途 | 状态 | 引用方式 |
+| --- | --- | --- | --- | --- |
+| `@sakurachiyo0v0/ffmpeg` | 0.2.3 | FFmpeg/ffprobe 进程封装 + 媒体处理高层函数 | 可用 | `pnpm add @sakurachiyo0v0/ffmpeg` |
+| `@sakurachiyo0v0/media-downloader` | 0.2.5 | 通用媒体下载 SDK:目录选择/流式下载+重试+进度/元数据封面写入/下载历史 | 可用 | `pnpm add @sakurachiyo0v0/media-downloader` |
+| `@sakurachiyo0v0/chuanshengtong` | 0.3.2 | 传声筒:输入文字 + 内置图像模板程序化合成图片(CLI + SDK,不依赖 AI,支持富文本) | 可用 | `pnpm add @sakurachiyo0v0/chuanshengtong` |
+| `@sakurachiyo0v0/email` | 0.2.2 | 与供应商解耦的 Node.js 邮件 SDK | 可用（SMTP 适配器） | `pnpm add @sakurachiyo0v0/email` |
+
+<a id="platforms"></a>
+
+### 平台 SDK一览
+
+| 包名 | 版本 | 用途 | 状态 | 引用方式 |
+| --- | --- | --- | --- | --- |
+| `@sakurachiyo0v0/bilibili` | 0.6.6 | B 站 SDK:视频下载(解析/取流/下载/ffmpeg 合并)+ 平台控制(收藏夹/关注/分组/互动/动态/稍后再看/历史) | 可用 | `pnpm add @sakurachiyo0v0/bilibili` |
+| `@sakurachiyo0v0/netease-music` | 0.8.1 | 网易云音乐下载 SDK(weapi 加密/二维码登录/权限感知品质/试听拦截/取流/歌词/搜索) | 可用 | `pnpm add @sakurachiyo0v0/netease-music` |
+| `@sakurachiyo0v0/booth` | 0.4.4 | BOOTH(booth.pm)领取/购买 SDK:登录态管理/商品解析/免费领取/付费下单/文件下载 | 可用 | `pnpm add @sakurachiyo0v0/booth` |
+| `@sakurachiyo0v0/steam` | 0.8.4 | Steam SDK(查询向):Web API/Storefront/Community 三套接口,登录态支持,写操作仅激活码兑换一项 | 可用(全阶段交付) | `pnpm add @sakurachiyo0v0/steam` |
+| `@sakurachiyo0v0/vrchat` | 0.4.4 | VRChat 官方 REST API SDK(认证/用户/世界/头像/实例/好友/通知/收藏/群组/文件/权限/系统/经济/审核) | 可用(全功能覆盖) | `pnpm add @sakurachiyo0v0/vrchat` |
+| `@sakurachiyo0v0/xiaoheihe` | 0.4.4 | 小黑盒 SDK:扫码登录 + hkey/nonce 签名 + 只读查询(帖子/评论/feed/@消息/用户) | 可用(P0 只读) | `pnpm add @sakurachiyo0v0/xiaoheihe` |
+| `@sakurachiyo0v0/lol` | 0.1.3 | 英雄联盟 LCU 本地能力 SDK(召唤师/战绩/段位/对局流程/游戏数据/事件) | 可用(查询+对局感知, 国服 SGP) | `pnpm add @sakurachiyo0v0/lol` |
+| `@sakurachiyo0v0/ugreen` | 0.2.0 | 绿联 NAS 登录、文件上传与列表 | SDK | `pnpm add @sakurachiyo0v0/ugreen` |
+| `@sakurachiyo0v0/chat-platforms` | 0.1.2 | 统一聊天平台接入 SDK(消息模型/适配器注册表,当前飞书) | 可用(飞书, websocket/webhook) | `pnpm add @sakurachiyo0v0/chat-platforms` |
+| `@sakurachiyo0v0/kazumi` | 0.2.3 | Kazumi 规则兼容番剧采集下载 SDK:声明式规则引擎(XPath/API 双模式)+ m3u8 下载合并 mp4 + 规则 WebDAV 多端同步 | 可用 | `pnpm add @sakurachiyo0v0/kazumi` |
+
+## 通用基础详情
+
+### `@sakurachiyo0v0/logger`
+
+轻量级日志模块，为所有 SDK 包提供统一的日志能力。设计参考 pino 的 child logger 模式，支持命名空间、多机主机标识、子 logger 派生、bindings 绑定和可替换 transport。
+
+**核心接口：**
+
+- `createLogger({ namespace?, level?, hostname?, transport? })` — 创建 logger 实例
+- `logger.debug/info/warn/error(message, data?)` — 输出各级别日志
+- `logger.child(bindings)` — 派生带固定数据的子 logger（bindings 自动附加到每条日志）
+- `logger.child(namespace)` — 派生命名空间子 logger（自动追加前缀，如 `bilibili:download`）
+- `LogTransport` — 自定义 transport 接口，可替换输出目标
+
+**级别控制：** `debug`(10) < `info`(20) < `warn`(30) < `error`(40) < `silent`(Infinity)，默认 `info`。子 logger 继承父级别。
+
+**主机标识：** 默认自动检测 `os.hostname()`，多台机器部署时日志自动带 `@hostname` 来源；也可在 `createLogger` 时手动覆盖 `hostname`。
+
+**安装方式：**
+
+同一 pnpm workspace 内：
+
+```powershell
+pnpm add @sakurachiyo0v0/logger@workspace:*
+```
+
+从 GitHub monorepo 安装：
+
+```powershell
+pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/logger"
+```
+
+**API 示例：**
+
+```ts
+import { createLogger } from "@sakurachiyo0v0/logger";
+
+const logger = createLogger({ namespace: "bilibili", level: "debug" });
+
+logger.info("开始下载", { videoId: "BV123" });
+// [bilibili]@desktop-01 2024-08-23T10:00:00.000Z INFO 开始下载 { videoId: 'BV123' }
+
+// 子 logger：自动追加命名空间
+const dl = logger.child("download");
+dl.info("完成");
+// [bilibili:download]@desktop-01 2024-08-23T10:00:01.000Z INFO 完成
+
+// 子 logger：绑定固定数据
+const bound = logger.child({ videoId: "BV123" });
+bound.info("进度", { percent: 50 });
+// [bilibili]@desktop-01 2024-08-23T10:00:02.000Z INFO 进度 { videoId: 'BV123', percent: 50 }
+```
+
+**在仓库内的验证方式：**
+
+```powershell
+pnpm --filter @sakurachiyo0v0/logger typecheck   # 类型检查
+pnpm --filter @sakurachiyo0v0/logger test        # 单测(级别/hostname/命名空间/bindings/Error/transport)
+pnpm --filter @sakurachiyo0v0/logger build       # 构建 ESM + CJS + d.ts
+```
+
+**更多细节：** [`packages/logger/README.md`](../packages/logger/README.md)
+
+### `@sakurachiyo0v0/cli-utils`
+
+CLI 参数解析、输出格式、错误处理和进度条。供各 SDK 的命令行入口复用；仅依赖 logger。接口与示例见 [包 README](../packages/cli-utils/README.md)。
+
+## 存储与配置详情
+
+### `@sakurachiyo0v0/config`
+
+1.0 起仅提供通用配置中心、ConfigBackend、命名空间、加密包装及配置根路径解析。必须显式传 backend。参见 [README](../packages/config/README.md) 和 [迁移说明](config-backends-migration.md)。
+
+### `@sakurachiyo0v0/config-webdav`
+
+WebDAV 后端、全局连接配置和 sc-config CLI。数据路径及加密格式保持不变。参见 [README](../packages/config-webdav/README.md)。
+
+### `@sakurachiyo0v0/config-pg`
+
+PostgreSQL 键值后端 PgBackend；安装时仅携带 pg，不包含 WebDAV。参见 [README](../packages/config-pg/README.md)。
+
+### `@sakurachiyo0v0/webdav`
+
+WebDAV 配置存取 SDK:基础文件操作(读/写/列/删/建目录/移动/复制)+ 配置文件存储高层 API(原子写 + 自动备份),带 CLI(`sc-webdav`)。适合存配置文件、多端同步的轻量场景。设计文档 [`docs/superpowers/specs/2026-08-24-webdav-sdk-design.md`](superpowers/specs/2026-08-24-webdav-sdk-design.md)。
+
+**适用环境：** Node.js 20+,支持 Basic 认证的 WebDAV 服务(坚果云/Nextcloud 等)。
+
+**核心接口：**
+
+- `createWebdavClient({ url, username?, password?, timeoutMs? })` — 创建客户端;`ping/list/get/put/mkdir/remove/move/copy/exists`
+- `createConfigStore(client, { basePath?, format?, backupCount? })` — 配置存储;`load/save/list/remove`;`save` 原子写(临时文件+move)+ 旧版自动滚动备份(`.bak.1/2/3`);`format` 支持 `json`/`text`
+- `WebdavError` — 统一错误码 `AUTHENTICATION` / `CONNECTION` / `NOT_FOUND` / `CONFLICT` / `VALIDATION` / `UNKNOWN`,消息脱敏
+- CLI `sc-webdav`:`ping/list/get/put/delete/mkdir/rmdir/move/config-load/config-save`,连接参数 `--url/--username/--password` 或环境变量 `WEBDAV_URL/WEBDAV_USERNAME/WEBDAV_PASSWORD`
+
+**安装方式：**
+
+```powershell
+pnpm add @sakurachiyo0v0/webdav@workspace:*   # workspace 内
+pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/webdav"  # 其他机器
+```
+
+**API 示例：**
+
+```ts
+import { createWebdavClient, createConfigStore } from "@sakurachiyo0v0/webdav";
+
+const wd = createWebdavClient({ url: "https://dav.jianguoyun.com/dav/", username: "u", password: "p" });
+const store = createConfigStore({ client: wd, basePath: "/configs", format: "json" });
+await store.save("app.json", { theme: "dark" });
+const cfg = await store.load("app.json");
+```
+
+**在仓库内的验证方式：**
+
+```powershell
+pnpm --filter @sakurachiyo0v0/webdav typecheck   # 类型检查
+pnpm --filter @sakurachiyo0v0/webdav test        # 单测(本地 webdav-server 真实协议路径)
+pnpm --filter @sakurachiyo0v0/webdav build       # 构建 ESM + CJS + d.ts + CLI
+```
+
+**更多细节：** [`packages/webdav/README.md`](../packages/webdav/README.md)
+
+### `@sakurachiyo0v0/database`
+
+统一数据访问抽象层 SDK:一套 async API(`query` / `execute` / `transaction` / `ping` / `close`)同时访问本地 SQLite 与远程 PostgreSQL / MySQL,切换后端只改配置。设计文档 [`docs/superpowers/specs/2026-08-24-database-sdk-design.md`](superpowers/specs/2026-08-24-database-sdk-design.md)。
+
+**适用环境：** Node.js 20+,可信任的服务端进程;SQLite 基于 better-sqlite3(原生模块,主流平台有预编译二进制)。
+
+**核心接口：**
+
+- `createDataStore({ dialect, ... })` — 创建统一数据源;`sqlite` 传 `path`(支持 `:memory:`),`postgres`/`mysql` 传 `url`(可选 `maxConnections`,默认 10)
+- `store.query<T>(sql, params?)` — 查询,参数化防注入,返回行数组
+- `store.execute(sql, params?)` — 增删改/DDL,返回 `{ affectedRows }`
+- `store.transaction(fn)` — 事务,失败自动回滚;嵌套调用抛 `TRANSACTION_ACTIVE`
+- `store.ping()` / `store.close()` — 探活 / 释放连接(幂等)
+- `DatabaseLogTransport` — 日志持久化 transport(配合 `@sakurachiyo0v0/logger`):本地 SQLite 即时写 + 远程 PostgreSQL 批量同步(断网重试),跨机聚合
+- `queryLogs({ level?, hostname?, namespace?, from?, to?, keyword?, limit? })` — 日志查询 API(本地/远程/合并)
+- `DataError` — 统一错误码 `CONFIGURATION` / `CONNECTION` / `QUERY_SYNTAX` / `CONSTRAINT` / `TRANSACTION_ACTIVE` / `CLOSED` / `TIMEOUT` / `UNKNOWN`,消息脱敏
+
+**占位符规则：** 上层统一 `?`;PG 自动转 `$n`(跳过单引号字符串内 `?`),JSONB 多字符操作符 `?|`/`?&` 原样保留,单 `?` 用 `??` 转义(`data ?? 'key'`);SQLite/MySQL 原生直传。
+
+**安装方式：**
+
+```powershell
+pnpm add @sakurachiyo0v0/database@workspace:*   # workspace 内
+pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/database"  # 其他机器
+```
+
+**API 示例：**
+
+```ts
+import { createDataStore } from "@sakurachiyo0v0/database";
+
+const local = createDataStore({ dialect: "sqlite", path: "./data.db" });
+const remote = createDataStore({ dialect: "postgres", url: "postgresql://user:***@host:5432/db" });
+
+await local.execute("INSERT INTO users (name, age) VALUES (?, ?)", ["alice", 30]);
+const users = await local.query("SELECT * FROM users WHERE age > ?", [18]);
+await local.close();
+```
+
+**在仓库内的验证方式：**
+
+```powershell
+pnpm --filter @sakurachiyo0v0/database typecheck   # 类型检查
+pnpm --filter @sakurachiyo0v0/database test        # 单测(SQLite 内存库全量;PG/MySQL 需环境变量启用)
+pnpm --filter @sakurachiyo0v0/database build       # 构建 ESM + CJS + d.ts + CLI(sc-log)
+```
+
+**日志查询 CLI `sc-log`：** 按等级/设备/时间/命名空间/关键词查日志,本地与远程可合并。详见 [`skills/database-cli/SKILL.md`](../skills/database-cli/SKILL.md)。
+
+**更多细节：** [`packages/database/README.md`](../packages/database/README.md)
+
+## 账号认证详情
+
+### `@sakurachiyo0v0/account`
+
+跨平台账号认证底座(薄):登录态存储、扫码/密码/浏览器三种登录骨架与公共错误模型。**不感知具体平台**——网易云、B 站、酷狗、QQ 音乐等平台的登录差异收敛在各自的 `QrLoginAdapter` / `PasswordLoginAdapter` / `BrowserLoginAdapter` 实现里,登录流程、存储、CLI 全复用。设计文档 [`docs/superpowers/specs/2026-08-23-netease-music-sdk-design.md`](superpowers/specs/2026-08-23-netease-music-sdk-design.md)。
+
+**适用环境:** Node.js 20+，桌面环境（需要打开浏览器）；无头环境可用 `autoOpenBrowser: false`。
+
+**核心接口：**
+
+- `AuthStore` — 跨平台登录态存储：`new AuthStore({ platform, path? })`，默认 `<配置根>/amechan/<platform>/auth.json`，原子写 + 600 权限；`save()` / `load()` / `loadSync()` / `clear()` / `exists()`
+- `qrcodeLogin({ adapter, store?, ... })` — 扫码登录骨架：本地窗口 + 系统浏览器弹二维码 → 手机 App 扫码 → 轮询确认 → 收集凭证 → 可选持久化；返回 `{ credentials, saved }`
+- `QrLoginAdapter` — 扫码平台适配器契约：`generateKey()` / `pollStatus()` / `refresh?()` / `serialize()` / `deserialize()`；扫码平台接入 = 实现这 5 个方法
+- `passwordLogin({ adapter, username, password, onNeedCode?, store?, ... })` — 密码登录骨架：提交用户名密码 → 若需 2FA 循环取码验证 → 成功可选持久化；2FA 交互经 `onNeedCode` 回调
+- `PasswordLoginAdapter` — 密码平台适配器契约：`login()` / `verifyCode()` / `refresh?()` / `serialize()` / `deserialize()`；密码平台（如 VRChat）接入 = 实现这 5 个方法
+- `browserLogin({ adapter, store?, browserPath?, reuseBrowserProfile?, useCdp?, ... })` — 浏览器登录骨架（CDP 弹出独立 Chrome 窗口捕获会话 cookie → 平台校验 → 可选持久化；无浏览器时回退捕获页）；适用于无公开登录 API、只能靠网页浏览器会话的平台（如 BOOTH）
+- `BrowserLoginAdapter` — 浏览器平台适配器契约：`loginUrl` / `cookieDomains` / `sessionCookieNames` / `validate?()` / `serialize()` / `deserialize()`；"网页登录型"平台接入 = 实现这 6 项
+- `detectBrowser()` / `defaultBrowserProfileDir()` — 定位本机 Chrome/Edge 及其日常 profile（供 `browserLogin` 复用日常登录态）
+- `resolveConfigRoot()` / `defaultAuthPath(platform)` — 配置目录解析（`resolveConfigRoot` re-export 自 `@sakurachiyo0v0/config` 唯一权威实现;Windows `%APPDATA%`(回退 `AppData/Roaming`) / macOS `~/Library/Application Support` / Linux `$XDG_CONFIG_HOME`,支持 `AMECHAN_CONFIG_HOME` 覆盖）
+- `AccountError` — 错误码 `NETWORK` / `API_ERROR` / `AUTH_EXPIRED` / `LOGIN_REQUIRED` / `UNKNOWN` / `INVALID_CREDENTIALS` / `TWO_FACTOR_REQUIRED` / `TWO_FACTOR_FAILED`
+
+**安装方式：**
+
+同一 pnpm workspace 内：
+
+```powershell
+pnpm add @sakurachiyo0v0/account@workspace:*
+```
+
+从 GitHub monorepo 安装：
+
+```powershell
+pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/account"
+```
+
+**API 示例：**
+
+```ts
+import { AuthStore, qrcodeLogin } from "@sakurachiyo0v0/account";
+import { neteaseQrAdapter } from "@sakurachiyo0v0/netease-music";
+
+const store = new AuthStore({ platform: "netease-music" });
+const { credentials, saved } = await qrcodeLogin({ adapter: neteaseQrAdapter(), store });
+```
+
+**在仓库内的验证方式：**
+
+```powershell
+pnpm --filter @sakurachiyo0v0/account test        # 单测（存储/扫码骨架状态机/错误模型）
+pnpm --filter @sakurachiyo0v0/account build       # 构建 ESM + CJS + d.ts
+```
+
+**更多细节：** [`packages/account/README.md`](../packages/account/README.md)
+
+## 媒体与通用工具详情
+
+### `@sakurachiyo0v0/ffmpeg`
+
+FFmpeg/ffprobe 进程封装 SDK。底层提供任意参数的运行器与原生命令输入,上层提供视频/音频/图片常用处理函数,适合服务端音视频处理场景。
+
+**适用环境：** Node.js 20+,系统需已安装 `ffmpeg` 与 `ffprobe`(或创建客户端时显式传入二进制路径)。
+
+**核心接口：**
+
+- `createFfmpegClient({ ffmpegPath?, ffprobePath? })` — 创建客户端
+- `client.run(args, options?)` / `client.runFfprobe(args, options?)` — 任意参数运行,支持超时、stdin 输入、进度回调
+- `client.runCommand(command)` — 原生命令字符串输入,任何 ffmpeg 功能都能用(兜底)
+- `client.probe(input)` — 用 ffprobe 读取媒体元数据
+- 视频:`transcode`、`cut`、`concat`、`watermark`、`loopVideo`、`toGif`、`extractFrame`、`thumbnail`
+- 音频:`extractAudio`、`convertAudio`、`toMp3` / `toFlac` / `toWav` / `toOgg` / `toM4a`、`setVolume`、`normalizeAudio`、`joinAudio`
+- 图片:`resizeImage`、`cropImage`、`convertImage`、`compositeImage`、`compressImage`
+- `FfmpegError` — 统一错误类型,错误码 `CONFIGURATION` / `NOT_FOUND` / `INVALID_INPUT` / `TIMEOUT` / `CANCELLED` / `PROCESS_ERROR` / `UNKNOWN`
+
+**进度支持：** 高层函数默认带 `-progress pipe:1`,通过 `onProgress` 回调拿到 `frame`、`outTime`、`percent`(需提供 `progressTotalMs`)等进度快照。
+
+**安装方式：**
+
+同一 pnpm workspace 内：
+
+```powershell
+pnpm add @sakurachiyo0v0/ffmpeg@workspace:*
+```
+
+从 GitHub monorepo 安装(需先在消费项目 `pnpm-workspace.yaml` 中授权构建脚本,见包内 README)：
+
+```powershell
+pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/ffmpeg"
+```
+
+**API 示例：**
+
+```ts
+import { createFfmpegClient } from "@sakurachiyo0v0/ffmpeg";
+
+const ffmpeg = createFfmpegClient();
+const info = await ffmpeg.probe("input.mp4");
+await ffmpeg.transcode({
+  input: "input.mp4",
+  output: "output.webm",
+  videoCodec: "libvpx",
+  progressTotalMs: info.duration * 1000,
+  onProgress: (p) => console.log(p.percent),
+});
+await ffmpeg.thumbnail({ input: "input.mp4", output: "thumb.jpg" });
+```
+
+**在仓库内的验证方式：**
+
+```powershell
+pnpm --filter @sakurachiyo0v0/ffmpeg test   # 单测(真实 ffmpeg 生成视频 + 转码/截图/音频)
+pnpm --filter @sakurachiyo0v0/ffmpeg build  # 构建 ESM + CJS + d.ts
+```
+
+**更多细节：** [`packages/ffmpeg/README.md`](../packages/ffmpeg/README.md)
+
+### `@sakurachiyo0v0/media-downloader`
+
+通用媒体下载 SDK：与具体平台无关。调用方负责拿到「最终媒体 URL + 文件名」，本包负责落盘到选定目录、流式下载（重试 + 进度）、元数据/封面写入、下载历史。设计初衷：B 站/番剧/网易云等多平台共用同一套「选目录 + 下载执行 + 历史」，避免重复实现。
+
+**适用环境：** Node.js 20+；元数据标签与内嵌封面写入需系统安装 `ffmpeg`（通过 `@sakurachiyo0v0/ffmpeg`）。
+
+**核心接口：**
+
+- `new DownloadManager({ root, userAgent?, retries? })` — 创建管理器，root 为下载根目录
+- `manager.listDirs()` — 列出可选的子目录（首项 `""` 表示根目录，递归到第 2 层）
+- `manager.download(target, onProgress?)` — 下载一个目标（`{ url, filename, dir?, tags?, coverUrl? }`），返回 `{ filePath }`
+- `manager.history()` / `manager.clearHistory()` — 下载历史（内存 + 持久化到 `root/.download-state.json`，最多 100 条）
+- `manager.record(record)` — 外部下载完成后记录一条历史（供不走 `download` 方法的场景复用）
+- `DownloaderError` — 统一错误码 `INVALID_TARGET` / `DOWNLOAD_FAILED` / `EMPTY_BODY`
+
+**安装方式：**
+
+同一 pnpm workspace 内：
+
+```powershell
+pnpm add @sakurachiyo0v0/media-downloader@workspace:*
+```
+
+从 GitHub monorepo 安装（需授权 `@sakurachiyo0v0/media-downloader`、`@sakurachiyo0v0/ffmpeg`、`@sakurachiyo0v0/logger` 构建脚本）：
+
+```powershell
+pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/media-downloader"
+```
+
+**API 示例：**
+
+```ts
+import { DownloadManager } from "@sakurachiyo0v0/media-downloader";
+
+const manager = new DownloadManager({ root: "/downloads" });
+const dirs = manager.listDirs(); // ["", "周杰伦", "欧美"]
+const result = await manager.download({
+  url: "http://m804.music.126.net/xxx.mp3",
+  filename: "周杰伦 - 晴天.mp3",
+  dir: "周杰伦",
+  tags: { title: "晴天", artist: "周杰伦", album: "叶惠美" },
+  coverUrl: "http://p1.music.126.net/xxx.jpg",
+});
+```
+
+**在仓库内的验证方式：**
+
+```powershell
+pnpm --filter @sakurachiyo0v0/media-downloader typecheck   # 类型检查
+pnpm --filter @sakurachiyo0v0/media-downloader test        # 单测（本地 HTTP 服务真实下载链路）
+pnpm --filter @sakurachiyo0v0/media-downloader build       # 构建 ESM + CJS + d.ts
+```
+
+**更多细节：** [`packages/media-downloader/README.md`](../packages/media-downloader/README.md)
+
+### `@sakurachiyo0v0/chuanshengtong`
+
+传声筒:输入文字 + 内置图像模板,**程序化合成**输出图片(不依赖 AI 图像生成 API)。基于 `sharp`(SVG 文本层 → 栅格化),中文自动换行/居中/超长保护。设计文档 [`docs/superpowers/specs/2026-08-25-chuanshengtong-design.md`](superpowers/specs/2026-08-25-chuanshengtong-design.md)。
+
+**适用环境：** Node.js 20+;中文渲染依赖系统安装中文字体(如 Noto Sans CJK / 文鼎),无中文字体时文字显示为方框。
+
+**核心接口：**
+
+- `listTemplates()` / `getTemplate(id)` — 列出/查询内置模板(id/名称/描述/尺寸/容量)
+- `render({ template, text, output, format?, width?, fontSize?, color?, quality? })` — 渲染图片到文件,返回 `{ outputPath, width, height, format, bytes }`
+- `wrapText(text, { fontSize, maxWidth, maxLines })` — 纯文本排版纯函数(中文按字符、英文按词断行,超长截断补省略号),返回 `{ lines, truncated }`
+- `parseRichText(text)` / `wrapRichText(runs, opts)` — 富文本解析与样式感知排版:支持 `**加粗**`、`*斜体*`、`[c:red]彩色[/c]`,渲染为 SVG tspan,纯文本行为完全兼容
+- 内置模板:`dazibao`(大字报)/ `speech-bubble`(台词气泡)/ `card`(卡片)/ `notice`(公告),全部程序化 SVG 生成,无外部图片资源
+- `ChuanshengtongError` — 统一错误码:`TEMPLATE_NOT_FOUND` / `EMPTY_TEXT` / `TEXT_TOO_LONG` / `INVALID_OPTION` / `RENDER_FAILED` / `WRITE_FAILED` / `UNKNOWN`
+
+**CLI：** `sc-chuanshengtong list|render <text>`(选项 `--template` / `--output` / `--format` / `--width` / `--font-size` / `--color` / `--quality`);skill 手册 [`skills/chuanshengtong-cli/SKILL.md`](../skills/chuanshengtong-cli/SKILL.md)。
+
+**安装方式：**
+
+同一 pnpm workspace 内：
+
+```powershell
+pnpm add @sakurachiyo0v0/chuanshengtong@workspace:*
+```
+
+从 GitHub monorepo 安装(需在消费项目 `pnpm-workspace.yaml` 授权 `sharp: true`):
+
+```powershell
+pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/chuanshengtong"
+```
+
+**API 示例：**
+
+```ts
+import { render } from "@sakurachiyo0v0/chuanshengtong";
+
+await render({ template: "dazibao", text: "你好,世界", output: "./out.png" });
+```
+
+**在仓库内的验证方式：**
+
+```powershell
+pnpm --filter @sakurachiyo0v0/chuanshengtong typecheck   # 类型检查
+pnpm --filter @sakurachiyo0v0/chuanshengtong test        # 单测(排版/转义/注册表 + sharp 真实渲染)
+pnpm --filter @sakurachiyo0v0/chuanshengtong build       # 构建 ESM + CJS + d.ts + CLI
+```
+
+**更多细节：** [`packages/chuanshengtong/README.md`](../packages/chuanshengtong/README.md)
 
 ### `@sakurachiyo0v0/email`
 
@@ -113,64 +545,7 @@ pnpm verify:email-git-package       # 以 git 子目录依赖方式安装并导�
 
 **更多细节：** [`packages/email/README.md`](../packages/email/README.md)
 
-### `@sakurachiyo0v0/ffmpeg`
-
-FFmpeg/ffprobe 进程封装 SDK。底层提供任意参数的运行器与原生命令输入,上层提供视频/音频/图片常用处理函数,适合服务端音视频处理场景。
-
-**适用环境：** Node.js 20+,系统需已安装 `ffmpeg` 与 `ffprobe`(或创建客户端时显式传入二进制路径)。
-
-**核心接口：**
-
-- `createFfmpegClient({ ffmpegPath?, ffprobePath? })` — 创建客户端
-- `client.run(args, options?)` / `client.runFfprobe(args, options?)` — 任意参数运行,支持超时、stdin 输入、进度回调
-- `client.runCommand(command)` — 原生命令字符串输入,任何 ffmpeg 功能都能用(兜底)
-- `client.probe(input)` — 用 ffprobe 读取媒体元数据
-- 视频:`transcode`、`cut`、`concat`、`watermark`、`loopVideo`、`toGif`、`extractFrame`、`thumbnail`
-- 音频:`extractAudio`、`convertAudio`、`toMp3` / `toFlac` / `toWav` / `toOgg` / `toM4a`、`setVolume`、`normalizeAudio`、`joinAudio`
-- 图片:`resizeImage`、`cropImage`、`convertImage`、`compositeImage`、`compressImage`
-- `FfmpegError` — 统一错误类型,错误码 `CONFIGURATION` / `NOT_FOUND` / `INVALID_INPUT` / `TIMEOUT` / `CANCELLED` / `PROCESS_ERROR` / `UNKNOWN`
-
-**进度支持：** 高层函数默认带 `-progress pipe:1`,通过 `onProgress` 回调拿到 `frame`、`outTime`、`percent`(需提供 `progressTotalMs`)等进度快照。
-
-**安装方式：**
-
-同一 pnpm workspace 内：
-
-```powershell
-pnpm add @sakurachiyo0v0/ffmpeg@workspace:*
-```
-
-从 GitHub monorepo 安装(需先在消费项目 `pnpm-workspace.yaml` 中授权构建脚本,见包内 README)：
-
-```powershell
-pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/ffmpeg"
-```
-
-**API 示例：**
-
-```ts
-import { createFfmpegClient } from "@sakurachiyo0v0/ffmpeg";
-
-const ffmpeg = createFfmpegClient();
-const info = await ffmpeg.probe("input.mp4");
-await ffmpeg.transcode({
-  input: "input.mp4",
-  output: "output.webm",
-  videoCodec: "libvpx",
-  progressTotalMs: info.duration * 1000,
-  onProgress: (p) => console.log(p.percent),
-});
-await ffmpeg.thumbnail({ input: "input.mp4", output: "thumb.jpg" });
-```
-
-**在仓库内的验证方式：**
-
-```powershell
-pnpm --filter @sakurachiyo0v0/ffmpeg test   # 单测(真实 ffmpeg 生成视频 + 转码/截图/音频)
-pnpm --filter @sakurachiyo0v0/ffmpeg build  # 构建 ESM + CJS + d.ts
-```
-
-**更多细节：** [`packages/ffmpeg/README.md`](../packages/ffmpeg/README.md)
+## 平台 SDK详情
 
 ### `@sakurachiyo0v0/bilibili`
 
@@ -231,178 +606,6 @@ pnpm --filter @sakurachiyo0v0/bilibili build  # 构建 ESM + CJS + d.ts
 ```
 
 **更多细节：** [`packages/bilibili/README.md`](../packages/bilibili/README.md)
-
-### `@sakurachiyo0v0/chat-platforms`
-
-统一聊天平台接入 SDK。平台差异在适配器内消化，上层只面对统一消息模型（`ChatSource` / `ChatMessage` / `ChatMessageOutbound`），通过注册表 + 工厂新增平台零改核心。架构参考 AstrBot 与 hermes-agent 的平台适配体系。第一版内置**飞书**适配器（长连接/WebSocket 与 webhook 两种事件接收方式）。
-
-**适用环境：** Node.js 20+，运行在可信任的服务端进程（含 Electron 主进程）；不要在浏览器/WebView 中保存应用凭证。
-
-**核心接口：**
-
-- `ChatPlatformClient` — 多平台客户端：`add(adapter, policy?)` / `remove(name)` / `send(source, message)` / `onMessage(handler)` / `onBlocked(handler)` / `disconnectAll()`；支持注入响应策略
-- `ChatPlatformAdapter` — 适配器统一接口：`connect({ onMessage })` / `disconnect()` / `send(source, message)` / `handleWebhook?(body)` / `react?(message, emoji)`
-- `ChatPlatformRegistry` / `registerPlatform()` — 注册表 + 工厂
-- `ChatResponsePolicy` / `defaultPolicy()` / `PolicyChecker` — 消息响应策略（白名单/黑名单/唤醒词/关键词屏蔽/限流/表情回应），参考 AstrBot `platform_settings`
-- `feishuProvider(config)` — 飞书适配器工厂；`registerFeishuPlatform()` 注册到默认注册表
-- `ChatPlatformError` — 统一错误码：`CONFIGURATION` / `VALIDATION` / `AUTHENTICATION` / `CONNECTION` / `DELIVERY` / `NOT_FOUND` / `UNKNOWN`
-
-**安装方式：**
-
-同一 pnpm workspace 内：
-
-```powershell
-pnpm add @sakurachiyo0v0/chat-platforms@workspace:*
-```
-
-从 GitHub monorepo 安装（需授权 `@sakurachiyo0v0/chat-platforms` 与 `@larksuiteoapi/node-sdk` 构建脚本）：
-
-```powershell
-pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/chat-platforms"
-```
-
-**API 示例：**
-
-```ts
-import { ChatPlatformClient, feishuProvider } from "@sakurachiyo0v0/chat-platforms";
-
-const client = new ChatPlatformClient();
-client.onMessage(async (message) => {
-  await client.send(message.source, { text: "收到：" + message.text });
-});
-
-await client.add(
-  feishuProvider({
-    appId: process.env.FEISHU_APP_ID!,
-    appSecret: process.env.FEISHU_APP_SECRET!,
-    transport: "websocket",
-  }),
-);
-```
-
-**在仓库内的验证方式：**
-
-```powershell
-pnpm --filter @sakurachiyo0v0/chat-platforms test   # 单测（注册表/客户端/飞书事件解析/webhook challenge）
-pnpm --filter @sakurachiyo0v0/chat-platforms build  # 构建 ESM + CJS + d.ts
-```
-
-**更多细节：** [`packages/chat-platforms/README.md`](../packages/chat-platforms/README.md)
-
-### `@sakurachiyo0v0/lol`
-
-英雄联盟（LoL）客户端本地能力 SDK。封装 LCU API（League Client Update，客户端暴露的本机 HTTP/WebSocket 接口），提供召唤师、战绩、段位、对局流程、选人、游戏数据等能力，供本机 Node 进程（Electron 主进程 / CLI / 本地 Web 后端）直接使用。代码完全自研（无 Seraphine 代码复制，规避 GPLv3），参考 LCU 官方文档与开源项目 [Seraphine](https://github.com/Zzaphkiel/Seraphine) 的设计思路。
-
-**适用环境：** Node.js 20+，Windows 本机 + 运行中的英雄联盟客户端；LCU 只存在于本机客户端运行期间，**不能做成云端 SaaS**。
-
-**核心接口：**
-
-- `createLolClient({ connection?, concurrency?, timeoutMs? })` — 自动发现本机 LCU 并连接（也可显式指定连接参数）
-- `client.summoner` — `getCurrent()` / `getByName()` / `getByPuuid()` / `getProfile()`
-- `client.matchHistory` — `getMatches(puuid, {begIndex, endIndex})` / `getMatchesViaSgp()` / `getGameDetail(gameId)`
-- `client.ranked` — `getStats(puuid)` / `getStatsViaSgp(puuid)`
-- `client.gameflow` — `getPhase()` / `getSession()` / `getReadyCheck()` / `acceptReadyCheck()` / `dodge()` / `reconnect()` / `playAgain()` / `spectate()`
-- `client.champSelect` — 选人操作：`pick()` / `ban()` / `completeAction()` / `acceptTrade()` / `acceptSwap()` / `benchSwap()` / `reroll()` / `selectConfig()` / 符文页管理（⚠️ 自动操作类，低风险需披露）
-- `client.lobby` — `create5v5PracticeLobby()` / `getLobby()` / `playAgain()`
-- `client.profile` — 生涯设置：`setBackground()` / `setProfileIcon()` / `setRankShown()` / `removeTokens()` / `removePrestigeCrest()`
-- `client.chat` — 聊天社交：`getMe()` / `setStatus()` / `setAvailability()` / `getConversations()` / `sendMessage()` / `sendFriendRequest()` / `sendNotification()`
-- `client.gameData` — 静态数据（英雄/物品/符文/召唤师技能/队列）与 `fetchAsset()` 资源获取
-- `client.events` — WebSocket 事件订阅：`onGameflowPhase` / `onChampSelect` / `onCurrentSummoner` / `onSgpToken` / 通用 `subscribe()`
-- `client.liveClient` — 游戏内实时数据（端口 2999，明文只读）：`getAllGameData()` / `getPlayerList()` / `getActivePlayer()` / `getEventData()` 等；独立工厂 `createLiveClient()`
-- `parsers` — 纯函数解析层：`parseMatchSummary` / `parseMatchesSummary` / `getRecentChampions` / `getTeammates` / `parseRankSummary`（LCU）/ `parseRankSummaryFromSgp` / `formatDuration` / `formatTimestamp`
-- `client.sgp` — 腾讯国服 SGP 通道（检测到国服服务器自动启用，非国服为 `undefined`）
-- `client.championNames` — 英雄名映射（id → 中文名）：内置全量表离线可用，运行时自动从 CommunityDragon latest 通道更新（出新英雄自动生效），不依赖 LCU 连接；独立类 `ChampionNamesService`（可自定义数据源/缓存 TTL）
-- `LolError` — 统一错误码 `CLIENT_NOT_RUNNING` / `DISCOVERY_FAILED` / `CONNECTION` / `NOT_FOUND` / `RATE_LIMIT` / `AUTH` / `TIMEOUT` / `UNKNOWN`，消息脱敏
-
-**关键机制：** tasklist + PowerShell CIM 进程发现；undici 忽略自签名证书 + BasicAuth；信号量限流 + GET 指数退避重试；WebSocket 断线自动重连；国服 SGP Bearer 通道。
-
-**安装方式：**
-
-同一 pnpm workspace 内：
-
-```powershell
-pnpm add @sakurachiyo0v0/lol@workspace:*
-```
-
-从 GitHub monorepo 安装（需在消费项目 `pnpm-workspace.yaml` 中授权 `@sakurachiyo0v0/lol` 构建脚本）：
-
-```powershell
-pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/lol"
-```
-
-**API 示例：**
-
-```ts
-import { createLolClient } from "@sakurachiyo0v0/lol";
-
-const client = await createLolClient();
-const me = await client.summoner.getCurrent();
-const games = await client.matchHistory.getMatches(me.puuid, { begIndex: 0, endIndex: 19 });
-client.events.onGameflowPhase((phase) => console.log("阶段:", phase));
-await client.close();
-```
-
-**在仓库内的验证方式：**
-
-```powershell
-pnpm --filter @sakurachiyo0v0/lol typecheck   # 类型检查
-pnpm --filter @sakurachiyo0v0/lol test        # 单测（本地 mock LCU 服务器，走真实 HTTP/WS 协议路径）
-pnpm --filter @sakurachiyo0v0/lol build       # 构建 ESM + CJS + d.ts
-```
-
-**更多细节：** [`packages/lol/README.md`](../packages/lol/README.md)；设计文档 [`docs/superpowers/specs/2026-08-22-lol-sdk-design.md`](superpowers/specs/2026-08-22-lol-sdk-design.md)
-
-### `@sakurachiyo0v0/account`
-
-跨平台账号认证底座(薄):登录态存储、扫码/密码/浏览器三种登录骨架与公共错误模型。**不感知具体平台**——网易云、B 站、酷狗、QQ 音乐等平台的登录差异收敛在各自的 `QrLoginAdapter` / `PasswordLoginAdapter` / `BrowserLoginAdapter` 实现里,登录流程、存储、CLI 全复用。设计文档 [`docs/superpowers/specs/2026-08-23-netease-music-sdk-design.md`](superpowers/specs/2026-08-23-netease-music-sdk-design.md)。
-
-**适用环境:** Node.js 20+，桌面环境（需要打开浏览器）；无头环境可用 `autoOpenBrowser: false`。
-
-**核心接口：**
-
-- `AuthStore` — 跨平台登录态存储：`new AuthStore({ platform, path? })`，默认 `<配置根>/amechan/<platform>/auth.json`，原子写 + 600 权限；`save()` / `load()` / `loadSync()` / `clear()` / `exists()`
-- `qrcodeLogin({ adapter, store?, ... })` — 扫码登录骨架：本地窗口 + 系统浏览器弹二维码 → 手机 App 扫码 → 轮询确认 → 收集凭证 → 可选持久化；返回 `{ credentials, saved }`
-- `QrLoginAdapter` — 扫码平台适配器契约：`generateKey()` / `pollStatus()` / `refresh?()` / `serialize()` / `deserialize()`；扫码平台接入 = 实现这 5 个方法
-- `passwordLogin({ adapter, username, password, onNeedCode?, store?, ... })` — 密码登录骨架：提交用户名密码 → 若需 2FA 循环取码验证 → 成功可选持久化；2FA 交互经 `onNeedCode` 回调
-- `PasswordLoginAdapter` — 密码平台适配器契约：`login()` / `verifyCode()` / `refresh?()` / `serialize()` / `deserialize()`；密码平台（如 VRChat）接入 = 实现这 5 个方法
-- `browserLogin({ adapter, store?, browserPath?, reuseBrowserProfile?, useCdp?, ... })` — 浏览器登录骨架（CDP 弹出独立 Chrome 窗口捕获会话 cookie → 平台校验 → 可选持久化；无浏览器时回退捕获页）；适用于无公开登录 API、只能靠网页浏览器会话的平台（如 BOOTH）
-- `BrowserLoginAdapter` — 浏览器平台适配器契约：`loginUrl` / `cookieDomains` / `sessionCookieNames` / `validate?()` / `serialize()` / `deserialize()`；"网页登录型"平台接入 = 实现这 6 项
-- `detectBrowser()` / `defaultBrowserProfileDir()` — 定位本机 Chrome/Edge 及其日常 profile（供 `browserLogin` 复用日常登录态）
-- `resolveConfigRoot()` / `defaultAuthPath(platform)` — 配置目录解析（`resolveConfigRoot` re-export 自 `@sakurachiyo0v0/config` 唯一权威实现;Windows `%APPDATA%`(回退 `AppData/Roaming`) / macOS `~/Library/Application Support` / Linux `$XDG_CONFIG_HOME`,支持 `AMECHAN_CONFIG_HOME` 覆盖）
-- `AccountError` — 错误码 `NETWORK` / `API_ERROR` / `AUTH_EXPIRED` / `LOGIN_REQUIRED` / `UNKNOWN` / `INVALID_CREDENTIALS` / `TWO_FACTOR_REQUIRED` / `TWO_FACTOR_FAILED`
-
-**安装方式：**
-
-同一 pnpm workspace 内：
-
-```powershell
-pnpm add @sakurachiyo0v0/account@workspace:*
-```
-
-从 GitHub monorepo 安装：
-
-```powershell
-pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/account"
-```
-
-**API 示例：**
-
-```ts
-import { AuthStore, qrcodeLogin } from "@sakurachiyo0v0/account";
-import { neteaseQrAdapter } from "@sakurachiyo0v0/netease-music";
-
-const store = new AuthStore({ platform: "netease-music" });
-const { credentials, saved } = await qrcodeLogin({ adapter: neteaseQrAdapter(), store });
-```
-
-**在仓库内的验证方式：**
-
-```powershell
-pnpm --filter @sakurachiyo0v0/account test        # 单测（存储/扫码骨架状态机/错误模型）
-pnpm --filter @sakurachiyo0v0/account build       # 构建 ESM + CJS + d.ts
-```
-
-**更多细节：** [`packages/account/README.md`](../packages/account/README.md)
 
 ### `@sakurachiyo0v0/netease-music`
 
@@ -465,61 +668,6 @@ pnpm --filter @sakurachiyo0v0/netease-music build       # 构建 ESM + CJS + d.t
 
 **更多细节：** [`packages/netease-music/README.md`](../packages/netease-music/README.md)
 
-### `@sakurachiyo0v0/media-downloader`
-
-通用媒体下载 SDK：与具体平台无关。调用方负责拿到「最终媒体 URL + 文件名」，本包负责落盘到选定目录、流式下载（重试 + 进度）、元数据/封面写入、下载历史。设计初衷：B 站/番剧/网易云等多平台共用同一套「选目录 + 下载执行 + 历史」，避免重复实现。
-
-**适用环境：** Node.js 20+；元数据标签与内嵌封面写入需系统安装 `ffmpeg`（通过 `@sakurachiyo0v0/ffmpeg`）。
-
-**核心接口：**
-
-- `new DownloadManager({ root, userAgent?, retries? })` — 创建管理器，root 为下载根目录
-- `manager.listDirs()` — 列出可选的子目录（首项 `""` 表示根目录，递归到第 2 层）
-- `manager.download(target, onProgress?)` — 下载一个目标（`{ url, filename, dir?, tags?, coverUrl? }`），返回 `{ filePath }`
-- `manager.history()` / `manager.clearHistory()` — 下载历史（内存 + 持久化到 `root/.download-state.json`，最多 100 条）
-- `manager.record(record)` — 外部下载完成后记录一条历史（供不走 `download` 方法的场景复用）
-- `DownloaderError` — 统一错误码 `INVALID_TARGET` / `DOWNLOAD_FAILED` / `EMPTY_BODY`
-
-**安装方式：**
-
-同一 pnpm workspace 内：
-
-```powershell
-pnpm add @sakurachiyo0v0/media-downloader@workspace:*
-```
-
-从 GitHub monorepo 安装（需授权 `@sakurachiyo0v0/media-downloader`、`@sakurachiyo0v0/ffmpeg`、`@sakurachiyo0v0/logger` 构建脚本）：
-
-```powershell
-pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/media-downloader"
-```
-
-**API 示例：**
-
-```ts
-import { DownloadManager } from "@sakurachiyo0v0/media-downloader";
-
-const manager = new DownloadManager({ root: "/downloads" });
-const dirs = manager.listDirs(); // ["", "周杰伦", "欧美"]
-const result = await manager.download({
-  url: "http://m804.music.126.net/xxx.mp3",
-  filename: "周杰伦 - 晴天.mp3",
-  dir: "周杰伦",
-  tags: { title: "晴天", artist: "周杰伦", album: "叶惠美" },
-  coverUrl: "http://p1.music.126.net/xxx.jpg",
-});
-```
-
-**在仓库内的验证方式：**
-
-```powershell
-pnpm --filter @sakurachiyo0v0/media-downloader typecheck   # 类型检查
-pnpm --filter @sakurachiyo0v0/media-downloader test        # 单测（本地 HTTP 服务真实下载链路）
-pnpm --filter @sakurachiyo0v0/media-downloader build       # 构建 ESM + CJS + d.ts
-```
-
-**更多细节：** [`packages/media-downloader/README.md`](../packages/media-downloader/README.md)
-
 ### `@sakurachiyo0v0/booth`
 
 BOOTH(booth.pm,Pixiv 旗下数字商品市场)领取/购买 SDK:登录态管理、商品解析、免费领取 / 付费下单、订单文件下载与批量编排。BOOTH 无官方公开 API,SDK 基于页面协议模拟(商品页 JSON-LD / 下单端点),端点集中在 `src/api/endpoints.ts` 常量化管理。设计文档 [`docs/superpowers/specs/2026-08-23-booth-sdk-design.md`](superpowers/specs/2026-08-23-booth-sdk-design.md)。
@@ -575,6 +723,45 @@ pnpm --filter @sakurachiyo0v0/booth build       # 构建 ESM + CJS + d.ts + CLI
 ```
 
 **更多细节：** [`packages/booth/README.md`](../packages/booth/README.md)
+
+### `@sakurachiyo0v0/steam`
+
+Steam SDK(查询向):官方 Web API(`api.steampowered.com`)+ Storefront(`store.steampowered.com`)+ 社区站点(`steamcommunity.com`)。**写操作仅激活码兑换一项**(`redeem`,用户拍板扩展红线);市场买卖、交易创建、好友增删等仍零写。设计文档 [`docs/superpowers/specs/2026-08-23-steam-sdk-design.md`](superpowers/specs/2026-08-23-steam-sdk-design.md);调研报告 [`docs/steam-api-research.md`](steam-api-research.md)。
+
+**适用环境:** Node.js 20+,服务端进程。`steamcommunity.com` 国内网络不可达,社区相关请求需配置 `proxy`(undici ProxyAgent)。
+
+**当前能力(P0 基础设施 + P1 公开查询 + P2 登录态 + P3 登录后只读深水区):**
+
+- `createSteamClient({ apiKey?, publisherKey?, proxy?, baseUrls?, sessionPath?, cache?, ... })` — 客户端工厂
+- 四主机 HTTP 层:Web API key 注入(`X-WebAPI-Key`)、会话 cookie 携带、429 退避重试(尊重 `Retry-After`)、TTL 缓存、超时、代理、脱敏日志
+- `client.probe()` — `GetServerInfo` 连通性探针(无需 key);`client.getSupportedApiList()` — 动态枚举全部接口(需 key)
+- `client.auth` — 密码登录(自动识别 Guard:邮箱验证码/TOTP/设备确认)、二维码登录、cookie 导入、会话状态/续期验证(`checkSession`)、`refreshCookies`、`logout`;登录态经 `@sakurachiyo0v0/account` AuthStore 持久化
+- `client.user` — 资料摘要 / vanity 解析(支持 steamID64/3/2/vanity/URL 输入)/ 封禁信息 / 好友列表(隐私语义)/ 等级 / 徽章 / 徽章任务 / 群组 / 动态流(`recentActivity` XML)/ 评论读
+- `client.library` — 游戏库(`GetOwnedGames` 隐私空结果 → `privacyRestricted` 标记)/ 家庭共享 / 近期游戏 / 愿望单(公开读,隐私标记)
+- `client.stats` — 成就/统计定义、玩家成就与统计、全局成就/统计、在线人数
+- `client.news` — 游戏新闻(无需 key)
+- `client.store` — appdetails / featured / packagedetails / dlcforapp / 商店搜索 / GetAppList / 商店评测 `getAppReviews` 等(无需 key,`cc`/`l` 本地化)
+- `client.inventory` — 公开库存(`/inventory/:steamid/:appid/:contextid`,默认不缓存)/ 自己库存(需登录态)/ `GetItemDefs` 物品定义(publisher key)
+- `client.market` — 单件即时价 `priceoverview` / 市场搜索 `search/render` / 订单簿 `itemordershistogram` / 价格历史 `pricehistory` / 我的挂单 `mylistings` / 成交历史 `myhistory`(后两者需登录态;全部只读)
+- `client.workshop` — `GetPublishedFileDetails`(POST form,无需 key)/ `EnumerateUserPublishedFiles` / `EnumerateUserSubscribedFiles`
+- `client.trade`(只读)— 交易报价 `GetTradeOffers` / 单笔报价 `GetTradeOffer` / 交易历史 `GetTradeHistory`(需 key)/ 交易链接解析(需登录态);零写操作
+- `client.redeem` — 激活码兑换 `redeemActivationKey`(**写操作**;store 页面协议:registerkey 302+Set-Cookie 会话刷新 → ajaxregisterkey JSON,ePurchaseResult 码映射;全 SDK 唯一写能力,需登录态)
+- `SteamError` — 错误码 `NETWORK`/`TIMEOUT`/`RATE_LIMIT`/`AUTH_EXPIRED`/`LOGIN_REQUIRED`/`FORBIDDEN`/`NOT_FOUND`/`INVALID_URL`/`INVALID_CREDENTIALS`/`TWO_FACTOR_REQUIRED`/`TWO_FACTOR_FAILED`/`CONFIGURATION`/`UNKNOWN`,消息脱敏
+- SteamID 工具:`parseSteamId` / `steamId64ToAccountId` / `accountIdToSteamId64` / `steamId64ToSteamId2|3` / `accountIdToSteamId2|3`(BigInt 精确运算,steamID64 超出 JS Number 安全范围)
+- 登录协议自研(RSA 密码加密 → IAuthenticationService 全流程 → finalizelogin web cookie),零第三方登录依赖
+- `sc-steam` CLI:`login`(密码/QR/cookie 导入)/ `status` / `logout` / `user` / `owned-games` / `achievements` / `price` / `search` / `inventory` / `my-listings` / `reviews` / `redeem` / `watch`,JSON 输出;写操作仅 `redeem`;skill 手册 [`skills/steam-cli/SKILL.md`](../skills/steam-cli/SKILL.md)
+
+**P5 收尾状态:** README / packages-index / CLI / skill / 版本 bump 均已交付(v0.2.0 已发布,CI publish success);剩余发布后消费验证 `pnpm verify:published @sakurachiyo0v0/steam`(前置:本机 `.npmrc` 配置 GitHub Packages token)。
+
+**在仓库内的验证方式:**
+
+```powershell
+pnpm --filter @sakurachiyo0v0/steam typecheck   # 类型检查
+pnpm --filter @sakurachiyo0v0/steam test        # 单测(mock 四台主机走真实 HTTP 协议路径,含 RSA 密码往返)
+pnpm --filter @sakurachiyo0v0/steam build       # 构建 ESM + CJS + d.ts
+```
+
+**更多细节:** [`packages/steam/README.md`](../packages/steam/README.md)
 
 ### `@sakurachiyo0v0/vrchat`
 
@@ -646,45 +833,6 @@ pnpm --filter @sakurachiyo0v0/vrchat build       # 构建 ESM + CJS + d.ts + CLI
 
 **更多细节：** [`packages/vrchat/README.md`](../packages/vrchat/README.md)
 
-### `@sakurachiyo0v0/steam`
-
-Steam SDK(查询向):官方 Web API(`api.steampowered.com`)+ Storefront(`store.steampowered.com`)+ 社区站点(`steamcommunity.com`)。**写操作仅激活码兑换一项**(`redeem`,用户拍板扩展红线);市场买卖、交易创建、好友增删等仍零写。设计文档 [`docs/superpowers/specs/2026-08-23-steam-sdk-design.md`](superpowers/specs/2026-08-23-steam-sdk-design.md);调研报告 [`docs/steam-api-research.md`](steam-api-research.md)。
-
-**适用环境:** Node.js 20+,服务端进程。`steamcommunity.com` 国内网络不可达,社区相关请求需配置 `proxy`(undici ProxyAgent)。
-
-**当前能力(P0 基础设施 + P1 公开查询 + P2 登录态 + P3 登录后只读深水区):**
-
-- `createSteamClient({ apiKey?, publisherKey?, proxy?, baseUrls?, sessionPath?, cache?, ... })` — 客户端工厂
-- 四主机 HTTP 层:Web API key 注入(`X-WebAPI-Key`)、会话 cookie 携带、429 退避重试(尊重 `Retry-After`)、TTL 缓存、超时、代理、脱敏日志
-- `client.probe()` — `GetServerInfo` 连通性探针(无需 key);`client.getSupportedApiList()` — 动态枚举全部接口(需 key)
-- `client.auth` — 密码登录(自动识别 Guard:邮箱验证码/TOTP/设备确认)、二维码登录、cookie 导入、会话状态/续期验证(`checkSession`)、`refreshCookies`、`logout`;登录态经 `@sakurachiyo0v0/account` AuthStore 持久化
-- `client.user` — 资料摘要 / vanity 解析(支持 steamID64/3/2/vanity/URL 输入)/ 封禁信息 / 好友列表(隐私语义)/ 等级 / 徽章 / 徽章任务 / 群组 / 动态流(`recentActivity` XML)/ 评论读
-- `client.library` — 游戏库(`GetOwnedGames` 隐私空结果 → `privacyRestricted` 标记)/ 家庭共享 / 近期游戏 / 愿望单(公开读,隐私标记)
-- `client.stats` — 成就/统计定义、玩家成就与统计、全局成就/统计、在线人数
-- `client.news` — 游戏新闻(无需 key)
-- `client.store` — appdetails / featured / packagedetails / dlcforapp / 商店搜索 / GetAppList / 商店评测 `getAppReviews` 等(无需 key,`cc`/`l` 本地化)
-- `client.inventory` — 公开库存(`/inventory/:steamid/:appid/:contextid`,默认不缓存)/ 自己库存(需登录态)/ `GetItemDefs` 物品定义(publisher key)
-- `client.market` — 单件即时价 `priceoverview` / 市场搜索 `search/render` / 订单簿 `itemordershistogram` / 价格历史 `pricehistory` / 我的挂单 `mylistings` / 成交历史 `myhistory`(后两者需登录态;全部只读)
-- `client.workshop` — `GetPublishedFileDetails`(POST form,无需 key)/ `EnumerateUserPublishedFiles` / `EnumerateUserSubscribedFiles`
-- `client.trade`(只读)— 交易报价 `GetTradeOffers` / 单笔报价 `GetTradeOffer` / 交易历史 `GetTradeHistory`(需 key)/ 交易链接解析(需登录态);零写操作
-- `client.redeem` — 激活码兑换 `redeemActivationKey`(**写操作**;store 页面协议:registerkey 302+Set-Cookie 会话刷新 → ajaxregisterkey JSON,ePurchaseResult 码映射;全 SDK 唯一写能力,需登录态)
-- `SteamError` — 错误码 `NETWORK`/`TIMEOUT`/`RATE_LIMIT`/`AUTH_EXPIRED`/`LOGIN_REQUIRED`/`FORBIDDEN`/`NOT_FOUND`/`INVALID_URL`/`INVALID_CREDENTIALS`/`TWO_FACTOR_REQUIRED`/`TWO_FACTOR_FAILED`/`CONFIGURATION`/`UNKNOWN`,消息脱敏
-- SteamID 工具:`parseSteamId` / `steamId64ToAccountId` / `accountIdToSteamId64` / `steamId64ToSteamId2|3` / `accountIdToSteamId2|3`(BigInt 精确运算,steamID64 超出 JS Number 安全范围)
-- 登录协议自研(RSA 密码加密 → IAuthenticationService 全流程 → finalizelogin web cookie),零第三方登录依赖
-- `sc-steam` CLI:`login`(密码/QR/cookie 导入)/ `status` / `logout` / `user` / `owned-games` / `achievements` / `price` / `search` / `inventory` / `my-listings` / `reviews` / `redeem` / `watch`,JSON 输出;写操作仅 `redeem`;skill 手册 [`skills/steam-cli/SKILL.md`](../skills/steam-cli/SKILL.md)
-
-**P5 收尾状态:** README / packages-index / CLI / skill / 版本 bump 均已交付(v0.2.0 已发布,CI publish success);剩余发布后消费验证 `pnpm verify:published @sakurachiyo0v0/steam`(前置:本机 `.npmrc` 配置 GitHub Packages token)。
-
-**在仓库内的验证方式:**
-
-```powershell
-pnpm --filter @sakurachiyo0v0/steam typecheck   # 类型检查
-pnpm --filter @sakurachiyo0v0/steam test        # 单测(mock 四台主机走真实 HTTP 协议路径,含 RSA 密码往返)
-pnpm --filter @sakurachiyo0v0/steam build       # 构建 ESM + CJS + d.ts
-```
-
-**更多细节:** [`packages/steam/README.md`](../packages/steam/README.md)
-
 ### `@sakurachiyo0v0/xiaoheihe`
 
 小黑盒(xiaoheihe.cn)SDK:扫码登录(复用 `@sakurachiyo0v0/account` 骨架)+ hkey/nonce 签名 + **只读查询**(帖子/评论/feed/@消息/用户)。P0 只读,写操作(回复评论)属红线扩展(P1,待拍板)。协议层提炼自 Go 参考实现 [xhhRobot](https://github.com/qingkongfeixing/xhhRobot)(xhh/ 包),仅取协议、不含机器人逻辑。设计文档 [`docs/superpowers/specs/2026-08-24-xiaoheihe-sdk-design.md`](superpowers/specs/2026-08-24-xiaoheihe-sdk-design.md)。
@@ -746,254 +894,129 @@ pnpm --filter @sakurachiyo0v0/xiaoheihe build       # 构建 ESM + CJS + d.ts + 
 
 **更多细节:** [`packages/xiaoheihe/README.md`](../packages/xiaoheihe/README.md)
 
+### `@sakurachiyo0v0/lol`
 
-### `@sakurachiyo0v0/database`
+英雄联盟（LoL）客户端本地能力 SDK。封装 LCU API（League Client Update，客户端暴露的本机 HTTP/WebSocket 接口），提供召唤师、战绩、段位、对局流程、选人、游戏数据等能力，供本机 Node 进程（Electron 主进程 / CLI / 本地 Web 后端）直接使用。代码完全自研（无 Seraphine 代码复制，规避 GPLv3），参考 LCU 官方文档与开源项目 [Seraphine](https://github.com/Zzaphkiel/Seraphine) 的设计思路。
 
-统一数据访问抽象层 SDK:一套 async API(`query` / `execute` / `transaction` / `ping` / `close`)同时访问本地 SQLite 与远程 PostgreSQL / MySQL,切换后端只改配置。设计文档 [`docs/superpowers/specs/2026-08-24-database-sdk-design.md`](superpowers/specs/2026-08-24-database-sdk-design.md)。
-
-**适用环境：** Node.js 20+,可信任的服务端进程;SQLite 基于 better-sqlite3(原生模块,主流平台有预编译二进制)。
-
-**核心接口：**
-
-- `createDataStore({ dialect, ... })` — 创建统一数据源;`sqlite` 传 `path`(支持 `:memory:`),`postgres`/`mysql` 传 `url`(可选 `maxConnections`,默认 10)
-- `store.query<T>(sql, params?)` — 查询,参数化防注入,返回行数组
-- `store.execute(sql, params?)` — 增删改/DDL,返回 `{ affectedRows }`
-- `store.transaction(fn)` — 事务,失败自动回滚;嵌套调用抛 `TRANSACTION_ACTIVE`
-- `store.ping()` / `store.close()` — 探活 / 释放连接(幂等)
-- `DatabaseLogTransport` — 日志持久化 transport(配合 `@sakurachiyo0v0/logger`):本地 SQLite 即时写 + 远程 PostgreSQL 批量同步(断网重试),跨机聚合
-- `queryLogs({ level?, hostname?, namespace?, from?, to?, keyword?, limit? })` — 日志查询 API(本地/远程/合并)
-- `DataError` — 统一错误码 `CONFIGURATION` / `CONNECTION` / `QUERY_SYNTAX` / `CONSTRAINT` / `TRANSACTION_ACTIVE` / `CLOSED` / `TIMEOUT` / `UNKNOWN`,消息脱敏
-
-**占位符规则：** 上层统一 `?`;PG 自动转 `$n`(跳过单引号字符串内 `?`),JSONB 多字符操作符 `?|`/`?&` 原样保留,单 `?` 用 `??` 转义(`data ?? 'key'`);SQLite/MySQL 原生直传。
-
-**安装方式：**
-
-```powershell
-pnpm add @sakurachiyo0v0/database@workspace:*   # workspace 内
-pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/database"  # 其他机器
-```
-
-**API 示例：**
-
-```ts
-import { createDataStore } from "@sakurachiyo0v0/database";
-
-const local = createDataStore({ dialect: "sqlite", path: "./data.db" });
-const remote = createDataStore({ dialect: "postgres", url: "postgresql://user:***@host:5432/db" });
-
-await local.execute("INSERT INTO users (name, age) VALUES (?, ?)", ["alice", 30]);
-const users = await local.query("SELECT * FROM users WHERE age > ?", [18]);
-await local.close();
-```
-
-**在仓库内的验证方式：**
-
-```powershell
-pnpm --filter @sakurachiyo0v0/database typecheck   # 类型检查
-pnpm --filter @sakurachiyo0v0/database test        # 单测(SQLite 内存库全量;PG/MySQL 需环境变量启用)
-pnpm --filter @sakurachiyo0v0/database build       # 构建 ESM + CJS + d.ts + CLI(sc-log)
-```
-
-**日志查询 CLI `sc-log`：** 按等级/设备/时间/命名空间/关键词查日志,本地与远程可合并。详见 [`skills/database-cli/SKILL.md`](../skills/database-cli/SKILL.md)。
-
-**更多细节：** [`packages/database/README.md`](../packages/database/README.md)
-
-### `@sakurachiyo0v0/webdav`
-
-WebDAV 配置存取 SDK:基础文件操作(读/写/列/删/建目录/移动/复制)+ 配置文件存储高层 API(原子写 + 自动备份),带 CLI(`sc-webdav`)。适合存配置文件、多端同步的轻量场景。设计文档 [`docs/superpowers/specs/2026-08-24-webdav-sdk-design.md`](superpowers/specs/2026-08-24-webdav-sdk-design.md)。
-
-**适用环境：** Node.js 20+,支持 Basic 认证的 WebDAV 服务(坚果云/Nextcloud 等)。
+**适用环境：** Node.js 20+，Windows 本机 + 运行中的英雄联盟客户端；LCU 只存在于本机客户端运行期间，**不能做成云端 SaaS**。
 
 **核心接口：**
 
-- `createWebdavClient({ url, username?, password?, timeoutMs? })` — 创建客户端;`ping/list/get/put/mkdir/remove/move/copy/exists`
-- `createConfigStore(client, { basePath?, format?, backupCount? })` — 配置存储;`load/save/list/remove`;`save` 原子写(临时文件+move)+ 旧版自动滚动备份(`.bak.1/2/3`);`format` 支持 `json`/`text`
-- `WebdavError` — 统一错误码 `AUTHENTICATION` / `CONNECTION` / `NOT_FOUND` / `CONFLICT` / `VALIDATION` / `UNKNOWN`,消息脱敏
-- CLI `sc-webdav`:`ping/list/get/put/delete/mkdir/rmdir/move/config-load/config-save`,连接参数 `--url/--username/--password` 或环境变量 `WEBDAV_URL/WEBDAV_USERNAME/WEBDAV_PASSWORD`
+- `createLolClient({ connection?, concurrency?, timeoutMs? })` — 自动发现本机 LCU 并连接（也可显式指定连接参数）
+- `client.summoner` — `getCurrent()` / `getByName()` / `getByPuuid()` / `getProfile()`
+- `client.matchHistory` — `getMatches(puuid, {begIndex, endIndex})` / `getMatchesViaSgp()` / `getGameDetail(gameId)`
+- `client.ranked` — `getStats(puuid)` / `getStatsViaSgp(puuid)`
+- `client.gameflow` — `getPhase()` / `getSession()` / `getReadyCheck()` / `acceptReadyCheck()` / `dodge()` / `reconnect()` / `playAgain()` / `spectate()`
+- `client.champSelect` — 选人操作：`pick()` / `ban()` / `completeAction()` / `acceptTrade()` / `acceptSwap()` / `benchSwap()` / `reroll()` / `selectConfig()` / 符文页管理（⚠️ 自动操作类，低风险需披露）
+- `client.lobby` — `create5v5PracticeLobby()` / `getLobby()` / `playAgain()`
+- `client.profile` — 生涯设置：`setBackground()` / `setProfileIcon()` / `setRankShown()` / `removeTokens()` / `removePrestigeCrest()`
+- `client.chat` — 聊天社交：`getMe()` / `setStatus()` / `setAvailability()` / `getConversations()` / `sendMessage()` / `sendFriendRequest()` / `sendNotification()`
+- `client.gameData` — 静态数据（英雄/物品/符文/召唤师技能/队列）与 `fetchAsset()` 资源获取
+- `client.events` — WebSocket 事件订阅：`onGameflowPhase` / `onChampSelect` / `onCurrentSummoner` / `onSgpToken` / 通用 `subscribe()`
+- `client.liveClient` — 游戏内实时数据（端口 2999，明文只读）：`getAllGameData()` / `getPlayerList()` / `getActivePlayer()` / `getEventData()` 等；独立工厂 `createLiveClient()`
+- `parsers` — 纯函数解析层：`parseMatchSummary` / `parseMatchesSummary` / `getRecentChampions` / `getTeammates` / `parseRankSummary`（LCU）/ `parseRankSummaryFromSgp` / `formatDuration` / `formatTimestamp`
+- `client.sgp` — 腾讯国服 SGP 通道（检测到国服服务器自动启用，非国服为 `undefined`）
+- `client.championNames` — 英雄名映射（id → 中文名）：内置全量表离线可用，运行时自动从 CommunityDragon latest 通道更新（出新英雄自动生效），不依赖 LCU 连接；独立类 `ChampionNamesService`（可自定义数据源/缓存 TTL）
+- `LolError` — 统一错误码 `CLIENT_NOT_RUNNING` / `DISCOVERY_FAILED` / `CONNECTION` / `NOT_FOUND` / `RATE_LIMIT` / `AUTH` / `TIMEOUT` / `UNKNOWN`，消息脱敏
 
-**安装方式：**
-
-```powershell
-pnpm add @sakurachiyo0v0/webdav@workspace:*   # workspace 内
-pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/webdav"  # 其他机器
-```
-
-**API 示例：**
-
-```ts
-import { createWebdavClient, createConfigStore } from "@sakurachiyo0v0/webdav";
-
-const wd = createWebdavClient({ url: "https://dav.jianguoyun.com/dav/", username: "u", password: "p" });
-const store = createConfigStore({ client: wd, basePath: "/configs", format: "json" });
-await store.save("app.json", { theme: "dark" });
-const cfg = await store.load("app.json");
-```
-
-**在仓库内的验证方式：**
-
-```powershell
-pnpm --filter @sakurachiyo0v0/webdav typecheck   # 类型检查
-pnpm --filter @sakurachiyo0v0/webdav test        # 单测(本地 webdav-server 真实协议路径)
-pnpm --filter @sakurachiyo0v0/webdav build       # 构建 ESM + CJS + d.ts + CLI
-```
-
-**更多细节：** [`packages/webdav/README.md`](../packages/webdav/README.md)
-
-### `@sakurachiyo0v0/config`
-
-配置中心 SDK:WebDAV 服务器 + 密钥**全局一次配置**(本地 `<配置根>/amechan/config.json`,chmod 600),各 SDK/平台通过 `namespace("平台名")` 存取配置——统一基底 `/amechan/` 下按敏感度分域(`/amechan/configs/<ns>` 明文、`/amechan/secrets/<ns>` 加密),**按域决定是否加密**;换机器配好全局配置即还原登录态/配置。设计文档 [`docs/superpowers/specs/2026-08-24-config-center-design.md`](superpowers/specs/2026-08-24-config-center-design.md)。
-
-**适用环境：** Node.js 20+,依赖 `@sakurachiyo0v0/webdav`(含加密存储)。
-
-**核心接口：**
-
-- `createConfigCenter({ configPath?, global? })` — 读本地全局配置(或显式传入)创建配置中心
-- `cc.namespace(name, { encrypt? })` — 命名空间:encrypt 默认 false(明文 `/amechan/configs/<ns>/`),true 走加密(`/amechan/secrets/<ns>/`);返回 `get/set/list/remove`
-- `saveGlobalConfig` / `loadGlobalConfig` / `clearGlobalConfig` / `resolveConfigPath` — 本地全局配置读写(文件 600 权限)
-- `resolveConfigRoot` — **平台配置根目录唯一权威实现**(`AMECHAN_CONFIG_HOME` > win32 `APPDATA`(回退 `AppData/Roaming`) > darwin `Application Support` > `XDG_CONFIG_HOME` > `~/.config`);account / database / kazumi 等包统一引用,不再各自复制
-- 错误:远端透传 webdav `WebdavError`;本地配置缺失/非法抛 `VALIDATION`
-
-**注意事项：** 远端目录(`/amechan/configs/<ns>`、`/amechan/secrets/<ns>`)需预先存在(部分 WebDAV 服务如坚果云禁 WebDAV 建目录;自建服务可用 `wd.mkdir` 建);加密密钥本地保管,丢失无法解密。
-
-**安装方式：**
-
-```powershell
-pnpm add @sakurachiyo0v0/config@workspace:*   # workspace 内
-pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/config"  # 其他机器
-```
-
-**API 示例：**
-
-```ts
-import { createConfigCenter } from "@sakurachiyo0v0/config";
-
-const cc = createConfigCenter();   // 读本地全局配置(先 sc-config setup)
-const xhh = cc.namespace("xiaoheihe", { encrypt: true });  // 敏感域,加密
-await xhh.set("auth", { cookie: "SID=..." });
-const auth = await xhh.get("auth");
-const bili = cc.namespace("bilibili");                     // 明文域
-await bili.set("ui", { quality: 80 });
-```
-
-**在仓库内的验证方式：**
-
-```powershell
-pnpm --filter @sakurachiyo0v0/config typecheck   # 类型检查
-pnpm --filter @sakurachiyo0v0/config test        # 单测(本地 webdav-server 真实协议路径)
-pnpm --filter @sakurachiyo0v0/config build       # 构建 ESM + CJS + d.ts + CLI
-```
-
-**更多细节：** [`packages/config/README.md`](../packages/config/README.md)
-
-### `@sakurachiyo0v0/chuanshengtong`
-
-传声筒:输入文字 + 内置图像模板,**程序化合成**输出图片(不依赖 AI 图像生成 API)。基于 `sharp`(SVG 文本层 → 栅格化),中文自动换行/居中/超长保护。设计文档 [`docs/superpowers/specs/2026-08-25-chuanshengtong-design.md`](superpowers/specs/2026-08-25-chuanshengtong-design.md)。
-
-**适用环境：** Node.js 20+;中文渲染依赖系统安装中文字体(如 Noto Sans CJK / 文鼎),无中文字体时文字显示为方框。
-
-**核心接口：**
-
-- `listTemplates()` / `getTemplate(id)` — 列出/查询内置模板(id/名称/描述/尺寸/容量)
-- `render({ template, text, output, format?, width?, fontSize?, color?, quality? })` — 渲染图片到文件,返回 `{ outputPath, width, height, format, bytes }`
-- `wrapText(text, { fontSize, maxWidth, maxLines })` — 纯文本排版纯函数(中文按字符、英文按词断行,超长截断补省略号),返回 `{ lines, truncated }`
-- `parseRichText(text)` / `wrapRichText(runs, opts)` — 富文本解析与样式感知排版:支持 `**加粗**`、`*斜体*`、`[c:red]彩色[/c]`,渲染为 SVG tspan,纯文本行为完全兼容
-- 内置模板:`dazibao`(大字报)/ `speech-bubble`(台词气泡)/ `card`(卡片)/ `notice`(公告),全部程序化 SVG 生成,无外部图片资源
-- `ChuanshengtongError` — 统一错误码:`TEMPLATE_NOT_FOUND` / `EMPTY_TEXT` / `TEXT_TOO_LONG` / `INVALID_OPTION` / `RENDER_FAILED` / `WRITE_FAILED` / `UNKNOWN`
-
-**CLI：** `sc-chuanshengtong list|render <text>`(选项 `--template` / `--output` / `--format` / `--width` / `--font-size` / `--color` / `--quality`);skill 手册 [`skills/chuanshengtong-cli/SKILL.md`](../skills/chuanshengtong-cli/SKILL.md)。
+**关键机制：** tasklist + PowerShell CIM 进程发现；undici 忽略自签名证书 + BasicAuth；信号量限流 + GET 指数退避重试；WebSocket 断线自动重连；国服 SGP Bearer 通道。
 
 **安装方式：**
 
 同一 pnpm workspace 内：
 
 ```powershell
-pnpm add @sakurachiyo0v0/chuanshengtong@workspace:*
+pnpm add @sakurachiyo0v0/lol@workspace:*
 ```
 
-从 GitHub monorepo 安装(需在消费项目 `pnpm-workspace.yaml` 授权 `sharp: true`):
+从 GitHub monorepo 安装（需在消费项目 `pnpm-workspace.yaml` 中授权 `@sakurachiyo0v0/lol` 构建脚本）：
 
 ```powershell
-pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/chuanshengtong"
+pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/lol"
 ```
 
 **API 示例：**
 
 ```ts
-import { render } from "@sakurachiyo0v0/chuanshengtong";
+import { createLolClient } from "@sakurachiyo0v0/lol";
 
-await render({ template: "dazibao", text: "你好,世界", output: "./out.png" });
+const client = await createLolClient();
+const me = await client.summoner.getCurrent();
+const games = await client.matchHistory.getMatches(me.puuid, { begIndex: 0, endIndex: 19 });
+client.events.onGameflowPhase((phase) => console.log("阶段:", phase));
+await client.close();
 ```
 
 **在仓库内的验证方式：**
 
 ```powershell
-pnpm --filter @sakurachiyo0v0/chuanshengtong typecheck   # 类型检查
-pnpm --filter @sakurachiyo0v0/chuanshengtong test        # 单测(排版/转义/注册表 + sharp 真实渲染)
-pnpm --filter @sakurachiyo0v0/chuanshengtong build       # 构建 ESM + CJS + d.ts + CLI
+pnpm --filter @sakurachiyo0v0/lol typecheck   # 类型检查
+pnpm --filter @sakurachiyo0v0/lol test        # 单测（本地 mock LCU 服务器，走真实 HTTP/WS 协议路径）
+pnpm --filter @sakurachiyo0v0/lol build       # 构建 ESM + CJS + d.ts
 ```
 
-**更多细节：** [`packages/chuanshengtong/README.md`](../packages/chuanshengtong/README.md)
+**更多细节：** [`packages/lol/README.md`](../packages/lol/README.md)；设计文档 [`docs/superpowers/specs/2026-08-22-lol-sdk-design.md`](superpowers/specs/2026-08-22-lol-sdk-design.md)
 
-### `@sakurachiyo0v0/logger`
+### `@sakurachiyo0v0/ugreen`
 
-轻量级日志模块，为所有 SDK 包提供统一的日志能力。设计参考 pino 的 child logger 模式，支持命名空间、多机主机标识、子 logger 派生、bindings 绑定和可替换 transport。
+绿联 NAS 文件访问工具，完整接口与 CLI 说明见 [包文档](../packages/ugreen/README.md)。
+
+### `@sakurachiyo0v0/chat-platforms`
+
+统一聊天平台接入 SDK。平台差异在适配器内消化，上层只面对统一消息模型（`ChatSource` / `ChatMessage` / `ChatMessageOutbound`），通过注册表 + 工厂新增平台零改核心。架构参考 AstrBot 与 hermes-agent 的平台适配体系。第一版内置**飞书**适配器（长连接/WebSocket 与 webhook 两种事件接收方式）。
+
+**适用环境：** Node.js 20+，运行在可信任的服务端进程（含 Electron 主进程）；不要在浏览器/WebView 中保存应用凭证。
 
 **核心接口：**
 
-- `createLogger({ namespace?, level?, hostname?, transport? })` — 创建 logger 实例
-- `logger.debug/info/warn/error(message, data?)` — 输出各级别日志
-- `logger.child(bindings)` — 派生带固定数据的子 logger（bindings 自动附加到每条日志）
-- `logger.child(namespace)` — 派生命名空间子 logger（自动追加前缀，如 `bilibili:download`）
-- `LogTransport` — 自定义 transport 接口，可替换输出目标
-
-**级别控制：** `debug`(10) < `info`(20) < `warn`(30) < `error`(40) < `silent`(Infinity)，默认 `info`。子 logger 继承父级别。
-
-**主机标识：** 默认自动检测 `os.hostname()`，多台机器部署时日志自动带 `@hostname` 来源；也可在 `createLogger` 时手动覆盖 `hostname`。
+- `ChatPlatformClient` — 多平台客户端：`add(adapter, policy?)` / `remove(name)` / `send(source, message)` / `onMessage(handler)` / `onBlocked(handler)` / `disconnectAll()`；支持注入响应策略
+- `ChatPlatformAdapter` — 适配器统一接口：`connect({ onMessage })` / `disconnect()` / `send(source, message)` / `handleWebhook?(body)` / `react?(message, emoji)`
+- `ChatPlatformRegistry` / `registerPlatform()` — 注册表 + 工厂
+- `ChatResponsePolicy` / `defaultPolicy()` / `PolicyChecker` — 消息响应策略（白名单/黑名单/唤醒词/关键词屏蔽/限流/表情回应），参考 AstrBot `platform_settings`
+- `feishuProvider(config)` — 飞书适配器工厂；`registerFeishuPlatform()` 注册到默认注册表
+- `ChatPlatformError` — 统一错误码：`CONFIGURATION` / `VALIDATION` / `AUTHENTICATION` / `CONNECTION` / `DELIVERY` / `NOT_FOUND` / `UNKNOWN`
 
 **安装方式：**
 
 同一 pnpm workspace 内：
 
 ```powershell
-pnpm add @sakurachiyo0v0/logger@workspace:*
+pnpm add @sakurachiyo0v0/chat-platforms@workspace:*
 ```
 
-从 GitHub monorepo 安装：
+从 GitHub monorepo 安装（需授权 `@sakurachiyo0v0/chat-platforms` 与 `@larksuiteoapi/node-sdk` 构建脚本）：
 
 ```powershell
-pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/logger"
+pnpm add "git+https://github.com/SakuraChiyo0v0/ts-dev-kits.git#path:/packages/chat-platforms"
 ```
 
 **API 示例：**
 
 ```ts
-import { createLogger } from "@sakurachiyo0v0/logger";
+import { ChatPlatformClient, feishuProvider } from "@sakurachiyo0v0/chat-platforms";
 
-const logger = createLogger({ namespace: "bilibili", level: "debug" });
+const client = new ChatPlatformClient();
+client.onMessage(async (message) => {
+  await client.send(message.source, { text: "收到：" + message.text });
+});
 
-logger.info("开始下载", { videoId: "BV123" });
-// [bilibili]@desktop-01 2024-08-23T10:00:00.000Z INFO 开始下载 { videoId: 'BV123' }
-
-// 子 logger：自动追加命名空间
-const dl = logger.child("download");
-dl.info("完成");
-// [bilibili:download]@desktop-01 2024-08-23T10:00:01.000Z INFO 完成
-
-// 子 logger：绑定固定数据
-const bound = logger.child({ videoId: "BV123" });
-bound.info("进度", { percent: 50 });
-// [bilibili]@desktop-01 2024-08-23T10:00:02.000Z INFO 进度 { videoId: 'BV123', percent: 50 }
+await client.add(
+  feishuProvider({
+    appId: process.env.FEISHU_APP_ID!,
+    appSecret: process.env.FEISHU_APP_SECRET!,
+    transport: "websocket",
+  }),
+);
 ```
 
 **在仓库内的验证方式：**
 
 ```powershell
-pnpm --filter @sakurachiyo0v0/logger typecheck   # 类型检查
-pnpm --filter @sakurachiyo0v0/logger test        # 单测(级别/hostname/命名空间/bindings/Error/transport)
-pnpm --filter @sakurachiyo0v0/logger build       # 构建 ESM + CJS + d.ts
+pnpm --filter @sakurachiyo0v0/chat-platforms test   # 单测（注册表/客户端/飞书事件解析/webhook challenge）
+pnpm --filter @sakurachiyo0v0/chat-platforms build  # 构建 ESM + CJS + d.ts
 ```
 
-**更多细节：** [`packages/logger/README.md`](../packages/logger/README.md)
+**更多细节：** [`packages/chat-platforms/README.md`](../packages/chat-platforms/README.md)
 
 ### `@sakurachiyo0v0/kazumi`
 
@@ -1064,7 +1087,3 @@ pnpm verify:kazumi-package                        # pack 后从临时消费项�
 **合规边界:** SDK 是中立规则引擎,不内置任何站点规则;不做任何站点绕过/伪装;`CAPTCHA` 只感知不规避。
 
 **更多细节:** [`packages/kazumi/README.md`](../packages/kazumi/README.md)
-
-### `@sakurachiyo0v0/ugreen`
-
-绿联 NAS 文件访问工具，完整接口与 CLI 说明见 [包文档](../packages/ugreen/README.md)。

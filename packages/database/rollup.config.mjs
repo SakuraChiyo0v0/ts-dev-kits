@@ -3,6 +3,7 @@ export default {
   external: (id) =>
     id === "@sakurachiyo0v0/logger" ||
     id === "@sakurachiyo0v0/config" ||
+    id === "@sakurachiyo0v0/config-webdav" ||
     id === "better-sqlite3" ||
     id === "pg" ||
     id === "mysql2" ||

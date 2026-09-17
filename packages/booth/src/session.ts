@@ -4,7 +4,7 @@
  */
 import { AuthStore } from "@sakurachiyo0v0/account";
 import { createLogger } from "@sakurachiyo0v0/logger";
-import type { ConfigNamespace } from "@sakurachiyo0v0/config";
+import type { AuthRemoteStore } from "@sakurachiyo0v0/account";
 import { BoothError } from "./errors.js";
 
 const logger = createLogger({ namespace: "booth" }).child("session");
@@ -68,7 +68,7 @@ export interface BoothSessionOptions {
   fetchImpl?: typeof fetch;
   authPath?: string;
   /** 可选远程登录态命名空间(配置中心加密域);persist 双写本地+远程,clear 一并清除远程。 */
-  remote?: ConfigNamespace;
+  remote?: AuthRemoteStore;
 }
 
 /** 携带 cookie 的 BOOTH 请求会话。 */
@@ -76,7 +76,7 @@ export class BoothSession {
   readonly #baseUrl: string;
   readonly #fetchImpl: typeof fetch;
   readonly #authPath: string | undefined;
-  readonly #remote: ConfigNamespace | undefined;
+  readonly #remote: AuthRemoteStore | undefined;
   #cookieMap: Record<string, string>;
 
   constructor(options: BoothSessionOptions = {}) {

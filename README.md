@@ -4,15 +4,17 @@
 
 ## 工具包
 
-当前共 20 个包，统一使用 `@sakurachiyo0v0/` 前缀。
+当前共 22 个包，统一使用 `@sakurachiyo0v0/` 前缀。
 
 | 职责 | 包 |
 | --- | --- |
-| 基础设施 | `logger`、`cli-utils`、`webdav`、`config`、`database`、`account` |
-| 通用功能 | `ffmpeg`、`media-downloader`、`email`、`chat-platforms`、`chuanshengtong` |
-| 平台接入 | `bilibili`、`netease-music`、`kazumi`、`booth`、`steam`、`vrchat`、`lol`、`xiaoheihe`、`ugreen` |
+| [通用基础](docs/packages-index.md#foundation) | [logger](packages/logger/README.md)、[cli-utils](packages/cli-utils/README.md) |
+| [存储与配置](docs/packages-index.md#storage) | [config](packages/config/README.md)、[config-webdav](packages/config-webdav/README.md)、[config-pg](packages/config-pg/README.md)、[webdav](packages/webdav/README.md)、[database](packages/database/README.md) |
+| [账号认证](docs/packages-index.md#auth) | [account](packages/account/README.md) |
+| [媒体与通用工具](docs/packages-index.md#utilities) | [ffmpeg](packages/ffmpeg/README.md)、[media-downloader](packages/media-downloader/README.md)、[chuanshengtong](packages/chuanshengtong/README.md)、[email](packages/email/README.md) |
+| [平台 SDK](docs/packages-index.md#platforms) | [bilibili](packages/bilibili/README.md)、[netease-music](packages/netease-music/README.md)、[booth](packages/booth/README.md)、[steam](packages/steam/README.md)、[vrchat](packages/vrchat/README.md)、[xiaoheihe](packages/xiaoheihe/README.md)、[lol](packages/lol/README.md)、[ugreen](packages/ugreen/README.md)、[chat-platforms](packages/chat-platforms/README.md)、[kazumi](packages/kazumi/README.md) |
 
-职责分类不等同于构建顺序。版本与接口见 [包索引](docs/packages-index.md) 和各包 README；本地版本不代表该版本已发布。
+目录保留 `packages/<包名>` 平铺；上表用于按用途查找，依赖方向另由 [边界规则](docs/repository-boundaries.md#依赖方向) 约束。职责分类不等同于构建顺序。版本与接口见 [包索引](docs/packages-index.md) 和各包 README；本地版本不代表该版本已发布。
 
 ## 在其他项目使用
 
@@ -65,3 +67,5 @@ pnpm verify:consumers
 - [新包模板](docs/package-template.md)：新增包的结构与约定。
 
 历史应用 `account-panel`、`browser-proxy` 和 DSH 适配包保存在备份分支 `backup/apps-and-dsh-2026-09-16`（已推送到 origin），不在主分支继续开发；暂未建立独立应用仓库。
+
+配置后端按需安装及 config 1.0 迁移见 [迁移说明](docs/config-backends-migration.md)。

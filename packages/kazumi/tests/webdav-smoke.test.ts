@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { existsSync } from "node:fs";
-import { createWebdavConfigCenter } from "@sakurachiyo0v0/config";
+import { createWebdavConfigCenter } from "@sakurachiyo0v0/config-webdav";
 import { RuleSync } from "../src/rules/sync.js";
 
 const HAS_GLOBAL = existsSync(

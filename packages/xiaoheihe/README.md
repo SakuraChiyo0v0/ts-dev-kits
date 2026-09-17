@@ -39,8 +39,8 @@ await qrcodeLogin({
 const client = createXiaoheiheClient();
 
 // (可选)登录态多端同步:配置远程加密命名空间,登录态双写本地+远程
-import { createConfigCenter } from "@sakurachiyo0v0/config";
-const remote = createConfigCenter().namespace("auth", { encrypt: true }); // /amechan/secrets/auth
+import { createWebdavConfigCenter } from "@sakurachiyo0v0/config-webdav";
+const remote = createWebdavConfigCenter().namespace("auth", { encrypt: true }); // /amechan/secrets/auth
 const client2 = createXiaoheiheClient({ remote });
 // 新机还原:先 await new AuthStore({ platform: "xiaoheihe", remote }).load() 拉取回写本地,再构造客户端
 // 远程不可达时自动降级本地,不影响使用
@@ -131,3 +131,7 @@ pnpm --filter @sakurachiyo0v0/xiaoheihe build       # 构建 ESM + CJS + d.ts + 
 - 数据模型对照 `xhh/*.go` 的 struct;`link.text` 为 JSON 字符串需经 `parseLinkText` 二次解析,`userid` 可能为数字或字符串。
 
 设计文档:[`docs/superpowers/specs/2026-08-24-xiaoheihe-sdk-design.md`](../../docs/superpowers/specs/2026-08-24-xiaoheihe-sdk-design.md)
+
+## 按需远端存储
+
+本地登录态不依赖 config、WebDAV 或 pg。`remote` 只需实现 account 导出的 `AuthRemoteStore`（get/set/remove）；配置命名空间可直接传入。需要 WebDAV 时额外安装 `@sakurachiyo0v0/config-webdav`，需要 PostgreSQL 时安装 `@sakurachiyo0v0/config` 和 `@sakurachiyo0v0/config-pg`，由调用方创建后端并传入命名空间。默认路径、文件格式及远端失败回退本地行为不变。

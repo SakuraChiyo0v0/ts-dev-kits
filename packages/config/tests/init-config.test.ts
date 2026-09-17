@@ -62,6 +62,7 @@ describe("initConfig / config / resetConfig（进程级默认 + 覆盖）", () =
   });
 
   it("createConfigCenter() 无参不再自动读全局配置，抛 VALIDATION", () => {
+    // @ts-expect-error 验证 JavaScript 消费方遗漏必填参数时的运行错误
     expect(() => createConfigCenter()).toThrowError(expect.objectContaining({ code: "VALIDATION" }));
   });
 

@@ -1,18 +1,20 @@
-/**
- * 平台标准用户配置目录解析。
- *
- * 唯一权威实现已收敛到 `@sakurachiyo0v0/config` 的 `resolveConfigRoot`,
- * 此处仅 re-export 以保持本包既有公共 API 兼容(旧消费方可能 import 自 account)。
- */
-import { resolveConfigRoot as configResolveConfigRoot } from "@sakurachiyo0v0/config";
-import path from "node:path";
+import { homedir } from "node:os";
+import { join } from "node:path";
 
-/** 平台标准用户配置根目录(权威实现见 @sakurachiyo0v0/config)。 */
+/** 配置根目录；与 config 的路径规则由一致性测试约束。 */
 export function resolveConfigRoot(
   platform: NodeJS.Platform = process.platform,
   env: NodeJS.ProcessEnv = process.env,
 ): string {
-  return configResolveConfigRoot(platform, env);
+  const override = env.AMECHAN_CONFIG_HOME;
+  if (override !== undefined && override.length > 0) return override;
+  if (platform === "win32") {
+    return env.APPDATA ?? join(homedir(), "AppData", "Roaming");
+  }
+  if (platform === "darwin") {
+    return join(homedir(), "Library", "Application Support");
+  }
+  return env.XDG_CONFIG_HOME ?? join(homedir(), ".config");
 }
 
 /** 默认 auth.json 路径:<配置根>/amechan/<platform>/auth.json。 */
@@ -21,5 +23,5 @@ export function defaultAuthPath(
   platform: NodeJS.Platform = process.platform,
   env: NodeJS.ProcessEnv = process.env,
 ): string {
-  return path.join(resolveConfigRoot(platform, env), "amechan", platformName, "auth.json");
+  return join(resolveConfigRoot(platform, env), "amechan", platformName, "auth.json");
 }

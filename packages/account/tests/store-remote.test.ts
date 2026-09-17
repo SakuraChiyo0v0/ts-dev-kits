@@ -2,7 +2,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createConfigCenter } from "@sakurachiyo0v0/config";
+import { createWebdavConfigCenter } from "@sakurachiyo0v0/config-webdav";
 import { AuthStore } from "../src/store.js";
 import { startTestWebdavServer, type TestWebdavServer } from "../../../shared/test-helpers/webdav-test-server.js";
 
@@ -19,7 +19,7 @@ function makePayload(overrides?: Partial<Parameters<AuthStore["save"]>[0]>): Par
 
 describe("AuthStore 远程同步(配置中心加密域)", () => {
   let srv: TestWebdavServer;
-  let remoteNs: ReturnType<ReturnType<typeof createConfigCenter>["namespace"]>;
+  let remoteNs: ReturnType<ReturnType<typeof createWebdavConfigCenter>["namespace"]>;
 
   beforeAll(async () => {
     srv = await startTestWebdavServer();
@@ -30,9 +30,7 @@ describe("AuthStore 远程同步(配置中心加密域)", () => {
     await raw.mkdir("/amechan/secrets");
     await raw.mkdir("/amechan/secrets/auth");
 
-    const center = createConfigCenter({
-      global: { url: srv.url, username: srv.username, password: srv.password, key: TEST_KEY },
-    });
+    const center = createWebdavConfigCenter({ url: srv.url, username: srv.username, password: srv.password, key: TEST_KEY });
     remoteNs = center.namespace("auth", { encrypt: true });
   });
 
@@ -75,9 +73,7 @@ describe("AuthStore 远程同步(配置中心加密域)", () => {
   it("远程不可达时降级本地(带告警,不抛错)", async () => {
     const dir = mkdtempSync(join(tmpdir(), "auth-remote-fail-"));
     // 错误密码的远程(namespace 惰性连接,load/save 时失败)
-    const badCenter = createConfigCenter({
-      global: { url: srv.url, username: srv.username, password: "wrong", key: TEST_KEY },
-    });
+    const badCenter = createWebdavConfigCenter({ url: srv.url, username: srv.username, password: "wrong", key: TEST_KEY });
     const badNs = badCenter.namespace("auth", { encrypt: true });
     const store = new AuthStore({ platform: "test-platform", path: join(dir, "auth.json"), remote: badNs });
     const payload = makePayload({ credentials: { cookie: "local-only" } });

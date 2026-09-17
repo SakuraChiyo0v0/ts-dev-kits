@@ -2,7 +2,7 @@
  * BOOTH SDK 公共类型 —— 字段语义的权威定义。
  * 与 netease-music / bilibili 同构:核心接口在类型层,供应商适配细节收敛在 api/ 模块。
  */
-import type { ConfigNamespace } from "@sakurachiyo0v0/config";
+import type { AuthRemoteStore } from "@sakurachiyo0v0/account";
 
 /** 商品基础信息(从商品页解析)。 */
 export interface BoothItem {
@@ -116,7 +116,7 @@ export interface BoothClientOptions {
    * 可选远程登录态命名空间(配置中心加密域,如 config().namespace("auth",{encrypt:true}))。
    * 登录态双写本地+远程;新机还原:先 await new AuthStore({platform:"booth",remote}).load()。
    */
-  remote?: ConfigNamespace;
+  remote?: AuthRemoteStore;
   /** 覆盖站点基地址(测试用 mock / 自定义网关)。 */
   baseUrl?: string;
   /** 注入 fetch(测试用)。 */
@@ -135,7 +135,7 @@ export interface BoothLoginOptions {
    * 可选远程登录态命名空间(配置中心加密域)。登录态双写本地+远程,
    * 换机后先 await new AuthStore({platform:"booth",remote}).load() 还原。
    */
-  remote?: ConfigNamespace;
+  remote?: AuthRemoteStore;
   /** 自定义浏览器打开器(便于测试);CDP 自动登录时不生效。 */
   openBrowser?: (url: string) => void | Promise<void>;
   /** 注入 fetch(测试用)。 */

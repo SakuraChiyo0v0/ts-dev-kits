@@ -7,7 +7,6 @@ import { promises as fs } from "node:fs";
 import { readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { createLogger } from "@sakurachiyo0v0/logger";
-import type { ConfigNamespace } from "@sakurachiyo0v0/config";
 import { defaultAuthPath } from "./paths.js";
 
 const logger = createLogger({ namespace: "account" }).child("store");
@@ -44,6 +43,13 @@ export interface AuthPayload {
   expiresAt?: string;
 }
 
+/** 可选远端登录态存储；配置命名空间可直接作为实现。 */
+export interface AuthRemoteStore {
+  get<T = unknown>(key: string): Promise<T>;
+  set(key: string, data: unknown): Promise<void>;
+  remove(key: string): Promise<void>;
+}
+
 export interface AuthStoreOptions {
   /** 平台名,决定默认路径 <配置根>/amechan/<platform>/auth.json。 */
   platform: string;
@@ -54,14 +60,14 @@ export interface AuthStoreOptions {
    * 配置后登录态**双写**(本地 + 远程),load 优先远程(换机可还原),
    * 远程不可达时降级本地(带告警)。
    */
-  remote?: ConfigNamespace;
+  remote?: AuthRemoteStore;
 }
 
 /** 登录态存储:auth.json 的读写与清理(可选远程同步)。 */
 export class AuthStore {
   readonly #path: string;
   readonly #platform: string;
-  readonly #remote?: ConfigNamespace;
+  readonly #remote?: AuthRemoteStore;
 
   constructor(options: AuthStoreOptions) {
     this.#platform = options.platform;

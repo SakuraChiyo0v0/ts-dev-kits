@@ -10,7 +10,7 @@ import { LinksApi } from "./api/links.js";
 import { FeedsApi } from "./api/feeds.js";
 import { MessagesApi } from "./api/messages.js";
 import { UserApi } from "./api/user.js";
-import type { ConfigNamespace } from "@sakurachiyo0v0/config";
+import type { AuthRemoteStore } from "@sakurachiyo0v0/account";
 import type { XiaoheiheCredentials } from "./types.js";
 
 export interface XiaoheiheClientOptions {
@@ -22,7 +22,7 @@ export interface XiaoheiheClientOptions {
    * 可选远程登录态命名空间(配置中心加密域,如 config().namespace("auth",{encrypt:true}))。
    * 登录态双写本地+远程;新机还原:先 await new AuthStore({platform:"xiaoheihe",remote}).load()。
    */
-  remote?: ConfigNamespace;
+  remote?: AuthRemoteStore;
   /** 覆盖 base URL(测试 mock 用)。 */
   baseUrl?: string;
   /** 注入 fetch 实现(测试用)。 */

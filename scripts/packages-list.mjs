@@ -11,6 +11,8 @@ export const PACKAGES = [
   ["@sakurachiyo0v0/webdav", "packages/webdav"],
   ["@sakurachiyo0v0/ugreen", "packages/ugreen"],
   ["@sakurachiyo0v0/config", "packages/config"],
+  ["@sakurachiyo0v0/config-webdav", "packages/config-webdav"],
+  ["@sakurachiyo0v0/config-pg", "packages/config-pg"],
   ["@sakurachiyo0v0/account", "packages/account"],
   ["@sakurachiyo0v0/email", "packages/email"],
   ["@sakurachiyo0v0/ffmpeg", "packages/ffmpeg"],

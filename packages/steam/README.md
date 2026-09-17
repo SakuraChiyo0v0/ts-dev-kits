@@ -115,10 +115,10 @@ await steam.close();
 
 ```ts
 import { AuthStore } from "@sakurachiyo0v0/account";
-import { createConfigCenter } from "@sakurachiyo0v0/config";
+import { createWebdavConfigCenter } from "@sakurachiyo0v0/config-webdav";
 import { createSteamClient } from "@sakurachiyo0v0/steam";
 
-const remote = createConfigCenter().namespace("auth", { encrypt: true }); // /amechan/secrets/auth
+const remote = createWebdavConfigCenter().namespace("auth", { encrypt: true }); // /amechan/secrets/auth
 
 // 新机还原:先从远程拉取登录态回写本地,再构造客户端
 await new AuthStore({ platform: "steam", remote }).load();
@@ -261,3 +261,7 @@ pnpm --filter @sakurachiyo0v0/steam typecheck   # 类型检查
 pnpm --filter @sakurachiyo0v0/steam test        # 单测(mock 四台主机走真实 HTTP 协议路径,含 RSA 密码往返)
 pnpm --filter @sakurachiyo0v0/steam build       # 构建 ESM + CJS + d.ts
 ```
+
+## 按需远端存储
+
+本地登录态不依赖 config、WebDAV 或 pg。`remote` 只需实现 account 导出的 `AuthRemoteStore`（get/set/remove）；配置命名空间可直接传入。需要 WebDAV 时额外安装 `@sakurachiyo0v0/config-webdav`，需要 PostgreSQL 时安装 `@sakurachiyo0v0/config` 和 `@sakurachiyo0v0/config-pg`，由调用方创建后端并传入命名空间。默认路径、文件格式及远端失败回退本地行为不变。

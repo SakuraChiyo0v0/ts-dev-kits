@@ -193,7 +193,7 @@ export interface BilibiliClientOptions {
    * 可选远程登录态命名空间(配置中心加密域,如 config().namespace("auth",{encrypt:true}))。
    * 登录态双写本地+远程;新机还原:先 await new AuthStore({platform:"bilibili",remote}).load()。
    */
-  remote?: import("@sakurachiyo0v0/config").ConfigNamespace;
+  remote?: import("@sakurachiyo0v0/account").AuthRemoteStore;
   /** 自定义 User-Agent。 */
   userAgent?: string;
   /** API 根地址(测试用,默认官方)。 */

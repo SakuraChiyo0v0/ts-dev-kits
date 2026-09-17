@@ -11,7 +11,8 @@
  *     无全局配置的环境(CI/测试)强制要求 WebDAV。
  */
 import { createLogger } from "@sakurachiyo0v0/logger";
-import { createWebdavConfigCenter, type ConfigCenter, type ConfigNamespace } from "@sakurachiyo0v0/config";
+import type { ConfigCenter, ConfigNamespace } from "@sakurachiyo0v0/config";
+import { createWebdavConfigCenter } from "@sakurachiyo0v0/config-webdav";
 import { KazumiError } from "../errors.js";
 
 const logger = createLogger({ namespace: "kazumi" }).child("sync");

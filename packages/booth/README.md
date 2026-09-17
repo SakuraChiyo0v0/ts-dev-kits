@@ -71,10 +71,10 @@ CLI 方式:`sc-booth login` / `login --manual` / `status` / `logout`。
 
 ```ts
 import { loginBooth, createBoothClient } from "@sakurachiyo0v0/booth";
-import { createConfigCenter } from "@sakurachiyo0v0/config";
+import { createWebdavConfigCenter } from "@sakurachiyo0v0/config-webdav";
 import { AuthStore } from "@sakurachiyo0v0/account";
 
-const remote = createConfigCenter().namespace("auth", { encrypt: true }); // /amechan/secrets/auth
+const remote = createWebdavConfigCenter().namespace("auth", { encrypt: true }); // /amechan/secrets/auth
 
 // 登录时透传 remote:登录态双写本地 + 远程(加密)
 await loginBooth({ remote });
@@ -94,7 +94,7 @@ const client = createBoothClient({ remote });
 | --- | --- |
 | `cookie` | 显式会话 cookie(优先于 AuthStore) |
 | `authPath` | AuthStore 自定义路径(缺省平台默认) |
-| `remote` | 远程登录态命名空间(`createConfigCenter().namespace("auth",{encrypt:true})`),登录态双写本地+远程,新机还原/远程降级见上文 |
+| `remote` | 远程登录态命名空间(`createWebdavConfigCenter().namespace("auth",{encrypt:true})`),登录态双写本地+远程,新机还原/远程降级见上文 |
 | `baseUrl` | 覆盖站点基地址(测试/自定义网关) |
 | `fetchImpl` | 注入 fetch(测试) |
 | `download.retries` | 单文件重试次数,默认 2 |
@@ -162,3 +162,7 @@ pnpm --filter @sakurachiyo0v0/booth build       # 构建 ESM + CJS + d.ts + CLI
 ```
 
 设计文档:`docs/superpowers/specs/2026-08-23-booth-sdk-design.md`;实现计划:`docs/superpowers/plans/2026-08-23-booth-sdk.md`。
+
+## 按需远端存储
+
+本地登录态不依赖 config、WebDAV 或 pg。`remote` 只需实现 account 导出的 `AuthRemoteStore`（get/set/remove）；配置命名空间可直接传入。需要 WebDAV 时额外安装 `@sakurachiyo0v0/config-webdav`，需要 PostgreSQL 时安装 `@sakurachiyo0v0/config` 和 `@sakurachiyo0v0/config-pg`，由调用方创建后端并传入命名空间。默认路径、文件格式及远端失败回退本地行为不变。

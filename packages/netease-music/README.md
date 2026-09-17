@@ -123,10 +123,10 @@ await qrcodeLogin({ adapter: neteaseQrAdapter(), store });
 
 ```ts
 import { qrcodeLogin, AuthStore } from "@sakurachiyo0v0/account";
-import { createConfigCenter } from "@sakurachiyo0v0/config";
+import { createWebdavConfigCenter } from "@sakurachiyo0v0/config-webdav";
 import { createNeteaseClient, neteaseQrAdapter } from "@sakurachiyo0v0/netease-music";
 
-const remote = createConfigCenter().namespace("auth", { encrypt: true }); // /amechan/secrets/auth
+const remote = createWebdavConfigCenter().namespace("auth", { encrypt: true }); // /amechan/secrets/auth
 
 // 登录(双写本地+远程)
 await qrcodeLogin({ adapter: neteaseQrAdapter(), store: new AuthStore({ platform: "netease-music", remote }) });
@@ -149,3 +149,7 @@ pnpm --filter @sakurachiyo0v0/netease-music typecheck && test && build
 ```
 
 测试离线运行(本地 mock 网易云接口),weapi/eapi 加密、解析、权限/试听拦截、下载链路、收藏夹管理均有覆盖。真实接口冒烟:`NETEASE_SMOKE=1 pnpm --filter @sakurachiyo0v0/netease-music test`。
+
+## 按需远端存储
+
+本地登录态不依赖 config、WebDAV 或 pg。`remote` 只需实现 account 导出的 `AuthRemoteStore`（get/set/remove）；配置命名空间可直接传入。需要 WebDAV 时额外安装 `@sakurachiyo0v0/config-webdav`，需要 PostgreSQL 时安装 `@sakurachiyo0v0/config` 和 `@sakurachiyo0v0/config-pg`，由调用方创建后端并传入命名空间。默认路径、文件格式及远端失败回退本地行为不变。

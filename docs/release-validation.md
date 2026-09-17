@@ -29,3 +29,9 @@ pnpm verify:consumers
 临时项目保留便于复查；只写 registry 映射，认证继承用户配置或 CI 环境，不复制凭据。工具链版本取仓库实际安装的 TypeScript 和 @types/node，CI 由锁文件固定。
 
 CI 在版本检查前安装锁定依赖，在发布后执行三包消费验收。CI 修改需后续推送才会在 GitHub 实际运行；本地通过不等同于远端已验证。
+
+## 配置后端拆分验收
+
+`pnpm verify:config-packages` 先打出真实 tarball，再在四个独立临时项目安装，验证本地账号、config 核心、WebDAV 和 PG 的运行依赖排除规则，并检查严格类型、ESM/CJS 和最小调用。CI validate 在 pnpm check 后执行。PG 消费夹具只构造/关闭后端，不连接真实数据库；SQL 行为由 config-pg 驱动替身测试覆盖，WebDAV 协议读写由 config-webdav 本地服务器测试覆盖。
+
+注意：pnpm pack 会执行 prepare 并重建 dist。请在构建/测试结束后串行执行 verify:config-packages；不能与依赖 dist 的 CLI 测试并行。CI 已按此顺序执行。
